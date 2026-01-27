@@ -209,8 +209,7 @@ export default function AgoraCall({ channelName, uid, callType = 'video', onEndC
             <span className="animate-pulse">Connecting...</span>
           </div>
         ) : (
-        ): (
-            <div ref = { remoteVideoRef } className = "w-full h-full object-cover" />
+          <div ref={remoteVideoRef} className="w-full h-full object-cover" />
         )}
 
         {/* Local View - Picture in Picture (Video only) */}
