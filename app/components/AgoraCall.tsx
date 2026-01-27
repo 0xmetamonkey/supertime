@@ -190,11 +190,6 @@ export default function AgoraCall({ channelName, uid, callType = 'video', onEndC
               Close Call
             </button>
           </div>
-        ) : remoteUsers.length === 0 ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-500">
-            <div className="w-20 h-20 border-4 border-zinc-700 border-t-purple-500 rounded-full animate-spin mb-4" />
-            <span className="animate-pulse">Connecting...</span>
-          </div>
         ) : callType === 'audio' ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <div className="w-32 h-32 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center mb-4 animate-pulse">
@@ -204,9 +199,18 @@ export default function AgoraCall({ channelName, uid, callType = 'video', onEndC
               </svg>
             </div>
             <span className="text-xl font-bold text-white">Audio Call Active</span>
+            {remoteUsers.length === 0 && (
+              <span className="text-zinc-500 text-sm mt-2">Waiting for other to join...</span>
+            )}
+          </div>
+        ) : remoteUsers.length === 0 ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-500">
+            <div className="w-20 h-20 border-4 border-zinc-700 border-t-purple-500 rounded-full animate-spin mb-4" />
+            <span className="animate-pulse">Connecting...</span>
           </div>
         ) : (
-          <div ref={remoteVideoRef} className="w-full h-full object-cover" />
+        ): (
+            <div ref = { remoteVideoRef } className = "w-full h-full object-cover" />
         )}
 
         {/* Local View - Picture in Picture (Video only) */}
