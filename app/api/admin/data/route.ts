@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { auth } from '../../../../auth';
-
-const ADMIN_EMAILS = ['0xmetamonkey@gmail.com', 'extsystudios@gmail.com', 'lifeofaman01@gmail.com'];
+import { ADMIN_EMAILS } from '../../../../config';
 
 export async function GET(req: NextRequest) {
   const session = await auth();

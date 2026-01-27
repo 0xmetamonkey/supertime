@@ -1,18 +1,18 @@
 import { auth } from "../../auth";
 import { redirect } from "next/navigation";
+import { ADMIN_EMAILS } from "../config";
 
-const ADMIN_EMAILS = ['0xmetamonkey@gmail.com', 'extsystudios@gmail.com', 'lifeofaman01@gmail.com'];
-
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const session = await auth();
+  const email = session?.user?.email;
 
-  if (!session || !session.user?.email || !ADMIN_EMAILS.includes(session.user.email)) {
+  if (!email || !ADMIN_EMAILS.includes(email)) {
     redirect("/");
   }
 
-  return (
-    <div className="min-h-screen bg-black text-white">
-      {children}
-    </div>
-  );
+  return <>{children}</>;
 }
