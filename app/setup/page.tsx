@@ -1,8 +1,9 @@
-'use client';
 import { useState } from "react";
-import { loginWithGoogle, checkAvailability } from "../actions";
+import { useRouter } from "next/navigation";
+import { loginWithGoogle, checkAvailability, claimUsername } from "../actions";
 
 export default function SetupPage() {
+  const router = useRouter();
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -13,17 +14,13 @@ export default function SetupPage() {
     setError('');
     setLoading(true);
 
-    const isAvailable = await checkAvailability(username);
-    if (!isAvailable) {
-      setError('Taken. Try another?');
+    try {
+      await claimUsername(username);
+      router.push('/studio');
+    } catch (e: any) {
+      setError(e.message);
       setLoading(false);
-      return;
     }
-
-    // Since we are already logged in (presumably), 
-    // loginWithGoogle will act as a "Bind this user to this name" action
-    // because it redirects to /[username], which auto-claims for logged-in users.
-    await loginWithGoogle(username);
   };
 
   return (

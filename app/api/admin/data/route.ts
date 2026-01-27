@@ -5,7 +5,9 @@ import { ADMIN_EMAILS } from '../../../config';
 
 export async function GET(req: NextRequest) {
   const session = await auth();
-  if (!session || !session.user?.email || !ADMIN_EMAILS.includes(session.user.email)) {
+  const email = session?.user?.email?.toLowerCase();
+
+  if (!email || !ADMIN_EMAILS.includes(email)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 

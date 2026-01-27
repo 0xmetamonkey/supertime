@@ -1,6 +1,7 @@
 import { auth } from "../../auth";
 import { kv } from "@vercel/kv";
 import { redirect } from "next/navigation";
+import { resolveUsername } from "../actions";
 
 export default async function DashboardRedirect() {
   const session = await auth();
@@ -10,11 +11,11 @@ export default async function DashboardRedirect() {
   }
 
   // Lookup username
-  const uid = session.user.id;
+  const email = session.user.email;
   let username: string | null = null;
 
-  if (process.env.KV_URL) {
-    username = await kv.get(`user:${uid}:username`);
+  if (email) {
+    username = await resolveUsername(email);
   }
 
   if (username) {

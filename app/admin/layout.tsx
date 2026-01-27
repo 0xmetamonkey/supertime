@@ -10,7 +10,15 @@ export default async function AdminLayout({
   const session = await auth();
   const email = session?.user?.email;
 
-  if (!email || !ADMIN_EMAILS.includes(email)) {
+  if (!email) {
+    console.log("[Admin] No user email found - Redirecting to /");
+    redirect("/");
+  }
+
+  const normalizedEmail = email.toLowerCase();
+
+  if (!ADMIN_EMAILS.includes(normalizedEmail)) {
+    console.log(`[Admin] Unauthorized access attempt by ${normalizedEmail}`);
     redirect("/");
   }
 

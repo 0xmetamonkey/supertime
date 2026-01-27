@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { logout } from '../actions';
 import AgoraCall from '../components/AgoraCall';
 
 export default function StudioClient({ username, session, initialSettings }: { username: string, session: any, initialSettings?: any }) {
+  const router = useRouter();
   // State
   const [isLive, setIsLive] = useState(false);
   const [incomingCall, setIncomingCall] = useState<{ from: string, type: 'audio' | 'video' } | null>(null);
@@ -155,6 +157,16 @@ export default function StudioClient({ username, session, initialSettings }: { u
     setIncomingCall(null);
   };
 
+  // Note: incomingCall parameter was unused in original code but was passed in handleAcceptCall. 
+  // Adjusted signature to match usage in template.
+  const handleAcceptCall = async (type: 'audio' | 'video') => {
+    answerCall();
+  }
+
+  const handleRejectCall = () => {
+    rejectCall();
+  }
+
   const handleTimeUpdate = (seconds: number) => {
     setCallDuration(seconds);
     const rate = callType === 'video' ? pendingVideoRate : pendingAudioRate;
@@ -172,214 +184,219 @@ export default function StudioClient({ username, session, initialSettings }: { u
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  return (
-    <main className="min-h-screen bg-black text-white p-6 flex flex-col items-center relative overflow-hidden">
-      {/* Background Ambience */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 blur-[100px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#CEFF1A]/10 blur-[100px] rounded-full" />
-      </div>
-
-      <nav className="w-full flex justify-between items-center mb-10 max-w-4xl z-10">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-black italic tracking-tighter">STUDIO</h1>
-          <span className="bg-zinc-800 text-zinc-400 text-xs px-2 py-1 rounded-md font-mono">{username}</span>
+  if (isCalling) {
+    return (
+      <div className="fixed inset-0 z-[200] bg-black">
+        {/* Earnings Badge for Creator */}
+        <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[60] bg-green-500/20 backdrop-blur-xl px-6 py-3 rounded-2xl border border-green-500/50 flex items-center gap-4">
+          <span className="text-green-400 font-bold">💰 Earning</span>
+          <span className="font-mono font-bold text-xl text-white">+{tokensEarned} TKN</span>
         </div>
-        <div className="flex items-center gap-4">
+        <AgoraCall
+          channelName={`channel-${username}`}
+          uid={username}
+          callType={callType}
+          onEndCall={handleEndCall}
+          onTimeUpdate={handleTimeUpdate}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-black text-white p-4 font-mono">
+      {/* Background Grid */}
+      <div className="fixed inset-0 bg-[linear-gradient(to_right,#222_1px,transparent_1px),linear-gradient(to_bottom,#222_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] z-0 pointer-events-none" />
+
+      {/* Top Bar */}
+      <nav className="relative z-10 flex justify-between items-center mb-8 border-b-4 border-white pb-4 bg-black">
+        <h1 className="text-2xl font-black uppercase tracking-tighter">
+          Studio <span className="text-[#CEFF1A]">///</span> {username}
+        </h1>
+        <div className="flex gap-4">
           <button
-            onClick={() => window.location.href = `/${username}`}
-            className="bg-zinc-800 text-white font-bold text-xs px-4 py-2 rounded-full hover:bg-zinc-700"
+            onClick={() => router.push('/')}
+            className="text-zinc-500 font-bold text-xs uppercase hover:text-white"
           >
-            VIEW PROFILE
-          </button>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="bg-white text-black font-bold text-xs px-4 py-2 rounded-full hover:bg-zinc-200"
-          >
-            SETTINGS
+            [ Exit ]
           </button>
           <button
             onClick={() => logout()}
-            className="text-red-500 font-bold text-sm hover:text-red-400"
+            className="text-red-500 font-bold text-xs uppercase hover:text-red-400"
           >
-            LOG OUT
+            [ Logout ]
           </button>
         </div>
       </nav>
 
-      {/* SETTINGS OVERLAY */}
-      {showSettings && (
-        <div className="fixed inset-0 z-[150] bg-black/90 backdrop-blur flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-md w-full relative animate-in zoom-in duration-300">
-            <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white">✕</button>
-            <h2 className="text-2xl font-bold mb-6">Studio Settings</h2>
+      <div className="relative z-10 max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
 
-            {/* PROFILE IMAGE */}
-            <div className="flex flex-col items-center mb-6">
-              <div className="w-24 h-24 rounded-full bg-zinc-800 overflow-hidden mb-3 relative group">
-                {pendingProfileImage ? (
-                  <img src={pendingProfileImage} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-zinc-500 text-xs">No Image</div>
-                )}
-                {isUploading && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                  </div>
-                )}
-              </div>
-              <label className="text-xs bg-zinc-800 hover:bg-zinc-700 text-white font-bold px-3 py-1 rounded-full cursor-pointer transition-colors">
-                {isUploading ? "Uploading..." : "Upload Photo"}
-                <input type="file" accept="image/*" onChange={handleUpload} className="hidden" />
-              </label>
+        {/* LEFT COL: CONTROLS */}
+        <div className="space-y-8">
+
+          {/* LIVE SWITCH */}
+          <div className="bg-zinc-900 border-4 border-white p-6 shadow-[8px_8px_0px_0px_#CEFF1A]">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-black uppercase">Status</h2>
+              <div className={`w-4 h-4 rounded-full border-2 border-black ${isLive ? 'bg-[#CEFF1A] animate-pulse' : 'bg-red-500'}`} />
             </div>
-
-            {/* RATES */}
-            <div className="space-y-4 mb-6">
-              <h3 className="text-zinc-400 text-sm font-bold uppercase">Rates (TKN/min)</h3>
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="text-xs text-zinc-500 mb-1 block">Video</label>
-                  <input type="number" value={pendingVideoRate} onChange={(e) => setPendingVideoRate(Number(e.target.value))} className="w-full bg-black border border-zinc-700 rounded-xl px-4 py-3 text-white font-bold" />
-                </div>
-                <div className="flex-1">
-                  <label className="text-xs text-zinc-500 mb-1 block">Audio</label>
-                  <input type="number" value={pendingAudioRate} onChange={(e) => setPendingAudioRate(Number(e.target.value))} className="w-full bg-black border border-zinc-700 rounded-xl px-4 py-3 text-white font-bold" />
-                </div>
-              </div>
-            </div>
-
-            {/* SOCIALS */}
-            <div className="space-y-4 mb-8">
-              <h3 className="text-zinc-400 text-sm font-bold uppercase">Social Links</h3>
-              {['instagram', 'twitter', 'youtube', 'website'].map((platform) => (
-                <div key={platform} className="flex items-center bg-black border border-zinc-700 rounded-xl px-4 py-3">
-                  <span className="text-zinc-600 text-xs uppercase w-20 font-bold">{platform}</span>
-                  <input type="text" value={(pendingSocials as any)[platform]} onChange={(e) => setPendingSocials({ ...pendingSocials, [platform]: e.target.value })} className="flex-1 bg-transparent border-none outline-none text-white text-sm" placeholder="URL..." />
-                </div>
-              ))}
-            </div>
-
-            {/* SHARE LINK */}
-            <div className="bg-zinc-800 rounded-xl p-4 mb-8 flex justify-between items-center">
-              <span className="text-xs text-zinc-400 font-mono">supertime.wtf/{username}</span>
-              <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/${username}`); alert("Copied!"); }} className="text-xs bg-white text-black font-bold px-3 py-1 rounded-full">Copy</button>
-            </div>
-
-            <div className="flex gap-4">
-              <button onClick={() => setShowSettings(false)} className="flex-1 py-3 text-zinc-400 font-bold">Cancel</button>
-              <button onClick={saveSettings} className="flex-1 py-3 bg-[#D652FF] text-white font-bold rounded-xl hover:bg-[#b042d1]">Save Changes</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* LIVE SWITCH / MAIN ACTION */}
-      <div className="z-10 w-full max-w-md bg-zinc-900/50 backdrop-blur border border-zinc-800 rounded-3xl p-8 mb-8 text-center shadow-2xl animate-in zoom-in duration-300">
-
-        {isCalling ? (
-          <div className="py-6">
-            <h2 className="text-2xl font-bold text-green-400 mb-2">🔴 IN CALL</h2>
-            <div className="flex justify-center gap-8 mb-4">
-              <div className="text-center">
-                <span className="text-xs text-zinc-400 block">Duration</span>
-                <span className="font-mono font-bold text-2xl text-white">{formatTime(callDuration)}</span>
-              </div>
-              <div className="text-center">
-                <span className="text-xs text-zinc-400 block">Earning</span>
-                <span className="font-mono font-bold text-2xl text-green-400">+{tokensEarned} TKN</span>
-              </div>
-            </div>
-            <button
-              onClick={handleEndCall}
-              className="bg-red-500 px-8 py-3 rounded-full text-white font-bold hover:bg-red-600 transition-colors"
-            >
-              End Call
-            </button>
-          </div>
-        ) : (
-          <>
-            <h2 className="text-zinc-400 text-sm font-bold uppercase tracking-widest mb-6">Your Status</h2>
 
             <button
               onClick={() => setIsLive(!isLive)}
-              className={`w-40 h-40 rounded-full border-8 transition-all flex flex-col items-center justify-center gap-2 shadow-[0_0_50px_rgba(0,0,0,0.5)] mx-auto ${isLive
-                ? 'bg-[#CEFF1A] border-white shadow-[0_0_60px_#CEFF1A] scale-105'
-                : 'bg-zinc-800 border-zinc-700 opacity-50 grayscale hover:opacity-75'
-                }`}
+              className={`w-full py-4 font-black text-2xl uppercase border-2 border-white transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none shadow-[4px_4px_0px_0px_#fff] ${isLive ? 'bg-[#CEFF1A] text-black' : 'bg-red-600 text-white'}`}
             >
-              <div className={`w-4 h-4 rounded-full ${isLive ? 'bg-red-600 animate-ping' : 'bg-zinc-600'}`} />
-              <span className={`font-black text-xl uppercase ${isLive ? 'text-black' : 'text-zinc-500'}`}>
-                {isLive ? 'LIVE' : 'OFFLINE'}
-              </span>
+              {isLive ? 'ONLINE (RECEIVING)' : 'OFFLINE'}
             </button>
-
-            <p className="mt-8 text-zinc-500 text-sm">
-              {isLive ? "You are online! Keep this tab open to receive calls." : "Tap to Go Live and accept calls."}
+            <p className="mt-4 text-[10px] text-zinc-500 font-mono uppercase">
+              {isLive ? '>> Waiting for incoming calls...' : '>> You are not visible to callers.'}
             </p>
-          </>
-        )}
-      </div>
-
-      {/* CALL UI (Full Screen Overlay) */}
-      {isCalling && (
-        <div className="fixed inset-0 z-[200] bg-black">
-          {/* Earnings Badge for Creator */}
-          <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[60] bg-green-500/20 backdrop-blur-xl px-6 py-3 rounded-2xl border border-green-500/50 flex items-center gap-4">
-            <span className="text-green-400 font-bold">💰 Earning</span>
-            <span className="font-mono font-bold text-xl text-white">+{tokensEarned} TKN</span>
           </div>
-          <AgoraCall
-            channelName={`channel-${username}`}
-            uid={username}
-            callType={callType}
-            onEndCall={handleEndCall}
-            onTimeUpdate={handleTimeUpdate}
-          />
-        </div>
-      )}
 
-      {/* INCOMING CALL MODAL */}
-      {incomingCall && !isCalling && (
-        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur flex flex-col items-center justify-center animate-in zoom-in duration-300">
-          <div className="bg-[#CEFF1A] border-4 border-white p-8 shadow-[10px_10px_0px_0px_#D652FF] text-black text-center rotate-1 max-w-sm w-full mx-4">
-            <h2 className="text-4xl font-black italic uppercase mb-2 animate-pulse">Incoming!</h2>
-            <p className="font-mono font-bold text-xl mb-8">{incomingCall.type.toUpperCase()} • Guest</p>
-            <div className="flex gap-4">
-              <button onClick={answerCall} className="flex-1 py-4 bg-black text-white font-black uppercase text-xl hover:scale-105 transition-transform">Answer</button>
-              <button onClick={rejectCall} className="flex-1 py-4 bg-red-600 text-white font-black uppercase text-xl border-2 border-black hover:scale-105 transition-transform">Reject</button>
+          {/* INCOMING CALL ALERT */}
+          {incomingCall && (
+            <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur flex flex-col items-center justify-center animate-in zoom-in duration-300">
+              <div className="bg-[#CEFF1A] border-4 border-white p-8 shadow-[10px_10px_0px_0px_#D652FF] text-black text-center rotate-1 max-w-sm w-full mx-4">
+                <h2 className="text-4xl font-black italic uppercase mb-2 animate-pulse">Incoming!</h2>
+                <p className="font-mono font-bold text-xl mb-8">{incomingCall.type.toUpperCase()} • Guest</p>
+                <div className="flex gap-4">
+                  <button onClick={() => handleAcceptCall(incomingCall.type)} className="flex-1 py-4 bg-black text-white font-black uppercase text-xl hover:scale-105 transition-transform">Answer</button>
+                  <button onClick={handleRejectCall} className="flex-1 py-4 bg-red-600 text-white font-black uppercase text-xl border-2 border-black hover:scale-105 transition-transform">Reject</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STATS */}
+          <div className="bg-black border-2 border-zinc-700 p-6">
+            <h3 className="text-zinc-500 font-bold uppercase text-xs mb-4 border-b border-zinc-800 pb-2">Session Stats</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="block text-3xl font-black text-white">{tokensEarned}</span>
+                <span className="text-[10px] text-zinc-500 uppercase">Tokens Earned</span>
+              </div>
+              <div>
+                <span className="block text-3xl font-black text-white">{requests.length}</span>
+                <span className="text-[10px] text-zinc-500 uppercase">Calls Total</span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* REQUESTS QUEUE */}
-      <div className="w-full max-w-md z-10">
-        <div className="flex justify-between items-end mb-4">
-          <h3 className="font-bold text-lg">Waitlist</h3>
-          <span className="text-xs text-zinc-500">{requests.length} Requests</span>
-        </div>
-
-        {requests.length === 0 ? (
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-10 text-center text-zinc-600 italic">
-            No pending requests.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {requests.map((req, i) => (
-              <div key={i} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex justify-between items-center">
-                <div>
-                  <p className="font-bold text-white">{req.from || 'Guest'}</p>
-                  <p className="text-xs text-zinc-500">{new Date(req.timestamp).toLocaleTimeString()}</p>
-                </div>
-                <button className="bg-white text-black text-xs font-bold px-3 py-1 rounded-full">Message</button>
+          {/* REQUESTS QUEUE */}
+          <div className="bg-black border-2 border-zinc-700 p-6">
+            <h3 className="text-zinc-500 font-bold uppercase text-xs mb-4 border-b border-zinc-800 pb-2">Messages / Requests</h3>
+            {requests.length === 0 ? (
+              <div className="text-zinc-700 text-center italic text-xs py-4">
+                No pending messages.
               </div>
-            ))}
+            ) : (
+              <div className="space-y-2">
+                {requests.map((req, i) => (
+                  <div key={i} className="bg-zinc-900 border border-zinc-800 p-2 text-xs flex justify-between items-center">
+                    <span className="font-bold text-white">{req.from || 'Guest'}</span>
+                    <span className="text-zinc-600">{new Date(req.timestamp).toLocaleTimeString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      <div className="mt-8 text-zinc-800 text-xs font-mono">v1.1.0</div>
+        </div>
+
+        {/* RIGHT COL: SETTINGS */}
+        <div className="bg-zinc-900 border-2 border-white p-6 shadow-[8px_8px_0px_0px_#fff]">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-black uppercase">Configuration</h2>
+            {!showSettings ? (
+              <button onClick={() => setShowSettings(true)} className="text-xs bg-white text-black font-bold px-3 py-1 border-2 border-black hover:bg-zinc-200 uppercase">
+                Edit
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button onClick={saveSettings} className="text-xs bg-[#CEFF1A] text-black font-bold px-3 py-1 border-2 border-black hover:opacity-80 uppercase">Save</button>
+                <button onClick={() => setShowSettings(false)} className="text-xs bg-red-500 text-white font-bold px-3 py-1 border-2 border-black hover:opacity-80 uppercase">Cancel</button>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-6">
+            {/* Rates */}
+            <div>
+              <label className="text-[10px] text-zinc-500 font-bold uppercase block mb-1">Rates (Tokens/Min)</label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-xs text-zinc-400 block mb-1">Video</span>
+                  <input
+                    type="number"
+                    disabled={!showSettings}
+                    value={pendingVideoRate}
+                    onChange={(e) => setPendingVideoRate(Number(e.target.value))}
+                    className="w-full bg-black border-2 border-zinc-700 p-2 text-white font-bold focus:border-[#CEFF1A] outline-none disabled:opacity-50 font-mono"
+                  />
+                </div>
+                <div>
+                  <span className="text-xs text-zinc-400 block mb-1">Audio</span>
+                  <input
+                    type="number"
+                    disabled={!showSettings}
+                    value={pendingAudioRate}
+                    onChange={(e) => setPendingAudioRate(Number(e.target.value))}
+                    className="w-full bg-black border-2 border-zinc-700 p-2 text-white font-bold focus:border-[#CEFF1A] outline-none disabled:opacity-50 font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Profile Image */}
+            <div>
+              <label className="text-[10px] text-zinc-500 font-bold uppercase block mb-1">Avatar</label>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 border-2 border-white bg-zinc-800 overflow-hidden">
+                  {pendingProfileImage ? (
+                    <img src={pendingProfileImage} className="w-full h-full object-cover" />
+                  ) : <div className="w-full h-full bg-zinc-800" />}
+                </div>
+                {showSettings && (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUpload}
+                    className="text-xs text-zinc-500 file:bg-white file:text-black file:border-0 file:px-2 file:py-1 file:font-bold file:uppercase file:text-xs hover:file:bg-zinc-200"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Socials */}
+            <div>
+              <label className="text-[10px] text-zinc-500 font-bold uppercase block mb-2">Social Links</label>
+              <div className="space-y-2">
+                {['instagram', 'twitter', 'youtube', 'website'].map((platform) => (
+                  <div key={platform} className="flex items-center gap-2">
+                    <div className="w-6 flex justify-center">
+                      <img src={`https://simpleicons.org/icons/${platform}.svg`} className="w-4 h-4 invert opacity-50" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder={platform}
+                      disabled={!showSettings}
+                      value={(pendingSocials as any)[platform]}
+                      onChange={(e) => setPendingSocials({ ...pendingSocials, [platform]: e.target.value })}
+                      className="flex-1 bg-black border-b border-zinc-800 p-1 text-xs text-white focus:border-[#CEFF1A] outline-none disabled:opacity-50 font-mono"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-zinc-800 text-center">
+              <button onClick={() => router.push(`/${username}`)} className="text-xs text-[#CEFF1A] hover:underline uppercase font-bold">
+                [ View Public Profile ]
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
     </main>
   );
 }
