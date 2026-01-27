@@ -20,17 +20,20 @@ export default async function StudioPage() {
   let settings = {
     videoRate: 100,
     audioRate: 50,
-    socials: { instagram: '', twitter: '', youtube: '', website: '' }
+    socials: { instagram: '', twitter: '', youtube: '', website: '' },
+    profileImage: ''
   };
 
   if (process.env.KV_URL) {
     const vRate = await kv.get(`user:${email}:rate:video`);
     const aRate = await kv.get(`user:${email}:rate:audio`);
     const socials = await kv.get(`user:${email}:socials`);
+    const profileImage = await kv.get(`user:${email}:profileImage`);
 
     if (vRate !== null) settings.videoRate = Number(vRate);
     if (aRate !== null) settings.audioRate = Number(aRate);
     if (socials) settings.socials = socials as any;
+    if (profileImage) (settings as any).profileImage = profileImage;
   }
 
   return <StudioClient username={username} session={session} initialSettings={settings} />;

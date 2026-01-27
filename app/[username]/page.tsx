@@ -67,6 +67,7 @@ export default async function CreatorPage({ params }: Props) {
   let socials = {};
   let videoRate = 100;
   let audioRate = 50;
+  let profileImage = "";
 
   if (ownerEmail && process.env.KV_URL) {
     isVerified = !!(await kv.get(`user:${ownerEmail}:verified`));
@@ -75,9 +76,11 @@ export default async function CreatorPage({ params }: Props) {
     // Fetch Rates
     const vRate = await kv.get(`user:${ownerEmail}:rate:video`);
     const aRate = await kv.get(`user:${ownerEmail}:rate:audio`);
+    const pImage = await kv.get(`user:${ownerEmail}:profileImage`);
 
     if (vRate !== null) videoRate = Number(vRate);
     if (aRate !== null) audioRate = Number(aRate);
+    if (pImage) profileImage = String(pImage);
   }
 
   return (
@@ -90,6 +93,7 @@ export default async function CreatorPage({ params }: Props) {
       socials={socials}
       videoRate={videoRate}
       audioRate={audioRate}
+      profileImage={profileImage}
     />
   );
 }

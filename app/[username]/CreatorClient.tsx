@@ -13,7 +13,8 @@ export default function CreatorClient({
   isVerified,
   socials,
   videoRate = 100,
-  audioRate = 50
+  audioRate = 50,
+  profileImage = ""
 }: {
   username: string,
   user: any,
@@ -22,7 +23,8 @@ export default function CreatorClient({
   isVerified?: boolean,
   socials?: any,
   videoRate?: number,
-  audioRate?: number
+  audioRate?: number,
+  profileImage?: string
 }) {
 
   const [guestId] = useState(() => Math.random().toString(36).slice(2, 7));
@@ -260,7 +262,11 @@ export default function CreatorClient({
           {/* PROFILE CARD */}
           <div className="w-28 h-28 rounded-full p-1 bg-gradient-to-tr from-purple-500 to-pink-500 mb-5 shadow-[0_0_40px_rgba(168,85,247,0.4)]">
             <div className="w-full h-full rounded-full bg-zinc-900 border-4 border-black overflow-hidden relative">
-              <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`} alt="Profile" className="w-full h-full object-cover" />
+              <img
+                src={profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${username}`}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
 

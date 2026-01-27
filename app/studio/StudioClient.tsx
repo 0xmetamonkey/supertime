@@ -19,6 +19,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [pendingVideoRate, setPendingVideoRate] = useState(initialSettings?.videoRate ?? 100);
   const [pendingAudioRate, setPendingAudioRate] = useState(initialSettings?.audioRate ?? 50);
   const [pendingSocials, setPendingSocials] = useState(initialSettings?.socials ?? { instagram: '', twitter: '', youtube: '', website: '' });
+  const [pendingProfileImage, setPendingProfileImage] = useState(initialSettings?.profileImage || '');
+  const [isUploading, setIsUploading] = useState(false);
 
   const saveSettings = async () => {
     try {
@@ -27,13 +29,37 @@ export default function StudioClient({ username, session, initialSettings }: { u
         body: JSON.stringify({
           socials: pendingSocials,
           videoRate: pendingVideoRate,
-          audioRate: pendingAudioRate
+          audioRate: pendingAudioRate,
+          profileImage: pendingProfileImage
         })
       });
       alert("Settings Saved!");
       setShowSettings(false);
     } catch (e) {
       alert("Failed to save settings");
+    }
+  };
+
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) return;
+
+    setIsUploading(true);
+    const file = event.target.files[0];
+
+    try {
+      const response = await fetch(
+        `/api/upload?filename=${file.name}`,
+        {
+          method: 'POST',
+          body: file,
+        },
+      );
+      const newBlob = await response.json();
+      setPendingProfileImage(newBlob.url);
+    } catch (e) {
+      alert("Upload failed");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -187,6 +213,26 @@ export default function StudioClient({ username, session, initialSettings }: { u
           <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-md w-full relative animate-in zoom-in duration-300">
             <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white">✕</button>
             <h2 className="text-2xl font-bold mb-6">Studio Settings</h2>
+
+            {/* PROFILE IMAGE */}
+            <div className="flex flex-col items-center mb-6">
+              <div className="w-24 h-24 rounded-full bg-zinc-800 overflow-hidden mb-3 relative group">
+                {pendingProfileImage ? (
+                  <img src={pendingProfileImage} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-zinc-500 text-xs">No Image</div>
+                )}
+                {isUploading && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+              <label className="text-xs bg-zinc-800 hover:bg-zinc-700 text-white font-bold px-3 py-1 rounded-full cursor-pointer transition-colors">
+                {isUploading ? "Uploading..." : "Upload Photo"}
+                <input type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+              </label>
+            </div>
 
             {/* RATES */}
             <div className="space-y-4 mb-6">
