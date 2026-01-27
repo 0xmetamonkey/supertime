@@ -379,6 +379,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
         )}
       </div>
 
+      <div className="mt-8 text-zinc-800 text-xs font-mono">v1.1.0</div>
     </main>
   );
 }
