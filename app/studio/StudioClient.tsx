@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { logout } from '../actions';
 import AgoraCall from '../components/AgoraCall';
 
-export default function StudioClient({ username, session }: { username: string, session: any }) {
+export default function StudioClient({ username, session, initialSettings }: { username: string, session: any, initialSettings?: any }) {
   // State
   const [isLive, setIsLive] = useState(false);
   const [incomingCall, setIncomingCall] = useState<{ from: string, type: 'audio' | 'video' } | null>(null);
@@ -16,9 +16,9 @@ export default function StudioClient({ username, session }: { username: string, 
 
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
-  const [pendingVideoRate, setPendingVideoRate] = useState(100);
-  const [pendingAudioRate, setPendingAudioRate] = useState(50);
-  const [pendingSocials, setPendingSocials] = useState({ instagram: '', twitter: '', youtube: '', website: '' });
+  const [pendingVideoRate, setPendingVideoRate] = useState(initialSettings?.videoRate ?? 100);
+  const [pendingAudioRate, setPendingAudioRate] = useState(initialSettings?.audioRate ?? 50);
+  const [pendingSocials, setPendingSocials] = useState(initialSettings?.socials ?? { instagram: '', twitter: '', youtube: '', website: '' });
 
   const saveSettings = async () => {
     try {

@@ -7,6 +7,8 @@ type Props = {
   params: Promise<{ username: string }>
 }
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata(
   { params }: Props
 ): Promise<Metadata> {
@@ -63,9 +65,19 @@ export default async function CreatorPage({ params }: Props) {
 
   let isVerified = false;
   let socials = {};
+  let videoRate = 100;
+  let audioRate = 50;
+
   if (ownerEmail && process.env.KV_URL) {
     isVerified = !!(await kv.get(`user:${ownerEmail}:verified`));
     socials = (await kv.get(`user:${ownerEmail}:socials`)) || {};
+
+    // Fetch Rates
+    const vRate = await kv.get(`user:${ownerEmail}:rate:video`);
+    const aRate = await kv.get(`user:${ownerEmail}:rate:audio`);
+
+    if (vRate !== null) videoRate = Number(vRate);
+    if (aRate !== null) audioRate = Number(aRate);
   }
 
   return (
@@ -76,6 +88,8 @@ export default async function CreatorPage({ params }: Props) {
       ownerEmail={ownerEmail || ""}
       isVerified={isVerified}
       socials={socials}
+      videoRate={videoRate}
+      audioRate={audioRate}
     />
   );
 }

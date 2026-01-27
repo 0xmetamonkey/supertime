@@ -14,8 +14,8 @@ export async function POST(req: NextRequest) {
   try {
     if (process.env.KV_URL) {
       if (socials) await kv.set(`user:${email}:socials`, socials);
-      if (videoRate) await kv.set(`user:${email}:rate:video`, videoRate);
-      if (audioRate) await kv.set(`user:${email}:rate:audio`, audioRate);
+      if (videoRate !== undefined) await kv.set(`user:${email}:rate:video`, videoRate);
+      if (audioRate !== undefined) await kv.set(`user:${email}:rate:audio`, audioRate);
     }
 
     return NextResponse.json({ success: true });

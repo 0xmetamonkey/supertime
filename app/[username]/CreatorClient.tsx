@@ -5,10 +5,25 @@ import WalletManager from '../components/WalletManager';
 import AgoraCall from '../components/AgoraCall';
 import { logout, loginWithGoogle } from '../actions';
 
-const DEFAULT_VIDEO_RATE = 100;
-const DEFAULT_AUDIO_RATE = 50;
-
-export default function CreatorClient({ username, user, isOwner, ownerEmail, isVerified, socials }: { username: string, user: any, isOwner: boolean, ownerEmail: string, isVerified?: boolean, socials?: any }) {
+export default function CreatorClient({
+  username,
+  user,
+  isOwner,
+  ownerEmail,
+  isVerified,
+  socials,
+  videoRate = 100,
+  audioRate = 50
+}: {
+  username: string,
+  user: any,
+  isOwner: boolean,
+  ownerEmail: string,
+  isVerified?: boolean,
+  socials?: any,
+  videoRate?: number,
+  audioRate?: number
+}) {
 
   const [guestId] = useState(() => Math.random().toString(36).slice(2, 7));
   const uid = user?.id || `guest-${guestId}`;
@@ -37,7 +52,7 @@ export default function CreatorClient({ username, user, isOwner, ownerEmail, isV
       return;
     }
 
-    const currentRate = type === 'video' ? DEFAULT_VIDEO_RATE : DEFAULT_AUDIO_RATE;
+    const currentRate = type === 'video' ? videoRate : audioRate;
 
     if (balance < currentRate) {
       showError(`Add ${currentRate} TKN to start a ${type} call.`);
@@ -86,7 +101,7 @@ export default function CreatorClient({ username, user, isOwner, ownerEmail, isV
 
   const handleTimeUpdate = async (seconds: number) => {
     const currentMinute = Math.floor(seconds / 60);
-    const currentRate = callType === 'video' ? DEFAULT_VIDEO_RATE : DEFAULT_AUDIO_RATE;
+    const currentRate = callType === 'video' ? videoRate : audioRate;
 
     if (currentMinute > lastDeductMinuteRef.current) {
       lastDeductMinuteRef.current = currentMinute;
@@ -362,7 +377,7 @@ export default function CreatorClient({ username, user, isOwner, ownerEmail, isV
                         <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" />
                       </svg>
                       <span className="text-lg">Video Call</span>
-                      <span className="bg-white/20 text-white text-xs px-2 py-1 rounded font-mono">{DEFAULT_VIDEO_RATE}/min</span>
+                      <span className="bg-white/20 text-white text-xs px-2 py-1 rounded font-mono">{videoRate}/min</span>
                     </button>
                     <button
                       onClick={() => handleStartCall('audio')}
@@ -373,10 +388,10 @@ export default function CreatorClient({ username, user, isOwner, ownerEmail, isV
                         <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
                       </svg>
                       <span>Audio Only</span>
-                      <span className="bg-black/50 text-zinc-300 text-xs px-2 py-1 rounded font-mono">{DEFAULT_AUDIO_RATE}/min</span>
+                      <span className="bg-black/50 text-zinc-300 text-xs px-2 py-1 rounded font-mono">{audioRate}/min</span>
                     </button>
 
-                    {balance < DEFAULT_AUDIO_RATE && (
+                    {balance < audioRate && (
                       <p className="text-amber-400 text-xs text-center mt-2">
                         ⚡ Add tokens using the wallet button above to start a call
                       </p>
