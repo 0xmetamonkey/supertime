@@ -98,17 +98,29 @@ export default function AgoraCall({
 
         // B. Handshake Validation
         const safeChannel = channelName.toLowerCase().trim();
-        const joinUid = hashStringToInt(uid);
+
+        // Ensure guest users have a stable-ish string UID for the token server
+        let stableUid = uid;
+        if (!stableUid) {
+          const storageKey = `supertime-guest-id-${safeChannel}`;
+          stableUid = localStorage.getItem(storageKey) || `guest-${Math.floor(Math.random() * 1000000)}`;
+          localStorage.setItem(storageKey, stableUid);
+        }
+
+        const joinUid = hashStringToInt(stableUid);
+        console.log(`📡 Joining as: ${stableUid} (Hash: ${joinUid})`);
+        setStatus("Verifying Identity...");
 
         if (!safeChannel) throw new Error("Missing Channel Name");
         if (!joinUid) throw new Error("Could not generate valid UID");
 
         // C. Fetch Token
-        const tokenRes = await fetch(`/api/agora?channelName=${safeChannel}&uid=${uid}`);
+        const tokenRes = await fetch(`/api/agora?channelName=${safeChannel}&uid=${stableUid}`);
         if (!tokenRes.ok) throw new Error(`Token Server Error: ${tokenRes.status}`);
         const { token, appId: serverAppId } = await tokenRes.json();
+        setStatus("Identity Verified.");
 
-        const appId = serverAppId || process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim();
+        const appId = serverAppId || (process.env.NEXT_PUBLIC_AGORA_APP_ID as string)?.trim();
         if (!appId) throw new Error("Agora App ID is missing");
 
         // D. Create Client
@@ -170,16 +182,23 @@ export default function AgoraCall({
             cam.play(localVideoRef.current);
           }
           setStatus("Publishing Video/Audio...");
-          await client.publish([mic, cam]);
+          const publishPromise = client.publish([mic, cam]);
+          const publishTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Publishing Timed Out - Network Issue")), 15000));
+          await Promise.race([publishPromise, publishTimeout]);
         } else {
+          setStatus("Accessing Mic...");
           const mic = await AgoraRTC.createMicrophoneAudioTrack(
             { echoCancellation: true, noiseSuppression: true, AEC: true, AGC: true }
           );
           localAudioTrackRef.current = mic;
-          await client.publish([mic]);
+          setStatus("Publishing Audio...");
+          const publishPromise = client.publish([mic]);
+          const publishTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Publishing Timed Out - Network Issue")), 15000));
+          await Promise.race([publishPromise, publishTimeout]);
         }
 
         setConnectionState('CONNECTED');
+        setStatus("Call connected.");
 
       } catch (err: any) {
         console.error("❌ Indestructible Init Failed:", err);
@@ -197,6 +216,8 @@ export default function AgoraCall({
     startCall();
 
     return () => {
+      // Synchronously reset lock so next effect can fire immediately
+      initLockRef.current = false;
       cleanup();
     };
   }, [channelName, uid, callType]);
