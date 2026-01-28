@@ -122,41 +122,36 @@ export default function StudioClient({ username, session, initialSettings }: { u
   useEffect(() => {
     if (incomingCall && !isCalling) {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(440, ctx.currentTime); // A4 (Standard ring)
-
-      // Create a pulsing effect (Ring... Ring...)
-      gainNode.gain.setValueAtTime(0, ctx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.1);
-      gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.0);
-      gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 2.0);
-      gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 3.0);
-
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      oscillator.start();
-
-      // Loop the beep every 4 seconds
-      const loop = setInterval(() => {
-        const osc = ctx.createOscillator();
+      const playChime = () => {
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
         const gn = ctx.createGain();
-        osc.frequency.setValueAtTime(440, ctx.currentTime);
+
+        // Harmonious chord (E5 and G5)
+        osc1.frequency.setValueAtTime(659.25, ctx.currentTime);
+        osc2.frequency.setValueAtTime(783.99, ctx.currentTime);
+        osc1.type = 'sine';
+        osc2.type = 'sine';
+
         gn.gain.setValueAtTime(0, ctx.currentTime);
-        gn.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.1);
-        gn.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.0);
-        osc.connect(gn);
+        gn.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.1);
+        gn.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+
+        osc1.connect(gn);
+        osc2.connect(gn);
         gn.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 1.2);
-      }, 3000);
+
+        osc1.start();
+        osc2.start();
+        osc1.stop(ctx.currentTime + 1.6);
+        osc2.stop(ctx.currentTime + 1.6);
+      };
+
+      playChime();
+      const loop = setInterval(playChime, 3000);
 
       return () => {
         clearInterval(loop);
-        oscillator.stop();
         ctx.close();
       };
     }
