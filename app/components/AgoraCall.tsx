@@ -257,6 +257,7 @@ export default function AgoraCall({ channelName, uid, remoteName = 'Guest', call
             <div className="w-20 h-20 border-4 border-zinc-700 border-t-[#CEFF1A] rounded-full animate-spin mb-6" />
             <span className="animate-pulse uppercase font-black tracking-tighter text-white mb-2">Waiting for {remoteName}...</span>
             <div className="flex flex-col items-center gap-1 opacity-50 font-mono text-[8px] uppercase">
+              <span>App: {process.env.NEXT_PUBLIC_AGORA_APP_ID?.substring(0, 4)}...</span>
               <span>Channel: {channelName}</span>
               <span>UID: {uid}</span>
             </div>

@@ -429,7 +429,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
               </div>
               <AgoraCall
                 channelName={`channel-${username}`}
-                uid={username}
+                uid={`${username}-studio`}
                 remoteName={remoteName}
                 callType={callType}
                 onEndCall={handleEndCall}
@@ -515,7 +515,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
         </div>
         <AgoraCall
           channelName={`channel-${username || 'fallback'}`}
-          uid={username || 'unknown'}
+          uid={`${username || 'unknown'}-studio`}
           remoteName={remoteName}
           callType={callType}
           onEndCall={handleEndCall}
