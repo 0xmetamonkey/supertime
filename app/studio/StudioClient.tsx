@@ -4,8 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { logout } from '../actions';
 import AgoraCall from '../components/AgoraCall';
+import { useTheme } from '../context/ThemeContext';
 
-export default function StudioClient({ username, session, initialSettings }: { username: string, session: any, initialSettings?: any }) {
+import WalletManager from '../components/WalletManager';
+import { checkAvailability, claimUsername } from '../actions';
+
+export default function StudioClient({ username, session, initialSettings }: { username: string | null, session: any, initialSettings?: any }) {
   const router = useRouter();
   // State
   const [isLive, setIsLive] = useState(false);
@@ -65,9 +69,38 @@ export default function StudioClient({ username, session, initialSettings }: { u
     }
   };
 
+  // State for Visitor Mode
+  const [claimName, setClaimName] = useState('');
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [claimError, setClaimError] = useState('');
+  const [balance, setBalance] = useState<number | null>(null);
+
+  const handleClaim = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!claimName) return;
+    setClaimError('');
+    setClaimLoading(true);
+
+    try {
+      const isAvailable = await checkAvailability(claimName);
+      if (!isAvailable) {
+        setClaimError('Username taken. Try another?');
+        setClaimLoading(false);
+        return;
+      }
+
+      await claimUsername(claimName);
+      window.location.reload();
+    } catch (e: any) {
+      console.error("Claim Error:", e);
+      setClaimError(e.message || "Something went wrong. Check connection.");
+      setClaimLoading(false);
+    }
+  };
+
   // Polling for Incoming Calls
   useEffect(() => {
-    if (!isLive || isCalling) return;
+    if (!username || !isLive || isCalling) return;
 
     const interval = setInterval(async () => {
       try {
@@ -130,6 +163,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
   // Polling for Requests (Queue)
   useEffect(() => {
+    if (!username) return;
     const fetchRequests = async () => {
       try {
         const res = await fetch(`/api/call/request?username=${username}`);
@@ -184,6 +218,292 @@ export default function StudioClient({ username, session, initialSettings }: { u
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const { theme } = useTheme();
+
+  // --------------------------------------------------------------------------
+  // VISITOR VIEW (No Username)
+  // --------------------------------------------------------------------------
+  if (!username) {
+    return (
+      <main className="min-h-screen bg-black text-white p-6 md:p-12 flex flex-col items-center relative overflow-hidden font-mono">
+        <div className="fixed inset-0 bg-[linear-gradient(to_right,#222_1px,transparent_1px),linear-gradient(to_bottom,#222_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] z-0 pointer-events-none" />
+
+        <nav className="w-full flex justify-between items-center mb-12 max-w-4xl z-10 border-b-2 border-zinc-800 pb-4">
+          <h1 className="text-xl font-black uppercase tracking-tighter italic">
+            Super<span className="text-[#CEFF1A]">Time</span> Dashboard
+          </h1>
+          <div className="flex items-center gap-4">
+            <WalletManager onBalanceChange={setBalance} />
+            <button
+              onClick={() => logout()}
+              className="text-red-500 font-bold text-xs uppercase hover:underline"
+            >
+              Logout
+            </button>
+          </div>
+        </nav>
+
+        <div className="w-full max-w-2xl z-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* WALLET & STATUS */}
+          <div className="bg-zinc-900 border-2 border-white p-6 shadow-[6px_6px_0px_0px_#fff]">
+            <h2 className="text-2xl font-black uppercase mb-2 italic">My Wallet</h2>
+            <div className="h-1 w-12 bg-[#CEFF1A] mb-4"></div>
+            <p className="text-zinc-400 text-xs mb-6 uppercase tracking-wider font-bold">
+              Current Credits: <span className="text-white text-lg ml-2">{balance ?? '...'} TKN</span>
+            </p>
+            <p className="text-zinc-500 text-[10px] leading-relaxed mb-4">
+              Use your credits to call creators. 100% secure payments via Razorpay.
+            </p>
+            <div className="pt-4 border-t border-zinc-800">
+              <p className="text-[10px] text-zinc-500 italic uppercase">Logged in as {session?.user?.email}</p>
+            </div>
+          </div>
+
+          {/* BECOME A CREATOR */}
+          <div className="bg-black border-2 border-[#CEFF1A] p-6 shadow-[6px_6px_0px_0px_#CEFF1A] relative">
+            <div className="absolute -top-3 left-4 bg-black border border-[#CEFF1A] px-2 py-0.5 text-[#CEFF1A] text-[10px] font-black uppercase">
+              Monetize your time
+            </div>
+            <h2 className="text-2xl font-black uppercase mb-4 italic">Start Earning</h2>
+            <p className="text-zinc-400 text-xs mb-6">
+              Claim your unique link and start accepting paid calls today.
+            </p>
+
+            <form onSubmit={handleClaim} className="space-y-4">
+              <div className="flex items-center bg-zinc-900 border-2 border-zinc-700 p-2 focus-within:border-white transition-all">
+                <span className="text-zinc-600 text-[10px] px-2">supertime.wtf/</span>
+                <input
+                  type="text"
+                  value={claimName}
+                  onChange={(e) => setClaimName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  placeholder="USERNAME"
+                  className="flex-1 bg-transparent border-none outline-none text-white font-bold text-sm placeholder:text-zinc-800 uppercase"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={!claimName || claimLoading}
+                className="w-full bg-[#CEFF1A] text-black font-black py-3 border-2 border-black hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none shadow-[3px_3px_0px_0px_#fff] transition-all uppercase text-sm"
+              >
+                {claimLoading ? 'Processing...' : 'Claim & Setup Studio'}
+              </button>
+              {claimError && <p className="text-red-500 text-[10px] uppercase font-bold text-center mt-2">{claimError}</p>}
+            </form>
+          </div>
+        </div>
+
+        {/* SYSTEM STATUS (DEBUG) */}
+        <div className="mt-8 p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl max-w-2xl w-full z-10">
+          <p className="text-[10px] text-zinc-500 font-mono uppercase mb-2 animate-pulse">System Diagnostic Info (Beta)</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[10px] font-mono text-zinc-400">
+            <div className="bg-black p-2 rounded border border-zinc-800">
+              <span className="text-zinc-600 block mb-1">Session Email:</span>
+              <span className="text-white truncate block">{session?.user?.email || 'N/A'}</span>
+            </div>
+            <div className="bg-black p-2 rounded border border-zinc-800">
+              <span className="text-zinc-600 block mb-1">Resolved Name:</span>
+              <span className="text-white block">{username || 'NULL'}</span>
+            </div>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 text-[10px] text-[#CEFF1A] hover:underline uppercase"
+          >
+            [ Force Refresh Data ]
+          </button>
+        </div>
+
+        <div className="mt-16 text-center z-10">
+          <p className="text-zinc-600 text-[10px] uppercase tracking-[0.2em] mb-4">Exploration</p>
+          <button
+            onClick={() => router.push('/')}
+            className="text-white border-2 border-white px-8 py-2 font-black uppercase hover:bg-white hover:text-black transition-all text-xs"
+          >
+            Back to Home
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // CREATOR VIEW (Existing)
+  // --------------------------------------------------------------------------
+  if (theme === 'slick') {
+    return (
+      <main className="min-h-screen bg-black text-white p-6 flex flex-col items-center relative overflow-hidden">
+        {/* Background Ambience */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 blur-[100px] rounded-full" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#CEFF1A]/10 blur-[100px] rounded-full" />
+        </div>
+
+        <nav className="w-full flex justify-between items-center mb-10 max-w-4xl z-10">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-black italic tracking-tighter">STUDIO</h1>
+            <span className="bg-zinc-800 text-zinc-400 text-xs px-2 py-1 rounded-md font-mono">{username}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => window.location.href = `/${username}`}
+              className="bg-zinc-800 text-white font-bold text-xs px-4 py-2 rounded-full hover:bg-zinc-700"
+            >
+              VIEW PROFILE
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="bg-white text-black font-bold text-xs px-4 py-2 rounded-full hover:bg-zinc-200"
+            >
+              SETTINGS
+            </button>
+            <button
+              onClick={() => logout()}
+              className="text-red-500 font-bold text-sm hover:text-red-400"
+            >
+              LOG OUT
+            </button>
+          </div>
+        </nav>
+
+        {/* SETTINGS OVERLAY */}
+        {showSettings && (
+          <div className="fixed inset-0 z-[150] bg-black/90 backdrop-blur flex items-center justify-center p-4">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-md w-full relative animate-in zoom-in duration-300">
+              <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white">✕</button>
+              <h2 className="text-2xl font-bold mb-6">Studio Settings</h2>
+
+              {/* RATES */}
+              <div className="space-y-4 mb-6">
+                <h3 className="text-zinc-400 text-sm font-bold uppercase">Rates (TKN/min)</h3>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="text-xs text-zinc-500 mb-1 block">Video</label>
+                    <input type="number" value={pendingVideoRate} onChange={(e) => setPendingVideoRate(Number(e.target.value))} className="w-full bg-black border border-zinc-700 rounded-xl px-4 py-3 text-white font-bold" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-zinc-500 mb-1 block">Audio</label>
+                    <input type="number" value={pendingAudioRate} onChange={(e) => setPendingAudioRate(Number(e.target.value))} className="w-full bg-black border border-zinc-700 rounded-xl px-4 py-3 text-white font-bold" />
+                  </div>
+                </div>
+              </div>
+
+              {/* SOCIALS */}
+              <div className="space-y-4 mb-8">
+                <h3 className="text-zinc-400 text-sm font-bold uppercase">Social Links</h3>
+                {['instagram', 'twitter', 'youtube', 'website'].map((platform) => (
+                  <div key={platform} className="flex items-center bg-black border border-zinc-700 rounded-xl px-4 py-3">
+                    <span className="text-zinc-600 text-xs uppercase w-20 font-bold">{platform}</span>
+                    <input type="text" value={(pendingSocials as any)[platform]} onChange={(e) => setPendingSocials({ ...pendingSocials, [platform]: e.target.value })} className="flex-1 bg-transparent border-none outline-none text-white text-sm" placeholder="URL..." />
+                  </div>
+                ))}
+              </div>
+
+              {/* SHARE LINK */}
+              <div className="bg-zinc-800 rounded-xl p-4 mb-8 flex justify-between items-center">
+                <span className="text-xs text-zinc-400 font-mono">supertime.wtf/{username}</span>
+                <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/${username}`); alert("Copied!"); }} className="text-xs bg-white text-black font-bold px-3 py-1 rounded-full">Copy</button>
+              </div>
+
+              <div className="flex gap-4">
+                <button onClick={() => setShowSettings(false)} className="flex-1 py-3 text-zinc-400 font-bold">Cancel</button>
+                <button onClick={saveSettings} className="flex-1 py-3 bg-[#D652FF] text-white font-bold rounded-xl hover:bg-[#b042d1]">Save Changes</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* LIVE SWITCH / MAIN ACTION */}
+        <div className="z-10 w-full max-w-md bg-zinc-900/50 backdrop-blur border border-zinc-800 rounded-3xl p-8 mb-8 text-center shadow-2xl animate-in zoom-in duration-300">
+
+          {isCalling ? (
+            <div className="py-6">
+              <h2 className="text-2xl font-bold text-green-400 mb-2">🔴 IN CALL</h2>
+              <div className="flex justify-center gap-8 mb-4">
+                <div className="text-center">
+                  <span className="text-xs text-zinc-400 block">Duration</span>
+                  <span className="font-mono font-bold text-2xl text-white">{formatTime(callDuration)}</span>
+                </div>
+                <div className="text-center">
+                  <span className="text-xs text-zinc-400 block">Earning</span>
+                  <span className="font-mono font-bold text-2xl text-green-400">+{tokensEarned} TKN</span>
+                </div>
+              </div>
+              <button
+                onClick={handleEndCall}
+                className="bg-red-500 px-8 py-3 rounded-full text-white font-bold hover:bg-red-600 transition-colors"
+              >
+                End Call
+              </button>
+            </div>
+          ) : (
+            <>
+              <h2 className="text-zinc-400 text-sm font-bold uppercase tracking-widest mb-6">Your Status</h2>
+
+              <button
+                onClick={() => setIsLive(!isLive)}
+                className={`w-40 h-40 rounded-full border-8 transition-all flex flex-col items-center justify-center gap-2 shadow-[0_0_50px_rgba(0,0,0,0.5)] mx-auto ${isLive
+                  ? 'bg-[#CEFF1A] border-white shadow-[0_0_60px_#CEFF1A] scale-105'
+                  : 'bg-zinc-800 border-zinc-700 opacity-50 grayscale hover:opacity-75'
+                  }`}
+              >
+                <div className={`w-4 h-4 rounded-full ${isLive ? 'bg-red-600 animate-ping' : 'bg-zinc-600'}`} />
+                <span className={`font-black text-xl uppercase ${isLive ? 'text-black' : 'text-zinc-500'}`}>
+                  {isLive ? 'LIVE' : 'OFFLINE'}
+                </span>
+              </button>
+
+              <p className="mt-8 text-zinc-500 text-sm">
+                {isLive ? "You are online! Keep this tab open to receive calls." : "Tap to Go Live and accept calls."}
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* INCOMING CALL MODAL */}
+        {incomingCall && !isCalling && (
+          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur flex flex-col items-center justify-center animate-in zoom-in duration-300">
+            <div className="bg-[#CEFF1A] border-4 border-white p-8 shadow-[10px_10px_0px_0px_#D652FF] text-black text-center rotate-1 max-w-sm w-full mx-4">
+              <h2 className="text-4xl font-black italic uppercase mb-2 animate-pulse">Incoming!</h2>
+              <p className="font-mono font-bold text-xl mb-8">{incomingCall.type.toUpperCase()} • Guest</p>
+              <div className="flex gap-4">
+                <button onClick={() => handleAcceptCall(incomingCall.type)} className="flex-1 py-4 bg-black text-white font-black uppercase text-xl hover:scale-105 transition-transform">Answer</button>
+                <button onClick={handleRejectCall} className="flex-1 py-4 bg-red-600 text-white font-black uppercase text-xl border-2 border-black hover:scale-105 transition-transform">Reject</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* REQUESTS QUEUE logic */}
+        <div className="w-full max-w-md z-10">
+          <div className="flex justify-between items-end mb-4">
+            <h3 className="font-bold text-lg">Waitlist</h3>
+            <span className="text-xs text-zinc-500">{requests.length} Requests</span>
+          </div>
+
+          {requests.length === 0 ? (
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-10 text-center text-zinc-600 italic">
+              No pending requests.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {requests.map((req, i) => (
+                <div key={i} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex justify-between items-center">
+                  <div>
+                    <p className="font-bold text-white">{req.from || 'Guest'}</p>
+                    <p className="text-xs text-zinc-500">{new Date(req.time).toLocaleTimeString()}</p>
+                  </div>
+                  <button className="bg-white text-black text-xs font-bold px-3 py-1 rounded-full">Message</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+    );
+  }
+  // --------------------------------------------------------------------------
+  // NEO THEME (Default)
+  // --------------------------------------------------------------------------
   if (isCalling) {
     return (
       <div className="fixed inset-0 z-[200] bg-black">
@@ -397,6 +717,29 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </div>
         </div>
       </div>
+
+      {/* SYSTEM STATUS (DEBUG) */}
+      {!!session?.user && (
+        <div className="mt-12 p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl max-w-md w-full z-10 font-mono text-left">
+          <p className="text-[10px] text-zinc-500 uppercase mb-2 animate-pulse">Session Diagnostic (Logged In)</p>
+          <div className="space-y-2 text-[10px] text-zinc-400">
+            <div className="bg-black p-2 rounded border border-zinc-800 flex justify-between">
+              <span className="text-zinc-600">Email:</span>
+              <span className="text-white truncate max-w-[150px]">{session?.user?.email}</span>
+            </div>
+            <div className="bg-black p-2 rounded border border-zinc-800 flex justify-between">
+              <span className="text-zinc-600">Username:</span>
+              <span className="text-white">{username || 'NULL'}</span>
+            </div>
+          </div>
+          <button
+            onClick={() => window.location.href = '/studio'}
+            className="w-full mt-4 bg-white text-black font-black py-2 uppercase text-[10px] hover:bg-zinc-200 transition-colors"
+          >
+            Force Enter Studio →
+          </button>
+        </div>
+      )}
     </main>
   );
 }

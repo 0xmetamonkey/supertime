@@ -24,14 +24,18 @@ function getAgoraCredentials() {
 }
 
 // Simple in-memory fallback if KV is not configured
-const memoryStore = new Map<string, number>();
+declare global {
+  var mockWalletStore: Map<string, number>;
+}
+if (!global.mockWalletStore) {
+  global.mockWalletStore = new Map();
+}
 
-async function getUserBalance(uid: string): Promise<number> {
+async function getUserBalance(email: string): Promise<number> {
   if (process.env.KV_URL) {
-    const balance = await kv.get<number>(`balance:${uid}`);
-    return balance ?? 0;
+    return (await kv.get<number>(`balance:${email}`)) ?? 0;
   }
-  return memoryStore.get(uid) ?? 0;
+  return global.mockWalletStore.get(email) ?? 0;
 }
 
 import { auth } from "../../../auth";
@@ -58,15 +62,22 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 1. Check Balance
-  // In a real app, we check if the user has enough for at least 1 minute (e.g., 10 tokens)
-  // We'll skip this check if uid is 'creator' (assuming creator is free or master)
-  // Actually, let's just check everyone for now, assuming creator won't call themselves.
-  // If the caller is the "fan", we check. We'll rely on the frontend to pass a role, 
-  // but for security, we'd check session. Here we just trust the UID for MVP speed.
-  // Let's assume UIDs starting with 'user_' are fans.
+  // 1. Check Balance (Enforce Pay-to-Talk)
+  // We use the email from session to check balance, matching the wallet logic.
+  if (session?.user?.email) {
+    const email = session.user.email.toLowerCase();
+    const balance = await getUserBalance(email);
+    console.log(`Debug: Balance for ${email} is ${balance}`);
 
-  // For simplicity, we just generate the token. The deduction loop runs separately.
+    // Minimum required to start (e.g., 50 tokens ~ 1 min audio)
+    // If balance is too low, deny token.
+    if (balance < 10) {
+      // Allow 'guest' to have free pass? No, guest must pay too usually. 
+      // But for now, if it's a known user, we enforce.
+      console.error("Insufficient funds to start call");
+      return NextResponse.json({ error: 'Insufficient funds. Please recharge.' }, { status: 402 });
+    }
+  }
 
   try {
     const { appId, appCertificate } = getAgoraCredentials();

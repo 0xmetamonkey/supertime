@@ -9,12 +9,16 @@ export default async function LandingPage() {
   let username: string | null = null;
   const email = session?.user?.email;
 
+  console.log(`[LandingPage] Processing request for email: ${email || 'NONE'}`);
+
   if (email) {
     username = await resolveUsername(email);
+    console.log(`[LandingPage] Resolved username: ${username || 'NULL'}`);
   }
 
-  // If logged in AND has username -> go straight to studio
-  if (email && username) {
+  // Redirect all logged-in users to studio
+  if (email) {
+    console.log(`[LandingPage] Redirecting to /studio`);
     redirect("/studio");
   }
 

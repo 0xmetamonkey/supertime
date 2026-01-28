@@ -175,8 +175,23 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
                 </div>
               )}
 
-              <div className="mt-4 pt-4 border-t border-zinc-800 flex justify-center">
-                <button onClick={() => window.location.href = '/api/auth/signout'} className="text-xs text-red-500 font-bold hover:text-red-400">
+              <div className="mt-4 pt-4 border-t border-zinc-800 flex flex-col gap-2 justify-center text-center">
+                {process.env.NODE_ENV === 'development' && (
+                  <button
+                    onClick={async () => {
+                      await fetch('/api/wallet', {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'dev_faucet' })
+                      });
+                      fetchBalance();
+                      alert("Dev Faucet: Added 5000 TKN");
+                    }}
+                    className="text-xs font-mono text-green-500 hover:text-green-400 border border-green-500/20 bg-green-500/10 px-4 py-2 rounded-lg"
+                  >
+                    [DEV MODE] FAUCET: +5000 TKN
+                  </button>
+                )}
+                <button onClick={() => window.location.href = '/api/auth/signout'} className="text-xs text-red-500 font-bold hover:text-red-400 mt-2">
                   Sign Out
                 </button>
               </div>

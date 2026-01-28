@@ -4,8 +4,10 @@ import { kv } from "@vercel/kv";
 import { signIn, signOut, auth } from "../auth";
 
 // Helper to handle key migration (New vs Old)
-export async function resolveUsername(email: string): Promise<string | null> {
+export async function resolveUsername(emailRaw: string): Promise<string | null> {
   if (!process.env.KV_URL) return null;
+
+  const email = emailRaw.toLowerCase().trim();
 
   // 1. Try NEW key
   let username = await kv.get<string>(`user:${email}:username`);
@@ -24,17 +26,19 @@ export async function resolveUsername(email: string): Promise<string | null> {
   return username;
 }
 
-export async function checkAvailability(username: string) {
+export async function checkAvailability(usernameRaw: string) {
   if (!process.env.KV_URL) return true; // Fail open if no KV
+  const username = usernameRaw.toLowerCase();
   const owner = await kv.get(`owner:${username}`);
   return !owner;
 }
 
-export async function claimUsername(username: string) {
+export async function claimUsername(usernameRaw: string) {
   const session = await auth();
   if (!session?.user?.email) throw new Error("Not logged in");
 
-  const email = session.user.email;
+  const email = session.user.email.toLowerCase().trim();
+  const username = usernameRaw.toLowerCase();
 
   if (!process.env.KV_URL) throw new Error("Database not connected");
 
@@ -64,7 +68,8 @@ export async function loginWithGoogle(usernameOrRedirect?: string) {
   if (usernameOrRedirect && !usernameOrRedirect.startsWith('/') && usernameOrRedirect !== 'dashboard') {
     // Check if they already have one
     if (session?.user?.email && process.env.KV_URL) {
-      const existing = await kv.get(`user:${session.user.email}:username`);
+      const email = session.user.email.toLowerCase().trim();
+      const existing = await kv.get(`user:${email}:username`);
       if (existing && existing !== usernameOrRedirect) {
         // They have 'aman' but trying to claim 'funny' -> STOP THEM
         throw new Error(`You already have a username: ${existing}`);

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTheme } from './context/ThemeContext';
 import { loginWithGoogle, checkAvailability, claimUsername } from './actions';
 import { useRouter } from 'next/navigation';
 
@@ -22,28 +23,122 @@ export default function LandingPageClient({ session, savedUsername }: { session:
     setError('');
     setLoading(true);
 
-    const isAvailable = await checkAvailability(username);
-    if (!isAvailable) {
-      setError('Username taken. Try another?');
-      setLoading(false);
-      return;
-    }
-
-    if (isLoggedIn) {
-      try {
-        await claimUsername(username);
-        // Force refresh to update session/data state but router.push is usually enough if we revalidate path
-        // For safety on first claim, acceptable to hard reload OR push to studio
-        window.location.href = '/studio';
-      } catch (e: any) {
-        setError(e.message);
+    try {
+      const isAvailable = await checkAvailability(username);
+      if (!isAvailable) {
+        setError('Username taken. Try another?');
         setLoading(false);
+        return;
       }
-    } else {
-      await loginWithGoogle(username);
+
+      if (isLoggedIn) {
+        await claimUsername(username);
+        window.location.href = '/studio';
+      } else {
+        await loginWithGoogle(username);
+      }
+    } catch (e: any) {
+      console.error("Claim Hub Error:", e);
+      setError(e.message || "Failed to process request. Try again.");
+      setLoading(false);
     }
   };
 
+  const { theme } = useTheme();
+
+  // --------------------------------------------------------------------------
+  // SLICK THEME (Glassmorphism)
+  // --------------------------------------------------------------------------
+  if (theme === 'slick') {
+    return (
+      <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        {/* Background Gradients */}
+        <div className="absolute top-[-20%] left-[-20%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-20%] right-[-20%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px]" />
+
+        {/* Top Nav */}
+        <nav className="absolute top-0 right-0 p-6 z-20">
+          <button
+            onClick={() => loginWithGoogle('/')}
+            className="text-zinc-400 font-bold text-sm hover:text-white transition-colors"
+          >
+            Log In
+          </button>
+        </nav>
+
+        <div className="max-w-md w-full text-center z-10">
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tighter mb-6 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent">
+            Supertime
+          </h1>
+          <p className="text-zinc-400 text-lg mb-2">
+            Get paid for video & audio calls.
+          </p>
+          <p className="text-zinc-500 text-sm mb-10">
+            Claim your link. Share it. Start earning.
+          </p>
+
+          <div>
+            <form onSubmit={handleSubmit} className="w-full relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity" />
+              <div className="relative flex items-center bg-zinc-900 border border-zinc-700 rounded-2xl p-2 pl-4">
+                <span className="text-zinc-500 font-mono text-sm">supertime.wtf/</span>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  placeholder="yourname"
+                  className="flex-1 bg-transparent border-none outline-none text-white font-bold h-12 ml-1 min-w-0"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  disabled={!username || loading}
+                  className="bg-white text-black font-bold rounded-xl px-6 h-12 hover:bg-zinc-200 transition-colors disabled:opacity-50"
+                >
+                  {loading ? '...' : 'Claim →'}
+                </button>
+              </div>
+              {error && <p className="text-red-500 text-sm mt-3 font-bold">{error}</p>}
+            </form>
+            <p className="text-zinc-600 text-[10px] mt-6 uppercase">
+              Claiming will sign you in with Google
+            </p>
+          </div>
+
+          <div className="mt-16 text-zinc-600 text-xs uppercase tracking-widest">
+            <p>Set rate • Go live • Get paid</p>
+          </div>
+
+          {/* SYSTEM STATUS (DEBUG BYPASS) */}
+          {isLoggedIn && (
+            <div className="mt-12 p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl w-full font-mono text-left">
+              <p className="text-[10px] text-zinc-500 uppercase mb-2 animate-pulse">Session Diagnostic (Logged In)</p>
+              <div className="space-y-2 text-[10px] text-zinc-400">
+                <div className="bg-black p-2 rounded border border-zinc-800 flex justify-between">
+                  <span className="text-zinc-600">Email:</span>
+                  <span className="text-white truncate max-w-[150px]">{session?.user?.email}</span>
+                </div>
+                <div className="bg-black p-2 rounded border border-zinc-800 flex justify-between">
+                  <span className="text-zinc-600">Username:</span>
+                  <span className="text-white">{savedUsername || 'NOT_FOUND'}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => window.location.href = '/studio'}
+                className="w-full mt-4 bg-white text-black font-black py-2 uppercase text-[10px] hover:bg-zinc-200 transition-colors"
+              >
+                Go to Studio & Go Live →
+              </button>
+            </div>
+          )}
+        </div>
+      </main>
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // NEO THEME (Default)
+  // --------------------------------------------------------------------------
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-mono">
       {/* Grid Background Pattern */}
@@ -51,32 +146,12 @@ export default function LandingPageClient({ session, savedUsername }: { session:
 
       {/* Top Nav */}
       <nav className="absolute top-0 right-0 p-6 z-20">
-        {!isLoggedIn && (
-          <button
-            onClick={() => loginWithGoogle('/')}
-            className="text-white font-bold text-sm uppercase border-2 border-transparent hover:border-white px-4 py-2 transition-all"
-          >
-            [ Log In ]
-          </button>
-        )}
-        {isLoggedIn && savedUsername && (
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setViewMode(viewMode === 'creator' ? 'admirer' : 'creator')}
-              className="text-zinc-400 font-bold text-xs uppercase hover:text-white transition-colors underline decoration-2 underline-offset-4"
-            >
-              {viewMode === 'creator' ? 'Switch to Fan' : 'Switch to Creator'}
-            </button>
-            {viewMode === 'creator' && (
-              <button
-                onClick={() => router.push('/studio')}
-                className="bg-[#CEFF1A] text-black font-black text-sm px-6 py-3 border-2 border-white hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none shadow-[4px_4px_0px_0px_#fff] transition-all uppercase"
-              >
-                Enter Studio
-              </button>
-            )}
-          </div>
-        )}
+        <button
+          onClick={() => loginWithGoogle('/')}
+          className="text-white font-bold text-sm uppercase border-2 border-transparent hover:border-white px-4 py-2 transition-all"
+        >
+          [ Log In ]
+        </button>
       </nav>
 
       <div className="max-w-md w-full text-center z-10">
@@ -90,119 +165,60 @@ export default function LandingPageClient({ session, savedUsername }: { session:
             Time is Money.
           </p>
           <p className="text-zinc-500 text-xs font-mono">
-            // Monetize your video & audio calls instantly.
+              // Monetize your video & audio calls instantly.
           </p>
         </div>
 
-        {/* Show different UI based on login state and View Mode */}
-        {isLoggedIn ? (
-          <>
-            {/* CREATOR VIEW */}
-            {savedUsername && viewMode === 'creator' ? (
-              <div className="bg-zinc-900 border-2 border-white p-6 shadow-[6px_6px_0px_0px_#fff]">
-                <p className="text-black bg-white inline-block px-2 py-1 font-bold text-xs mb-4 uppercase">Logged In</p>
-                <div className="text-2xl font-black text-white mb-6 uppercase">
-                  Welcome Back, <span className="text-[#CEFF1A]">{savedUsername}</span>
-                </div>
-                <button
-                  onClick={() => router.push('/studio')}
-                  className="w-full bg-[#CEFF1A] text-black font-black text-xl py-4 border-2 border-white hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none shadow-[4px_4px_0px_0px_#fff] transition-all uppercase"
-                >
-                  Enter Studio
-                </button>
-              </div>
-            ) : (
-              // ADMIRER VIEW
-              <div className="space-y-12">
-                {/* 1. MAIN WALLET SECTION */}
-                <div className="bg-zinc-900 border-2 border-white p-6 shadow-[6px_6px_0px_0px_#fff] text-left relative">
-                  <div className="absolute top-0 right-0 bg-white text-black text-[10px] font-black px-2 py-1 uppercase">
-                    Fan Account
-                  </div>
-                  <div className="flex justify-between items-start mb-6 mt-4">
-                    <h2 className="text-3xl font-black text-white uppercase italic">Wallet</h2>
-                    <div className="w-4 h-4 bg-[#CEFF1A]"></div>
-                  </div>
-
-                  <button
-                    onClick={() => router.push('/wallet')}
-                    className="w-full bg-white text-black font-black text-lg py-4 border-2 border-black hover:bg-zinc-200 transition-colors uppercase mb-4 flex items-center justify-center gap-2"
-                  >
-                    Open Wallet →
-                  </button>
-                  <button
-                    onClick={() => import('./actions').then(mod => mod.logout())}
-                    className="w-full text-zinc-500 text-xs font-bold uppercase hover:text-white hover:underline text-center"
-                  >
-                    [ Sign Out ]
-                  </button>
-                </div>
-
-                {/* 2. CREATOR UPSELL SECTION (Distinct Block) */}
-                {!savedUsername && (
-                  <div className="p-6 border-2 border-[#CEFF1A] bg-black relative">
-                    <div className="absolute -top-3 left-6 px-2 bg-black text-[#CEFF1A] font-black text-xs uppercase border border-[#CEFF1A]">
-                      Want to Earn?
-                    </div>
-                    <p className="text-zinc-400 text-xs font-mono mb-4">
-                      Create your own SuperTime link to accept paid calls.
-                    </p>
-
-                    {/* Claim Form */}
-                    <form onSubmit={handleSubmit} className="w-full group">
-                      <div className="flex items-center bg-black border-2 border-zinc-700 p-2 focus-within:border-white transition-all">
-                        <span className="text-zinc-600 font-mono text-sm px-2">supertime.wtf/</span>
-                        <input
-                          type="text"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                          placeholder="USERNAME"
-                          className="flex-1 bg-transparent border-none outline-none text-white font-bold text-lg placeholder:text-zinc-800 uppercase"
-                        />
-                        <button
-                          type="submit"
-                          disabled={!username || loading}
-                          className="bg-zinc-800 text-white font-bold px-4 py-2 hover:bg-white hover:text-black disabled:opacity-50 text-xs uppercase transition-colors"
-                        >
-                          {loading ? 'WAIT' : 'CLAIM'}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        ) : (
-          // NOT LOGGED IN
-          <div>
-            <form onSubmit={handleSubmit} className="w-full">
-              <div className="flex items-center bg-black border-2 border-white p-2 shadow-[6px_6px_0px_0px_#CEFF1A] transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_#CEFF1A]">
-                <span className="text-zinc-500 font-mono text-sm px-2">supertime.wtf/</span>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                  placeholder="YOURNAME"
-                  className="flex-1 bg-transparent border-none outline-none text-white font-black text-xl placeholder:text-zinc-700 uppercase"
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  disabled={!username || loading}
-                  className="bg-white text-black font-black px-6 py-3 border-2 border-black hover:bg-zinc-200 disabled:opacity-50 uppercase text-sm"
-                >
-                  {loading ? '...' : 'CLAIM IT'}
-                </button>
-              </div>
-              {error && <div className="mt-4 bg-red-600 text-white font-bold p-2 text-xs uppercase border-2 border-white shadow-[4px_4px_0px_0px_#fff]">Error: {error}</div>}
-            </form>
-            <p className="text-zinc-600 text-[10px] mt-8 font-mono uppercase tracking-widest">
-              * By claiming, you agree to sign in with Google.
-            </p>
-          </div>
-        )}
+        <div>
+          <form onSubmit={handleSubmit} className="w-full">
+            <div className="flex items-center bg-black border-2 border-white p-2 shadow-[6px_6px_0px_0px_#CEFF1A] transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_#CEFF1A]">
+              <span className="text-zinc-500 font-mono text-sm px-2">supertime.wtf/</span>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                placeholder="YOURNAME"
+                className="flex-1 bg-transparent border-none outline-none text-white font-black text-xl placeholder:text-zinc-700 uppercase"
+                autoFocus
+              />
+              <button
+                type="submit"
+                disabled={!username || loading}
+                className="bg-white text-black font-black px-6 py-3 border-2 border-black hover:bg-zinc-200 disabled:opacity-50 uppercase text-sm"
+              >
+                {loading ? '...' : 'CLAIM IT'}
+              </button>
+            </div>
+            {error && <div className="mt-4 bg-red-600 text-white font-bold p-2 text-xs uppercase border-2 border-white shadow-[4px_4px_0px_0px_#fff]">Error: {error}</div>}
+          </form>
+          <p className="text-zinc-600 text-[10px] mt-8 font-mono uppercase tracking-widest">
+            * By claiming, you agree to sign in with Google.
+          </p>
+        </div>
       </div>
+
+      {/* SYSTEM STATUS (DEBUG) */}
+      {isLoggedIn && (
+        <div className="mt-12 p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl max-w-md w-full z-10 font-mono">
+          <p className="text-[10px] text-zinc-500 uppercase mb-2 animate-pulse">Session Diagnostic (Logged In)</p>
+          <div className="space-y-2 text-[10px] text-zinc-400">
+            <div className="bg-black p-2 rounded border border-zinc-800 flex justify-between">
+              <span className="text-zinc-600">Email:</span>
+              <span className="text-white truncate max-w-[150px]">{session?.user?.email}</span>
+            </div>
+            <div className="bg-black p-2 rounded border border-zinc-800 flex justify-between">
+              <span className="text-zinc-600">Username:</span>
+              <span className="text-white">{savedUsername || 'NULL'}</span>
+            </div>
+          </div>
+          <button
+            onClick={() => window.location.href = '/studio'}
+            className="w-full mt-4 bg-white text-black font-black py-2 uppercase text-[10px] hover:bg-zinc-200 transition-colors"
+          >
+            Go to Studio & Go Live →
+          </button>
+        </div>
+      )}
     </main>
   );
 }

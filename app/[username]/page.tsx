@@ -25,9 +25,10 @@ export async function generateMetadata(
 }
 
 export default async function CreatorPage({ params }: Props) {
-  const { username } = await params;
+  const { username: rawUsername } = await params;
+  const username = rawUsername.toLowerCase();
   const session = await auth();
-  const email = session?.user?.email;
+  const email = session?.user?.email?.toLowerCase(); // normalize session email
 
   let isOwner = false;
   let ownerEmail: string | null = null;
@@ -48,7 +49,7 @@ export default async function CreatorPage({ params }: Props) {
     }
   }
 
-  if (email && ownerEmail === email) {
+  if (email && ownerEmail && ownerEmail.toLowerCase() === email) {
     // This user owns this username
     isOwner = true;
   }

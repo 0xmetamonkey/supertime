@@ -30,8 +30,9 @@ export default function AgoraCall({ channelName, uid, callType = 'video', onEndC
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Call duration timer
+  // Call duration timer - Starts only when someone else is in the call
   useEffect(() => {
-    if (joined) {
+    if (joined && remoteUsers.length > 0) {
       timerRef.current = setInterval(() => {
         setCallDuration(prev => {
           const newDuration = prev + 1;
@@ -39,11 +40,17 @@ export default function AgoraCall({ channelName, uid, callType = 'video', onEndC
           return newDuration;
         });
       }, 1000);
+    } else {
+      // Pause or Reset? 
+      // If we want "Total Session Time" we keep it. 
+      // User complaint was "mismatch". If we wait for connection, both start at 0:00 when fully connected.
+      // But if connection drops?
+      if (timerRef.current) clearInterval(timerRef.current);
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [joined, onTimeUpdate]);
+  }, [joined, remoteUsers.length, onTimeUpdate]);
 
   useEffect(() => {
     const initAgora = async () => {

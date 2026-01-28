@@ -6,15 +6,15 @@ import { resolveUsername } from "../actions";
 
 export default async function StudioPage() {
   const session = await auth();
-  const email = session?.user?.email;
+  const email = session?.user?.email?.toLowerCase(); // Normalize email
 
   if (!email) return redirect("/");
 
   const username = await resolveUsername(email);
 
-  if (!username) return redirect("/"); // Artist needs to claim a username first
+  // if (!username) return redirect("/"); // Allow callers to enter Studio
 
-  // Fetch Settings
+  // Fetch Settings (if creator)
   let settings = {
     videoRate: 100,
     audioRate: 50,
@@ -22,7 +22,7 @@ export default async function StudioPage() {
     profileImage: ''
   };
 
-  if (process.env.KV_URL) {
+  if (email && process.env.KV_URL) {
     const vRate = await kv.get(`user:${email}:rate:video`);
     const aRate = await kv.get(`user:${email}:rate:audio`);
     const socials = await kv.get(`user:${email}:socials`);
@@ -34,5 +34,5 @@ export default async function StudioPage() {
     if (profileImage) (settings as any).profileImage = profileImage;
   }
 
-  return <StudioClient username={username} session={session} initialSettings={settings} />;
+  return <StudioClient username={username || null} session={session} initialSettings={settings} />;
 }

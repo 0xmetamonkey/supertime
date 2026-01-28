@@ -21,6 +21,15 @@ async function checkKV() {
       const userId = key.replace('user:', '').replace(':username', '');
       console.log(`${userId} -> ${username}`);
     }
+
+    // Get all balance mappings
+    const balanceKeys = await kv.keys('balance:*');
+    console.log('\n=== BALANCES ===');
+    for (const key of balanceKeys) {
+      const balance = await kv.get(key);
+      const email = key.replace('balance:', '');
+      console.log(`${email} -> ${balance}`);
+    }
   } catch (e) {
     console.error('Error:', e);
   }

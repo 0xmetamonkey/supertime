@@ -6,10 +6,10 @@ import { auth } from '../../../../auth';
 
 // Fallback memory store
 declare global {
-  var mockBalanceStore: Map<string, number>;
+  var mockWalletStore: Map<string, number>;
 }
-if (!global.mockBalanceStore) {
-  global.mockBalanceStore = new Map();
+if (!global.mockWalletStore) {
+  global.mockWalletStore = new Map();
 }
 
 export async function POST(req: NextRequest) {
@@ -50,8 +50,8 @@ export async function POST(req: NextRequest) {
         const current = (await kv.get<number>(`balance:${email}`)) ?? 0;
         await kv.set(`balance:${email}`, current + tokensToAdd);
       } else {
-        const current = global.mockBalanceStore.get(email) ?? 0;
-        global.mockBalanceStore.set(email, current + tokensToAdd);
+        const current = global.mockWalletStore.get(email) ?? 0;
+        global.mockWalletStore.set(email, current + tokensToAdd);
       }
 
       return NextResponse.json({ success: true, newBalance: tokensToAdd });
