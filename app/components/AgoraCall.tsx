@@ -74,14 +74,19 @@ export default function AgoraCall({ channelName, uid, remoteName = 'Guest', call
       client.on('user-published', async (user: any, mediaType: 'audio' | 'video') => {
         await client.subscribe(user, mediaType);
 
-        // Track ALL users to ensure 'remoteUsers.length > 0' triggers the connected state
+        // Fully reactive update: Replace the user object to trigger state change
         setRemoteUsers((prev) => {
-          if (prev.find(u => u.uid === user.uid)) return prev;
-          return [...prev, user];
+          const filtered = prev.filter(u => u.uid !== user.uid);
+          return [...filtered, user];
         });
 
         if (mediaType === 'audio') {
           user.audioTrack?.play();
+        } else if (mediaType === 'video') {
+          // Attempt immediate play if ref is ready, otherwise the useEffect observer will catch it
+          if (remoteVideoRef.current) {
+            user.videoTrack?.play(remoteVideoRef.current);
+          }
         }
       });
 
@@ -99,6 +104,10 @@ export default function AgoraCall({ channelName, uid, remoteName = 'Guest', call
         setStatus(`Fetching token for ${safeChannel}...`);
 
         const res = await fetch(`/api/agora?channelName=${safeChannel}&uid=${uid}`);
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || `HTTP ${res.status}`);
+        }
         const data = await res.json();
 
         if (data.error) {
@@ -297,6 +306,16 @@ export default function AgoraCall({ channelName, uid, remoteName = 'Guest', call
         ) : (
           <div ref={remoteVideoRef} className="w-full h-full object-cover" />
         )}
+
+        {/* DIAGNOSTIC OVERLAY */}
+        <div className="fixed bottom-0 left-0 right-0 bg-black/60 backdrop-blur-md text-[10px] font-mono text-zinc-500 p-1 flex justify-center gap-4 z-[300] border-t border-zinc-800">
+          <span>APP: {process.env.NEXT_PUBLIC_AGORA_APP_ID?.slice(0, 4)}...</span>
+          <span className={remoteUsers.length > 0 ? "text-green-500 font-bold" : ""}>PEERS: {remoteUsers.length}</span>
+          <span>ROOM: {channelName.toLowerCase()}</span>
+          <span>UID: {hashStringToInt(uid)}</span>
+          <span className="text-zinc-600">STATE: {status}</span>
+          {remoteUsers.length > 0 && <span className="text-blue-400">REMOTE_ID: {remoteUsers[0].uid}</span>}
+        </div>
 
         {/* Local View - Picture in Picture (Video only) */}
         {callType === 'video' && (

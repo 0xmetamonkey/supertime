@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
   // SKIP balance check if the person joining is the OWNER of this channel
   let isOwner = false;
   try {
-    const ownerName = channelName.replace('channel-', '');
+    const ownerName = channelName.toLowerCase().replace('channel-', '');
     const email = session?.user?.email?.toLowerCase()?.trim();
     if (email) {
       const actualOwner = await kv.get(`owner:${ownerName}`);
