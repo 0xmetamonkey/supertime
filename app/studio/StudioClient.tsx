@@ -19,12 +19,13 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [requests, setRequests] = useState<any[]>([]);
   const [callDuration, setCallDuration] = useState(0);
   const [tokensEarned, setTokensEarned] = useState(0);
+  const [remoteName, setRemoteName] = useState('Guest');
 
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
   const [pendingVideoRate, setPendingVideoRate] = useState(initialSettings?.videoRate ?? 100);
   const [pendingAudioRate, setPendingAudioRate] = useState(initialSettings?.audioRate ?? 50);
-  const [pendingSocials, setPendingSocials] = useState(initialSettings?.socials ?? { instagram: '', twitter: '', youtube: '', website: '' });
+  const [pendingSocials, setPendingSocials] = useState(initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' });
   const [pendingProfileImage, setPendingProfileImage] = useState(initialSettings?.profileImage || '');
   const [isUploading, setIsUploading] = useState(false);
 
@@ -182,6 +183,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
       alert("Error: You must claim a username before accepting calls.");
       return;
     }
+    if (incomingCall?.from) setRemoteName(incomingCall.from);
     await fetch('/api/call/signal', { method: 'POST', body: JSON.stringify({ action: 'answer', from: username }) });
     setCallType(incomingCall.type);
     setIncomingCall(null);
@@ -394,7 +396,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
               {/* SOCIALS */}
               <div className="space-y-4 mb-8">
                 <h3 className="text-zinc-400 text-sm font-bold uppercase">Social Links</h3>
-                {['instagram', 'twitter', 'youtube', 'website'].map((platform) => (
+                {['instagram', 'x', 'youtube', 'website'].map((platform) => (
                   <div key={platform} className="flex items-center bg-black border border-zinc-700 rounded-xl px-4 py-3">
                     <span className="text-zinc-600 text-xs uppercase w-20 font-bold">{platform}</span>
                     <input type="text" value={(pendingSocials as any)[platform]} onChange={(e) => setPendingSocials({ ...pendingSocials, [platform]: e.target.value })} className="flex-1 bg-transparent border-none outline-none text-white text-sm" placeholder="URL..." />
@@ -428,6 +430,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
               <AgoraCall
                 channelName={`channel-${username}`}
                 uid={username}
+                remoteName={remoteName}
                 callType={callType}
                 onEndCall={handleEndCall}
                 onTimeUpdate={handleTimeUpdate}
@@ -513,6 +516,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
         <AgoraCall
           channelName={`channel-${username || 'fallback'}`}
           uid={username || 'unknown'}
+          remoteName={remoteName}
           callType={callType}
           onEndCall={handleEndCall}
           onTimeUpdate={handleTimeUpdate}
@@ -688,7 +692,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
             <div>
               <label className="text-[10px] text-zinc-500 font-bold uppercase block mb-2">Social Links</label>
               <div className="space-y-2">
-                {['instagram', 'twitter', 'youtube', 'website'].map((platform) => (
+                {['instagram', 'x', 'youtube', 'website'].map((platform) => (
                   <div key={platform} className="flex items-center gap-2">
                     <div className="w-6 flex justify-center">
                       <img src={`https://simpleicons.org/icons/${platform}.svg`} className="w-4 h-4 invert opacity-50" />

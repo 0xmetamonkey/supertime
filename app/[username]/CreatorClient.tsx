@@ -260,6 +260,7 @@ export default function CreatorClient({
             <AgoraCall
               channelName={`channel-${username}`}
               uid={uid}
+              remoteName={username}
               callType={callType}
               onEndCall={handleEndCall}
               onTimeUpdate={handleTimeUpdate}
@@ -323,9 +324,10 @@ export default function CreatorClient({
               <div className="flex items-center justify-center gap-4 mb-8">
                 {Object.entries(socials).map(([key, val]) => {
                   if (!val) return null;
+                  const platform = key === 'twitter' ? 'x' : key;
                   return (
                     <a key={key} href={val as string} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full bg-zinc-800 text-white hover:bg-white/20 transition-colors">
-                      <img src={`https://simpleicons.org/icons/${key}.svg`} className="w-4 h-4 invert opacity-70" alt={key} />
+                      <img src={`https://simpleicons.org/icons/${platform}.svg`} className="w-4 h-4 invert opacity-70" alt={platform} />
                     </a>
                   )
                 })}
@@ -417,6 +419,7 @@ export default function CreatorClient({
       <AgoraCall
         channelName={`channel-${username || 'fallback'}`}
         uid={uid || `guest-${guestId}`}
+        remoteName={username}
         callType={callType}
         onEndCall={handleEndCall}
         onTimeUpdate={handleTimeUpdate}
@@ -495,11 +498,12 @@ export default function CreatorClient({
 
             {/* Social Stats/Link */}
             <div className="flex gap-4 justify-center w-full mb-8 relative">
-              {socials && Object.entries(socials).map(([platform, link]) => {
+              {socials && Object.entries(socials).map(([key, link]) => {
                 if (!link) return null;
+                const platform = key === 'twitter' ? 'x' : key;
                 return (
                   <a
-                    key={platform}
+                    key={key}
                     href={link as string}
                     target="_blank"
                     rel="noopener noreferrer"
