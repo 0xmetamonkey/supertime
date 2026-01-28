@@ -53,7 +53,6 @@ export async function GET(req: NextRequest) {
   let uid = session?.user?.id;
 
   if (!uid) {
-    // If not logged in, allow "guest" UIDs from params
     const paramUid = searchParams.get('uid');
     if (paramUid && paramUid.startsWith('guest-')) {
       uid = paramUid;
@@ -62,18 +61,32 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Convert string UID to integer for better compatibility (Hash)
+  const uidInt = Math.abs(uid.split('').reduce((acc, char) => {
+    return ((acc << 5) - acc) + char.charCodeAt(0);
+  }, 0)) % 2147483647;
+
   // 1. Check Balance (Enforce Pay-to-Talk)
-  // We use the email from session to check balance, matching the wallet logic.
-  if (session?.user?.email) {
+  // SKIP balance check if the person joining is the OWNER of this channel
+  let isOwner = false;
+  try {
+    const ownerName = channelName.replace('channel-', '');
+    const email = session?.user?.email?.toLowerCase()?.trim();
+    if (email) {
+      const actualOwner = await kv.get(`owner:${ownerName}`);
+      if (actualOwner === email) {
+        isOwner = true;
+        console.log(`Debug: ${email} is owner of ${channelName}, skipping balance check.`);
+      }
+    }
+  } catch (e) { console.error("Owner check fail", e); }
+
+  if (session?.user?.email && !isOwner) {
     const email = session.user.email.toLowerCase();
     const balance = await getUserBalance(email);
     console.log(`Debug: Balance for ${email} is ${balance}`);
 
-    // Minimum required to start (e.g., 50 tokens ~ 1 min audio)
-    // If balance is too low, deny token.
-    if (balance < 10) {
-      // Allow 'guest' to have free pass? No, guest must pay too usually. 
-      // But for now, if it's a known user, we enforce.
+    if (balance < 1) { // Changed to 1 token min for easier testing
       console.error("Insufficient funds to start call");
       return NextResponse.json({ error: 'Insufficient funds. Please recharge.' }, { status: 402 });
     }
@@ -84,28 +97,19 @@ export async function GET(req: NextRequest) {
 
     if (!appCertificate) {
       console.log("App ID Only Mode: Returning null token");
-      return NextResponse.json({ token: null });
+      return NextResponse.json({ token: null, uid: uidInt });
     }
 
     const role = RtcRole.PUBLISHER;
     const tokenExpirationInSeconds = 3600;
     const privilegeExpirationInSeconds = 3600;
 
-    // Convert string UID to integer for better compatibility
-    const uidInt = Math.abs(uid.split('').reduce((acc, char) => {
-      return ((acc << 5) - acc) + char.charCodeAt(0);
-    }, 0)) % 2147483647; // Keep within 32-bit int range
-
     console.log("🔑 Token Generation:", {
-      appIdLength: appId.length,
       appIdFirst5: appId.substring(0, 5),
-      certLength: appCertificate.length,
       channelName,
       originalUid: uid,
       uidInt,
-      role,
-      tokenExpire: tokenExpirationInSeconds,
-      privilegeExpire: privilegeExpirationInSeconds
+      isOwner
     });
 
     const token = RtcTokenBuilder.buildTokenWithUid(

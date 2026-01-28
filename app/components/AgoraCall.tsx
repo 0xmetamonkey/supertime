@@ -63,16 +63,21 @@ export default function AgoraCall({ channelName, uid, callType = 'video', onEndC
 
       client.on('user-published', async (user: any, mediaType: 'audio' | 'video') => {
         await client.subscribe(user, mediaType);
-        if (mediaType === 'video') {
-          setRemoteUsers((prev) => [...prev.filter(u => u.uid !== user.uid), user]);
-        }
+
+        // Track ALL users to ensure 'remoteUsers.length > 0' triggers the connected state
+        setRemoteUsers((prev) => {
+          if (prev.find(u => u.uid === user.uid)) return prev;
+          return [...prev, user];
+        });
+
         if (mediaType === 'audio') {
           user.audioTrack?.play();
         }
       });
 
       client.on('user-unpublished', (user: any) => {
-        setRemoteUsers((prev) => prev.filter((u) => u.uid !== user.uid));
+        // We only remove if specifically unpublished? 
+        // Agora docs say user-unpublished is called when a track is removed.
       });
 
       client.on('user-left', (user: any) => {
@@ -83,19 +88,21 @@ export default function AgoraCall({ channelName, uid, callType = 'video', onEndC
         const res = await fetch(`/api/agora?channelName=${channelName}&uid=${uid}`);
         const data = await res.json();
 
-        if (!data.token) {
-          console.error("Token API Error:", data);
-          throw new Error(data.error || "No token received");
+        // Relaxed token check: If server returns null token but no error, we proceed 
+        // (Supports App ID Only mode / Low Security mode)
+        if (data.error) {
+          throw new Error(data.error);
         }
+
         const { token, uid: serverUid } = data;
         const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim()!;
 
         if (!clientRef.current) return;
 
-        // Use the integer UID from server if provided, otherwise use our string UID
+        // Use the integer UID from server if provided
         const joinUid = serverUid || uid;
 
-        console.log("Debug: Joining with", { appId, channelName, joinUid, tokenLength: token?.length });
+        console.log("Debug: Joining with", { appId, channelName, joinUid, hasToken: !!token });
 
         await client.join(appId, channelName, token, joinUid);
 
@@ -212,8 +219,12 @@ export default function AgoraCall({ channelName, uid, callType = 'video', onEndC
           </div>
         ) : remoteUsers.length === 0 ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-500">
-            <div className="w-20 h-20 border-4 border-zinc-700 border-t-purple-500 rounded-full animate-spin mb-4" />
-            <span className="animate-pulse">Connecting...</span>
+            <div className="w-20 h-20 border-4 border-zinc-700 border-t-[#CEFF1A] rounded-full animate-spin mb-6" />
+            <span className="animate-pulse uppercase font-black tracking-tighter text-white mb-2">Connecting to Studio...</span>
+            <div className="flex flex-col items-center gap-1 opacity-50 font-mono text-[8px] uppercase">
+              <span>Channel: {channelName}</span>
+              <span>UID: {uid}</span>
+            </div>
           </div>
         ) : (
           <div ref={remoteVideoRef} className="w-full h-full object-cover" />
