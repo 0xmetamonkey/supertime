@@ -134,7 +134,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
         osc2.type = 'sine';
 
         gn.gain.setValueAtTime(0, ctx.currentTime);
-        gn.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.1);
+        gn.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.1);
         gn.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
 
         osc1.connect(gn);

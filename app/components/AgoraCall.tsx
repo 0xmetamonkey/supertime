@@ -5,6 +5,13 @@ import type { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack } from '
 // Dynamic import to avoid SSR issues with Agora SDK
 let AgoraRTC: any;
 
+// Helper to unify String UID to Integer (Must match API)
+const hashStringToInt = (uid: string) => {
+  return Math.abs(uid.split('').reduce((acc, char) => {
+    return ((acc << 5) - acc) + char.charCodeAt(0);
+  }, 0)) % 2147483647;
+};
+
 type AgoraCallProps = {
   channelName: string;
   uid: string;
@@ -101,11 +108,14 @@ export default function AgoraCall({ channelName, uid, remoteName = 'Guest', call
         const { token, uid: serverUid, appId: serverAppId } = data;
         const appId = serverAppId || process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim()!;
 
-        if (!clientRef.current) return;
+        const joinUid = hashStringToInt(uid);
 
-        const joinUid = serverUid || uid;
-
-        console.log("Debug: Starting Join...", { channelName, joinUid, hasToken: !!token });
+        console.log("Debug: Starting Join...", {
+          channelName: safeChannel,
+          originalUid: uid,
+          joinUid,
+          hasToken: !!token
+        });
 
         try {
           setStatus(`Joining ${safeChannel}...`);
@@ -124,9 +134,12 @@ export default function AgoraCall({ channelName, uid, remoteName = 'Guest', call
 
         console.log("✅ Joined Successfully");
 
-        // Create & Publish Local Tracks
+        // Create & Publish Local Tracks with Pro Audio
         if (callType === 'video') {
-          const [mic, cam] = await AgoraRTC.createMicrophoneAndCameraTracks();
+          const [mic, cam] = await AgoraRTC.createMicrophoneAndCameraTracks(
+            { echoCancellation: true, noiseSuppression: true, AEC: true, AGC: true },
+            { encoderConfig: "720p_1" }
+          );
           audioTrackRef.current = mic;
           videoTrackRef.current = cam;
           if (localVideoRef.current) {
@@ -134,7 +147,9 @@ export default function AgoraCall({ channelName, uid, remoteName = 'Guest', call
           }
           await client.publish([mic, cam]);
         } else {
-          const mic = await AgoraRTC.createMicrophoneAudioTrack();
+          const mic = await AgoraRTC.createMicrophoneAudioTrack(
+            { echoCancellation: true, noiseSuppression: true, AEC: true, AGC: true }
+          );
           audioTrackRef.current = mic;
           await client.publish([mic]);
         }
@@ -165,8 +180,21 @@ export default function AgoraCall({ channelName, uid, remoteName = 'Guest', call
       }
 
       // Play Video ONLY if the container is ready
-      if (user.videoTrack && remoteVideoRef.current) {
-        user.videoTrack.play(remoteVideoRef.current);
+      // Retry every 500ms if container is not ready yet
+      const playVideo = () => {
+        if (user.videoTrack && remoteVideoRef.current) {
+          user.videoTrack.play(remoteVideoRef.current);
+          console.log("✅ Remote video attached to DOM");
+          return true;
+        }
+        return false;
+      };
+
+      if (!playVideo()) {
+        const retry = setInterval(() => {
+          if (playVideo()) clearInterval(retry);
+        }, 500);
+        return () => clearInterval(retry);
       }
     }
   }, [remoteUsers, joined]);
