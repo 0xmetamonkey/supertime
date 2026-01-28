@@ -74,8 +74,6 @@ export default function AgoraCall({ channelName, uid, remoteName = 'Guest', call
 
         if (mediaType === 'audio') {
           user.audioTrack?.play();
-        } else if (mediaType === 'video' && remoteVideoRef.current) {
-          user.videoTrack?.play(remoteVideoRef.current);
         }
       });
 
@@ -153,6 +151,22 @@ export default function AgoraCall({ channelName, uid, remoteName = 'Guest', call
     };
   }, [channelName, uid]);
 
+  // Watch for remote users and play their tracks when the container is ready
+  useEffect(() => {
+    if (remoteUsers.length > 0) {
+      const user = remoteUsers[remoteUsers.length - 1];
+
+      // Play Audio automatically
+      if (user.audioTrack && !user.audioTrack.isPlaying) {
+        user.audioTrack.play();
+      }
+
+      // Play Video ONLY if the container is ready
+      if (user.videoTrack && remoteVideoRef.current) {
+        user.videoTrack.play(remoteVideoRef.current);
+      }
+    }
+  }, [remoteUsers, joined]);
 
   const toggleMute = () => {
     if (audioTrackRef.current) {
