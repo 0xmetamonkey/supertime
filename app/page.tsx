@@ -4,6 +4,8 @@ import LandingPageClient from "./LandingPageClient";
 import { redirect } from "next/navigation";
 import { resolveUsername } from "./actions";
 
+export const dynamic = 'force-dynamic';
+
 export default async function LandingPage() {
   const session = await auth();
   let username: string | null = null;
