@@ -465,7 +465,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
           <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur flex flex-col items-center justify-center animate-in zoom-in duration-300">
             <div className="bg-[#CEFF1A] border-4 border-white p-8 shadow-[10px_10px_0px_0px_#D652FF] text-black text-center rotate-1 max-w-sm w-full mx-4">
               <h2 className="text-4xl font-black italic uppercase mb-2 animate-pulse">Incoming!</h2>
-              <p className="font-mono font-bold text-xl mb-8">{incomingCall.type.toUpperCase()} • Guest</p>
+              <p className="font-mono font-bold text-xl mb-8">{incomingCall.type.toUpperCase()} • {incomingCall.from || 'Guest'}</p>
               <div className="flex gap-4">
                 <button onClick={() => handleAcceptCall(incomingCall.type)} className="flex-1 py-4 bg-black text-white font-black uppercase text-xl hover:scale-105 transition-transform">Answer</button>
                 <button onClick={handleRejectCall} className="flex-1 py-4 bg-red-600 text-white font-black uppercase text-xl border-2 border-black hover:scale-105 transition-transform">Reject</button>
@@ -579,7 +579,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
             <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur flex flex-col items-center justify-center animate-in zoom-in duration-300">
               <div className="bg-[#CEFF1A] border-4 border-white p-8 shadow-[10px_10px_0px_0px_#D652FF] text-black text-center rotate-1 max-w-sm w-full mx-4">
                 <h2 className="text-4xl font-black italic uppercase mb-2 animate-pulse">Incoming!</h2>
-                <p className="font-mono font-bold text-xl mb-8">{incomingCall.type.toUpperCase()} • Guest</p>
+                <p className="font-mono font-bold text-xl mb-8">{incomingCall.type.toUpperCase()} • {incomingCall.from || 'Guest'}</p>
                 <div className="flex gap-4">
                   <button onClick={() => handleAcceptCall(incomingCall.type)} className="flex-1 py-4 bg-black text-white font-black uppercase text-xl hover:scale-105 transition-transform">Answer</button>
                   <button onClick={handleRejectCall} className="flex-1 py-4 bg-red-600 text-white font-black uppercase text-xl border-2 border-black hover:scale-105 transition-transform">Reject</button>
