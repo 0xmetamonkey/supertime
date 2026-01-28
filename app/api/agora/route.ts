@@ -124,7 +124,11 @@ export async function GET(req: NextRequest) {
 
     console.log("✅ Token generated, length:", token.length);
 
-    return NextResponse.json({ token, uid: uidInt });
+    return NextResponse.json({
+      token,
+      uid: uidInt,
+      appId: appId // Send App ID so client can verify it and use if baked-in one is stale
+    });
   } catch (error) {
     console.error("Token generation error:", error);
     return NextResponse.json({ error: 'Failed to generate token' }, { status: 500 });

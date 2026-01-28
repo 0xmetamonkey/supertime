@@ -32,5 +32,12 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Add Agora Check
+  (diagnostic as any).agora = {
+    hasAppId: !!process.env.NEXT_PUBLIC_AGORA_APP_ID,
+    hasCertificate: !!process.env.AGORA_APP_CERTIFICATE,
+    appIdPrefix: process.env.NEXT_PUBLIC_AGORA_APP_ID?.substring(0, 5) || null
+  };
+
   return NextResponse.json(diagnostic);
 }

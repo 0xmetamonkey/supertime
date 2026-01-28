@@ -88,23 +88,26 @@ export default function AgoraCall({ channelName, uid, callType = 'video', onEndC
         const res = await fetch(`/api/agora?channelName=${channelName}&uid=${uid}`);
         const data = await res.json();
 
-        // Relaxed token check: If server returns null token but no error, we proceed 
-        // (Supports App ID Only mode / Low Security mode)
         if (data.error) {
           throw new Error(data.error);
         }
 
-        const { token, uid: serverUid } = data;
-        const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim()!;
+        const { token, uid: serverUid, appId: serverAppId } = data;
+        const appId = serverAppId || process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim()!;
 
         if (!clientRef.current) return;
 
-        // Use the integer UID from server if provided
         const joinUid = serverUid || uid;
 
-        console.log("Debug: Joining with", { appId, channelName, joinUid, hasToken: !!token });
+        console.log("Debug: Starting Join...", { channelName, joinUid, hasToken: !!token });
 
-        await client.join(appId, channelName, token, joinUid);
+        const joinPromise = client.join(appId, channelName, token, joinUid);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Join Timed Out (15s)")), 15000)
+        );
+
+        await Promise.race([joinPromise, timeoutPromise]);
+        console.log("✅ Joined Successfully");
 
         // Create & Publish Local Tracks
         if (callType === 'video') {
