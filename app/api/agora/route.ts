@@ -48,18 +48,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing channelName' }, { status: 400 });
   }
 
-  // 1. Determine User ID (Session vs Guest)
+  // 1. Determine User ID (Priority: Client-side requested UID > Session ID)
   const session = await auth();
-  let uid = session?.user?.id;
+  const paramUid = searchParams.get('uid');
+  let uid = paramUid || session?.user?.id;
 
   if (!uid) {
-    const paramUid = searchParams.get('uid');
-    if (paramUid && paramUid.startsWith('guest-')) {
-      uid = paramUid;
-    } else {
-      return NextResponse.json({ error: 'Unauthorized. Login or use valid guest ID.' }, { status: 401 });
-    }
+    return NextResponse.json({ error: 'Unauthorized. UID required.' }, { status: 401 });
   }
+
+  console.log(`Debug: Generating token for UID String: "${uid}"`);
 
   // Convert string UID to integer for better compatibility (Hash)
   const uidInt = Math.abs(uid.split('').reduce((acc, char) => {
