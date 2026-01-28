@@ -416,24 +416,18 @@ export default function StudioClient({ username, session, initialSettings }: { u
         <div className="z-10 w-full max-w-md bg-zinc-900/50 backdrop-blur border border-zinc-800 rounded-3xl p-8 mb-8 text-center shadow-2xl animate-in zoom-in duration-300">
 
           {isCalling ? (
-            <div className="py-6">
-              <h2 className="text-2xl font-bold text-green-400 mb-2">🔴 IN CALL</h2>
-              <div className="flex justify-center gap-8 mb-4">
-                <div className="text-center">
-                  <span className="text-xs text-zinc-400 block">Duration</span>
-                  <span className="font-mono font-bold text-2xl text-white">{formatTime(callDuration)}</span>
-                </div>
-                <div className="text-center">
-                  <span className="text-xs text-zinc-400 block">Earning</span>
-                  <span className="font-mono font-bold text-2xl text-green-400">+{tokensEarned} TKN</span>
-                </div>
+            <div className="fixed inset-0 z-[200] bg-black">
+              <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[210] bg-green-500/20 backdrop-blur-xl px-6 py-3 rounded-2xl border border-green-500/50 flex items-center gap-4">
+                <span className="text-green-400 font-bold">💰 Earning</span>
+                <span className="font-mono font-bold text-xl text-white">+{tokensEarned} TKN</span>
               </div>
-              <button
-                onClick={handleEndCall}
-                className="bg-red-500 px-8 py-3 rounded-full text-white font-bold hover:bg-red-600 transition-colors"
-              >
-                End Call
-              </button>
+              <AgoraCall
+                channelName={`channel-${username}`}
+                uid={username}
+                callType={callType}
+                onEndCall={handleEndCall}
+                onTimeUpdate={handleTimeUpdate}
+              />
             </div>
           ) : (
             <>
