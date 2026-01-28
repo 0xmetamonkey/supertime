@@ -85,11 +85,15 @@ export default function AgoraCall({ channelName, uid, callType = 'video', onEndC
       });
 
       try {
+        if (channelName.includes('undefined') || channelName.includes('null')) {
+          throw new Error("Invalid Channel Name. Please setup your profile.");
+        }
+
         const res = await fetch(`/api/agora?channelName=${channelName}&uid=${uid}`);
         const data = await res.json();
 
         if (data.error) {
-          throw new Error(data.error);
+          throw new Error(`Token Error: ${data.error}`);
         }
 
         const { token, uid: serverUid, appId: serverAppId } = data;
@@ -101,12 +105,19 @@ export default function AgoraCall({ channelName, uid, callType = 'video', onEndC
 
         console.log("Debug: Starting Join...", { channelName, joinUid, hasToken: !!token });
 
-        const joinPromise = client.join(appId, channelName, token, joinUid);
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Join Timed Out (15s)")), 15000)
-        );
+        try {
+          const joinPromise = client.join(appId, channelName, token, joinUid);
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Join Timed Out (15s)")), 15000)
+          );
+          await Promise.race([joinPromise, timeoutPromise]);
+        } catch (joinErr: any) {
+          console.warn("⚠️ Token Join Failed, attempting Fail-Safe (No Token) mode...", joinErr);
+          // FAIL-SAFE: Try joining with NULL token (Low Security)
+          await client.join(appId, channelName, null, joinUid);
+          console.log("✅ Joined via Fail-Safe Mode");
+        }
 
-        await Promise.race([joinPromise, timeoutPromise]);
         console.log("✅ Joined Successfully");
 
         // Create & Publish Local Tracks

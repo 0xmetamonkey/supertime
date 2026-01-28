@@ -10,13 +10,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   callbacks: {
     async session({ session, token }) {
-      if (session.user) {
-        // Use EMAIL as the primary identifier (stable across sessions)
-        session.user.id = session.user.email || token.sub || '';
+      if (session.user && token.sub) {
+        session.user.id = token.sub;
       }
       return session;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
         token.sub = user.id;
       }

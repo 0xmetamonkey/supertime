@@ -415,8 +415,8 @@ export default function CreatorClient({
   if (isCalling) {
     return (
       <AgoraCall
-        channelName={`channel-${username}`}
-        uid={uid}
+        channelName={`channel-${username || 'fallback'}`}
+        uid={uid || `guest-${guestId}`}
         callType={callType}
         onEndCall={handleEndCall}
         onTimeUpdate={handleTimeUpdate}

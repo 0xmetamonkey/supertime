@@ -178,6 +178,10 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
   const answerCall = async () => {
     if (!incomingCall) return;
+    if (!username) {
+      alert("Error: You must claim a username before accepting calls.");
+      return;
+    }
     await fetch('/api/call/signal', { method: 'POST', body: JSON.stringify({ action: 'answer', from: username }) });
     setCallType(incomingCall.type);
     setIncomingCall(null);
@@ -507,8 +511,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
           <span className="font-mono font-bold text-xl text-white">+{tokensEarned} TKN</span>
         </div>
         <AgoraCall
-          channelName={`channel-${username}`}
-          uid={username}
+          channelName={`channel-${username || 'fallback'}`}
+          uid={username || 'unknown'}
           callType={callType}
           onEndCall={handleEndCall}
           onTimeUpdate={handleTimeUpdate}
