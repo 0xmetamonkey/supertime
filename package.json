@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@daily-co/daily-js": "^0.86.0",
     "@vercel/blob": "^2.0.1",
     "@vercel/kv": "^3.0.0",
     "agora-rtc-sdk-ng": "^4.24.2",

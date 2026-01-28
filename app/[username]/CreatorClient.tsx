@@ -4,8 +4,23 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import WalletManager from '../components/WalletManager';
 import AgoraCall from '../components/AgoraCall';
+import DailyCall from '../components/DailyCall';
+import { useSession } from 'next-auth/react';
 import { useTheme } from '../context/ThemeContext';
 import { logout, loginWithGoogle } from '../actions';
+
+interface CreatorClientProps {
+  username: string,
+  user: any,
+  isOwner: boolean,
+  ownerEmail: string,
+  isVerified?: boolean,
+  socials?: any,
+  videoRate?: number;
+  audioRate?: number;
+  profileImage?: string;
+  callingProvider?: 'agora' | 'daily';
+}
 
 export default function CreatorClient({
   username,
@@ -16,18 +31,9 @@ export default function CreatorClient({
   socials,
   videoRate = 100,
   audioRate = 50,
-  profileImage = ""
-}: {
-  username: string,
-  user: any,
-  isOwner: boolean,
-  ownerEmail: string,
-  isVerified?: boolean,
-  socials?: any,
-  videoRate?: number,
-  audioRate?: number,
-  profileImage?: string
-}) {
+  profileImage = "",
+  callingProvider = 'agora'
+}: CreatorClientProps) {
 
   const [guestId] = useState(() => Math.random().toString(36).slice(2, 7));
   const uid = user?.id || `guest-${guestId}`;
@@ -257,14 +263,23 @@ export default function CreatorClient({
                 <span className="font-mono font-bold text-xl text-green-400">{balance} TKN</span>
               </div>
             </div>
-            <AgoraCall
-              channelName={`channel-${username}`}
-              uid={uid}
-              remoteName={username}
-              callType={callType}
-              onEndCall={handleEndCall}
-              onTimeUpdate={handleTimeUpdate}
-            />
+
+            {callingProvider === 'agora' ? (
+              <AgoraCall
+                channelName={`channel-${username}`}
+                uid={uid}
+                remoteName={username}
+                callType={callType}
+                onEndCall={handleEndCall}
+                onTimeUpdate={handleTimeUpdate}
+              />
+            ) : (
+              <DailyCall
+                channelName={`channel-${username}`}
+                remoteName={username}
+                onEndCall={handleEndCall}
+              />
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center min-h-screen relative z-10 px-4 text-center pt-16">
@@ -415,7 +430,7 @@ export default function CreatorClient({
   // NEO THEME (Default)
   // --------------------------------------------------------------------------
   if (isCalling) {
-    return (
+    return callingProvider === 'agora' ? (
       <AgoraCall
         channelName={`channel-${username || 'fallback'}`}
         uid={uid || `guest-${guestId}`}
@@ -423,6 +438,12 @@ export default function CreatorClient({
         callType={callType}
         onEndCall={handleEndCall}
         onTimeUpdate={handleTimeUpdate}
+      />
+    ) : (
+      <DailyCall
+        channelName={`channel-${username || 'fallback'}`}
+        remoteName={username}
+        onEndCall={handleEndCall}
       />
     );
   }

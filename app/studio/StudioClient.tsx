@@ -4,7 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { logout } from '../actions';
 import AgoraCall from '../components/AgoraCall';
+import DailyCall from '../components/DailyCall';
 import { useTheme } from '../context/ThemeContext';
+import { useSession } from 'next-auth/react';
 
 import WalletManager from '../components/WalletManager';
 import { checkAvailability, claimUsername } from '../actions';
@@ -20,6 +22,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [callDuration, setCallDuration] = useState(0);
   const [tokensEarned, setTokensEarned] = useState(0);
   const [remoteName, setRemoteName] = useState('Guest');
+  const [callingProvider, setCallingProvider] = useState<'agora' | 'daily'>(initialSettings.callingProvider || 'agora');
 
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
@@ -28,6 +31,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [pendingSocials, setPendingSocials] = useState(initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' });
   const [pendingProfileImage, setPendingProfileImage] = useState(initialSettings?.profileImage || '');
   const [isUploading, setIsUploading] = useState(false);
+  const [pendingCallingProvider, setPendingCallingProvider] = useState<'agora' | 'daily'>(initialSettings.callingProvider || 'agora');
 
   const saveSettings = async () => {
     try {
@@ -37,9 +41,11 @@ export default function StudioClient({ username, session, initialSettings }: { u
           socials: pendingSocials,
           videoRate: pendingVideoRate,
           audioRate: pendingAudioRate,
-          profileImage: pendingProfileImage
+          profileImage: pendingProfileImage,
+          callingProvider: pendingCallingProvider
         })
       });
+      setCallingProvider(pendingCallingProvider);
       alert("Settings Saved!");
       setShowSettings(false);
     } catch (e) {
@@ -399,6 +405,26 @@ export default function StudioClient({ username, session, initialSettings }: { u
                 ))}
               </div>
 
+              {/* CALLING ENGINE */}
+              <div className="space-y-4 mb-8">
+                <h3 className="text-zinc-400 text-sm font-bold uppercase">Calling Engine</h3>
+                <div className="flex gap-2 p-1 bg-black border border-zinc-700 rounded-xl">
+                  <button
+                    onClick={() => setPendingCallingProvider('agora')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${pendingCallingProvider === 'agora' ? 'bg-[#CEFF1A] text-black shadow-lg' : 'text-zinc-500'}`}
+                  >
+                    Agora (Custom)
+                  </button>
+                  <button
+                    onClick={() => setPendingCallingProvider('daily')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${pendingCallingProvider === 'daily' ? 'bg-[#52D3FF] text-black shadow-lg' : 'text-zinc-500'}`}
+                  >
+                    Daily (Reliable)
+                  </button>
+                </div>
+                <p className="text-[10px] text-zinc-600 italic">Switch to Daily if Agora is failing in production.</p>
+              </div>
+
               {/* SHARE LINK */}
               <div className="bg-zinc-800 rounded-xl p-4 mb-8 flex justify-between items-center">
                 <span className="text-xs text-zinc-400 font-mono">supertime.wtf/{username}</span>
@@ -422,14 +448,22 @@ export default function StudioClient({ username, session, initialSettings }: { u
                 <span className="text-green-400 font-bold">💰 Earning</span>
                 <span className="font-mono font-bold text-xl text-white">+{tokensEarned} TKN</span>
               </div>
-              <AgoraCall
-                channelName={`channel-${username}`}
-                uid={`${username}-studio`}
-                remoteName={remoteName}
-                callType={callType}
-                onEndCall={handleEndCall}
-                onTimeUpdate={handleTimeUpdate}
-              />
+              {callingProvider === 'agora' ? (
+                <AgoraCall
+                  channelName={`channel-${username}`}
+                  uid={`${username}-studio`}
+                  remoteName={remoteName}
+                  callType={callType}
+                  onEndCall={handleEndCall}
+                  onTimeUpdate={handleTimeUpdate}
+                />
+              ) : (
+                <DailyCall
+                  channelName={`channel-${username}`}
+                  remoteName={remoteName}
+                  onEndCall={handleEndCall}
+                />
+              )}
             </div>
           ) : (
             <>
@@ -508,14 +542,22 @@ export default function StudioClient({ username, session, initialSettings }: { u
           <span className="text-green-400 font-bold">💰 Earning</span>
           <span className="font-mono font-bold text-xl text-white">+{tokensEarned} TKN</span>
         </div>
-        <AgoraCall
-          channelName={`channel-${username || 'fallback'}`}
-          uid={`${username || 'unknown'}-studio`}
-          remoteName={remoteName}
-          callType={callType}
-          onEndCall={handleEndCall}
-          onTimeUpdate={handleTimeUpdate}
-        />
+        {callingProvider === 'agora' ? (
+          <AgoraCall
+            channelName={`channel-${username || 'fallback'}`}
+            uid={`${username || 'unknown'}-studio`}
+            remoteName={remoteName}
+            callType={callType}
+            onEndCall={handleEndCall}
+            onTimeUpdate={handleTimeUpdate}
+          />
+        ) : (
+          <DailyCall
+            channelName={`channel-${username || 'fallback'}`}
+            remoteName={remoteName}
+            onEndCall={handleEndCall}
+          />
+        )}
       </div>
     );
   }
