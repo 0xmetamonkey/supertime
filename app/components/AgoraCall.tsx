@@ -16,6 +16,7 @@ type AgoraCallProps = {
 
 export default function AgoraCall({ channelName, uid, remoteName = 'Guest', callType = 'video', onEndCall, onTimeUpdate }: AgoraCallProps) {
   const [joined, setJoined] = useState(false);
+  const [status, setStatus] = useState('Initializing...');
   const [remoteUsers, setRemoteUsers] = useState<any[]>([]);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
@@ -87,11 +88,10 @@ export default function AgoraCall({ channelName, uid, remoteName = 'Guest', call
       });
 
       try {
-        if (channelName.includes('undefined') || channelName.includes('null')) {
-          throw new Error("Invalid Channel Name. Please setup your profile.");
-        }
+        const safeChannel = channelName.toLowerCase().trim();
+        setStatus(`Fetching token for ${safeChannel}...`);
 
-        const res = await fetch(`/api/agora?channelName=${channelName}&uid=${uid}`);
+        const res = await fetch(`/api/agora?channelName=${safeChannel}&uid=${uid}`);
         const data = await res.json();
 
         if (data.error) {
@@ -108,15 +108,17 @@ export default function AgoraCall({ channelName, uid, remoteName = 'Guest', call
         console.log("Debug: Starting Join...", { channelName, joinUid, hasToken: !!token });
 
         try {
-          const joinPromise = client.join(appId, channelName, token, joinUid);
+          setStatus(`Joining ${safeChannel}...`);
+          const joinPromise = client.join(appId, safeChannel, token, joinUid);
           const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error("Join Timed Out (15s)")), 15000)
           );
           await Promise.race([joinPromise, timeoutPromise]);
         } catch (joinErr: any) {
           console.warn("⚠️ Token Join Failed, attempting Fail-Safe (No Token) mode...", joinErr);
+          setStatus('Entering Fail-Safe Mode...');
           // FAIL-SAFE: Try joining with NULL token (Low Security)
-          await client.join(appId, channelName, null, joinUid);
+          await client.join(appId, safeChannel, null, joinUid);
           console.log("✅ Joined via Fail-Safe Mode");
         }
 
@@ -137,6 +139,7 @@ export default function AgoraCall({ channelName, uid, remoteName = 'Guest', call
           await client.publish([mic]);
         }
 
+        setStatus('Connected. Waiting for peers...');
         setJoined(true);
       } catch (error: any) {
         console.error("Agora Init Failed", error);
@@ -257,9 +260,10 @@ export default function AgoraCall({ channelName, uid, remoteName = 'Guest', call
             <div className="w-20 h-20 border-4 border-zinc-700 border-t-[#CEFF1A] rounded-full animate-spin mb-6" />
             <span className="animate-pulse uppercase font-black tracking-tighter text-white mb-2">Waiting for {remoteName}...</span>
             <div className="flex flex-col items-center gap-1 opacity-50 font-mono text-[8px] uppercase">
+              <span className="text-[#CEFF1A] font-bold">{status}</span>
               <span>App: {process.env.NEXT_PUBLIC_AGORA_APP_ID?.substring(0, 4)}...</span>
-              <span>Channel: {channelName}</span>
-              <span>UID: {uid}</span>
+              <span>Room: {channelName.toLowerCase()}</span>
+              <span>UID: {uid} (Peers: {remoteUsers.length})</span>
             </div>
           </div>
         ) : (
