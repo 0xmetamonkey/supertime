@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 
 // Dynamic import to avoid SSR issues
 let AgoraRTC: any;
@@ -42,6 +42,7 @@ export default function AgoraCall({
 
   // UI State
   const [connectionState, setConnectionState] = useState<ConnectionState>('IDLE');
+  const [status, setStatus] = useState<string>('Initializing...');
   const [remoteUsers, setRemoteUsers] = useState<any[]>([]);
   const [callDuration, setCallDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
@@ -141,25 +142,34 @@ export default function AgoraCall({
 
         // F. Join Room
         setConnectionState('JOINING');
+        setStatus("Joining Channel...");
         try {
-          await client.join(appId, safeChannel, token, joinUid);
+          const joinPromise = client.join(appId, safeChannel, token, joinUid);
+          const joinTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Join Timed Out")), 15000));
+          await Promise.race([joinPromise, joinTimeout]);
         } catch (joinErr) {
           console.warn("⚠️ Token Join Failed. Reverting to Fail-Safe...", joinErr);
           await client.join(appId, safeChannel, null, joinUid);
         }
 
         // G. Create & Publish Tracks
+        setStatus("Accessing Camera/Mic...");
         if (callType === 'video') {
-          const [mic, cam] = await AgoraRTC.createMicrophoneAndCameraTracks(
+          const trackPromise = AgoraRTC.createMicrophoneAndCameraTracks(
             { echoCancellation: true, noiseSuppression: true, AEC: true, AGC: true },
             { encoderConfig: '720p_1' }
           );
+          const trackTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Camera Access Timed Out - Please Check Propmt")), 12000));
+
+          const [mic, cam] = await Promise.race([trackPromise, trackTimeout]) as any[];
+
           localAudioTrackRef.current = mic;
           localVideoTrackRef.current = cam;
 
           if (localVideoRef.current) {
             cam.play(localVideoRef.current);
           }
+          setStatus("Publishing Video/Audio...");
           await client.publish([mic, cam]);
         } else {
           const mic = await AgoraRTC.createMicrophoneAudioTrack(
@@ -220,12 +230,13 @@ export default function AgoraCall({
     const timer = setInterval(() => {
       setCallDuration(prev => {
         const next = prev + 1;
+        // Optimization: only call update occasionally or use a stable ref
         if (onTimeUpdate) onTimeUpdate(next);
         return next;
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [connectionState, onTimeUpdate]);
+  }, [connectionState]); // Removed onTimeUpdate to prevent reset if parent re-renders
 
   // UI HELPERS
   const formatTime = (s: number) => {
@@ -317,13 +328,13 @@ export default function AgoraCall({
       )}
 
       {/* TOP HUD (Stats) */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 px-6 py-2 bg-black/50 backdrop-blur-xl border border-white/10 rounded-full z-[100] flex items-center gap-4">
+      <div className="absolute top-6 left-1/2 -translate-x-1/2 px-6 py-2 bg-black/80 backdrop-blur-xl border-2 border-white/20 rounded-full z-[500] flex items-center gap-4 shadow-2xl">
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${connectionState === 'CONNECTED' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-          <span className="font-mono text-sm font-bold text-white uppercase tracking-widest">{connectionState}</span>
+          <div className={`w-3 h-3 rounded-full ${connectionState === 'CONNECTED' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+          <span className="font-mono text-xs font-black text-white uppercase tracking-widest">{connectionState}</span>
         </div>
         <div className="w-px h-4 bg-white/20" />
-        <span className="font-mono text-sm font-bold text-[#CEFF1A]">{formatTime(callDuration)}</span>
+        <span className="font-mono text-sm font-black text-[#CEFF1A]">{formatTime(callDuration)}</span>
       </div>
 
       {/* BOTTOM CONTROLS */}
