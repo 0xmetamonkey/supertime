@@ -173,7 +173,13 @@ export default function AgoraCall({
 
       } catch (err: any) {
         console.error("❌ Indestructible Init Failed:", err);
-        setErrorMsg(err.message || "Failed to connect");
+
+        // Handle specific browser permission errors
+        if (err.name === 'NotAllowedError' || err.message?.includes('Permission denied')) {
+          setErrorMsg("CAMERA_BLOCKED");
+        } else {
+          setErrorMsg(err.message || "Failed to connect");
+        }
         setConnectionState('FAILED');
       }
     };
@@ -252,6 +258,25 @@ export default function AgoraCall({
   };
 
   if (errorMsg) {
+    if (errorMsg === "CAMERA_BLOCKED") {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-10 text-center animate-in fade-in duration-500">
+          <div className="text-6xl mb-6 animate-bounce">🔒</div>
+          <h2 className="text-3xl font-black text-[#CEFF1A] mb-4 uppercase italic">Camera Access Blocked</h2>
+          <p className="text-zinc-400 mb-8 max-w-sm leading-relaxed">
+            Your browser blocked the camera/mic.
+            Click the <span className="text-white font-bold inline-flex items-center gap-1 mx-1">🔒 icon</span> in your URL bar and select <span className="text-white font-bold">"Reset Permissions"</span> or <span className="text-white font-semibold">"Allow."</span>
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-10 py-4 bg-white text-black font-black uppercase rounded-full hover:scale-110 active:scale-95 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)]"
+          >
+            I've Unblocked It - Try Again
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-6">
         <h2 className="text-2xl font-black text-red-500 mb-4 uppercase italic">Fatal Error</h2>
