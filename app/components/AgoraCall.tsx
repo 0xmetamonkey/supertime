@@ -23,6 +23,7 @@ export default function AgoraCall({
   onTimeUpdate
 }: AgoraCallProps) {
   const [connectionState, setConnectionState] = useState<ConnectionState>('IDLE');
+  const [subStatus, setSubStatus] = useState<string>('Ready');
   const [callDuration, setCallDuration] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const initRef = useRef(false);
@@ -33,17 +34,24 @@ export default function AgoraCall({
 
     const startCall = async () => {
       setConnectionState('INITIALIZING');
+      setSubStatus('Connecting...');
       try {
-        console.log("🚀 Launching Agora App Builder...");
+        console.log("🚀 [AgoraCall] Launching with Ch:", channelName, "UID:", uid);
 
-        // Ensure the room name is clean and consistent
-        // We use the same channel naming logic as before
         const roomId = channelName.toLowerCase().trim();
 
+        setSubStatus('Joining Room...');
         // joinRoom handles token acquisition and UID mapping internally via the SDK
-        await AgoraAppBuilder.joinRoom(roomId, uid || "User");
+        // We add a timeout since network issues can cause silent hangs
+        const joinPromise = AgoraAppBuilder.joinRoom(roomId, uid || "User");
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Join Timed Out - Check Network/App ID")), 25000)
+        );
+
+        await Promise.race([joinPromise, timeoutPromise]);
 
         setConnectionState('CONNECTED');
+        setSubStatus('Live');
         console.log("✅ Joined via App Builder");
       } catch (err: any) {
         console.error("❌ App Builder Join Failed:", err);
@@ -77,10 +85,13 @@ export default function AgoraCall({
 
   if (errorMsg) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-6">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-6 text-center">
         <h2 className="text-2xl font-black text-red-500 mb-4 uppercase italic">Fatal Error</h2>
-        <p className="text-zinc-500 mb-8 font-mono">{errorMsg}</p>
-        <button onClick={() => window.location.reload()} className="px-8 py-3 bg-white text-black font-black uppercase rounded-full">Restart System</button>
+        <p className="text-zinc-500 mb-8 font-mono max-w-sm">{errorMsg}</p>
+        <div className="flex gap-4">
+          <button onClick={() => window.location.reload()} className="px-8 py-3 bg-white text-black font-black uppercase rounded-full text-xs">Retry</button>
+          <button onClick={onEndCall} className="px-8 py-3 bg-zinc-800 text-white font-black uppercase rounded-full text-xs border border-zinc-700">Exit</button>
+        </div>
       </div>
     );
   }
@@ -98,7 +109,7 @@ export default function AgoraCall({
         <div className="flex items-center gap-2">
           <div className={`w-3 h-3 rounded-full ${connectionState === 'CONNECTED' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
           <span className="font-mono text-xs font-black text-white uppercase tracking-widest">
-            {connectionState === 'INITIALIZING' ? 'WAITING' : connectionState}
+            {connectionState === 'CONNECTED' ? 'Live' : subStatus}
           </span>
         </div>
         <div className="w-px h-4 bg-white/20" />
@@ -120,8 +131,8 @@ export default function AgoraCall({
       {/* DIAGNOSTIC MINI-STRIP */}
       <div className="absolute bottom-2 left-0 right-0 p-1 flex justify-center gap-4 text-[9px] font-mono text-zinc-600 tracking-tighter uppercase z-[120] pointer-events-none">
         <span>Channel: {channelName}</span>
+        <span>UID: {uid}</span>
         <span>Engine: App Builder v3.1.13</span>
-        <span>Stability: Indestructible</span>
       </div>
 
     </div>
