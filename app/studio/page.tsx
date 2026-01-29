@@ -20,7 +20,6 @@ export default async function StudioPage() {
     audioRate: 50,
     socials: { instagram: '', x: '', youtube: '', website: '' },
     profileImage: '',
-    callingProvider: 'agora' as 'agora' | 'daily'
   };
 
   if (email && process.env.KV_URL) {
@@ -28,7 +27,6 @@ export default async function StudioPage() {
     const aRate = await kv.get(`user:${email}:rate:audio`);
     const socials = await kv.get(`user:${email}:socials`) as any;
     const profileImage = await kv.get(`user:${email}:profileImage`);
-    const callingProvider = await kv.get(`user:${email}:callingProvider`);
 
     if (vRate !== null) settings.videoRate = Number(vRate);
     if (aRate !== null) settings.audioRate = Number(aRate);
@@ -41,7 +39,6 @@ export default async function StudioPage() {
       settings.socials = { ...settings.socials, ...socials };
     }
     if (profileImage) (settings as any).profileImage = profileImage;
-    if (callingProvider === 'daily') settings.callingProvider = 'daily';
   }
 
   return <StudioClient username={username || null} session={session} initialSettings={settings} />;
