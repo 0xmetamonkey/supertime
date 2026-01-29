@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import WalletManager from '../components/WalletManager';
-import DailyCall from '../components/DailyCall';
+// Removed DailyCall import
 import { useSession } from 'next-auth/react';
 import { useTheme } from '../context/ThemeContext';
 import { logout, loginWithGoogle } from '../actions';
@@ -67,6 +67,12 @@ export default function CreatorClient({
       return;
     }
 
+    // FEATURE DISABLED: Calls temporarily unavailable
+    alert("Calls are temporarily unavailable while we upgrade our video infrastructure. Please try again later.");
+    return;
+
+    // Original logic commented out for future reference or removal
+    /*
     // Send Signal to creator
     try {
       await fetch('/api/call/signal', {
@@ -85,6 +91,7 @@ export default function CreatorClient({
     // Deduct first minute immediately
     await deductBalance(currentRate);
     setTokensSpent(currentRate);
+    */
   };
 
   // Poll for Rejection (DISABLED DEBUGGING)
@@ -261,11 +268,13 @@ export default function CreatorClient({
               </div>
             </div>
 
-            <DailyCall
-              channelName={`channel-${username}`}
-              remoteName={username}
-              onEndCall={handleEndCall}
-            />
+            <div className="fixed inset-0 z-[200] bg-black text-white flex flex-col items-center justify-center">
+              <div className="flex flex-col items-center justify-center h-full text-zinc-500 font-mono text-xs uppercase tracking-widest p-12">
+                <span className="block text-4xl mb-4">🚧</span>
+                <p>Call Service Unavailable</p>
+                <button onClick={handleEndCall} className="mt-8 px-6 py-2 border border-zinc-700 hover:border-white transition-colors">Go Back</button>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center min-h-screen relative z-10 px-4 text-center pt-16">
@@ -415,13 +424,11 @@ export default function CreatorClient({
   // --------------------------------------------------------------------------
   // NEO THEME (Default)
   // --------------------------------------------------------------------------
-  if (isCalling) {
-    <DailyCall
-      channelName={`channel-${username || 'fallback'}`}
-      remoteName={username}
-      onEndCall={handleEndCall}
-    />
-  }
+  <div className="flex flex-col items-center justify-center h-full text-zinc-500 font-mono text-xs uppercase tracking-widest p-12">
+    <span className="block text-4xl mb-4">🚧</span>
+    <p>Call Service Unavailable</p>
+    <button onClick={handleEndCall} className="mt-8 px-6 py-2 border border-zinc-700 hover:border-white transition-colors">Go Back</button>
+  </div>
 
   return (
     <main className="min-h-screen bg-black text-white p-4 font-mono flex flex-col items-center">
