@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { logout } from '../actions';
-// Removed DailyCall import
+import LiveKitCall from '../components/LiveKitCall';
 import { useTheme } from '../context/ThemeContext';
 import { useSession } from 'next-auth/react';
 
@@ -427,12 +427,11 @@ export default function StudioClient({ username, session, initialSettings }: { u
                 <span className="text-green-400 font-bold uppercase tracking-tighter text-[10px]">💰 Earning</span>
                 <span className="font-mono font-bold text-xl text-white">+{tokensEarned} TKN</span>
               </div>
-              <div className="flex flex-col items-center justify-center h-full text-zinc-500 font-mono text-xs uppercase tracking-widest p-12">
-                <span className="block text-4xl mb-4">🚧</span>
-                <p>Call Service Unavailable</p>
-                <p className="text-[10px] mt-2 opacity-50">Please check back later.</p>
-                <button onClick={handleEndCall} className="mt-8 px-6 py-2 border border-zinc-700 hover:border-white transition-colors">End Session</button>
-              </div>
+              <LiveKitCall
+                room={`supertime-${username}`}
+                username={`${username}-host`}
+                onDisconnect={handleEndCall}
+              />
             </div>
           ) : (
             <>
@@ -511,12 +510,11 @@ export default function StudioClient({ username, session, initialSettings }: { u
           <span className="text-green-400 font-bold uppercase tracking-tighter text-[10px]">💰 Earning</span>
           <span className="font-mono font-bold text-xl text-white">+{tokensEarned} TKN</span>
         </div>
-        <div className="flex flex-col items-center justify-center h-full text-zinc-500 font-mono text-xs uppercase tracking-widest p-12">
-          <span className="block text-4xl mb-4">🚧</span>
-          <p>Call Service Unavailable</p>
-          <p className="text-[10px] mt-2 opacity-50">Please check back later.</p>
-          <button onClick={handleEndCall} className="mt-8 px-6 py-2 border border-zinc-700 hover:border-white transition-colors">End Session</button>
-        </div>
+        <LiveKitCall
+          room={`supertime-${username}`}
+          username={`${username}-host`}
+          onDisconnect={handleEndCall}
+        />
       </div>
     );
   }

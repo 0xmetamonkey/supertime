@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import WalletManager from '../components/WalletManager';
-// Removed DailyCall import
+import LiveKitCall from '../components/LiveKitCall';
 import { useSession } from 'next-auth/react';
 import { useTheme } from '../context/ThemeContext';
 import { logout, loginWithGoogle } from '../actions';
@@ -67,12 +67,6 @@ export default function CreatorClient({
       return;
     }
 
-    // FEATURE DISABLED: Calls temporarily unavailable
-    alert("Calls are temporarily unavailable while we upgrade our video infrastructure. Please try again later.");
-    return;
-
-    // Original logic commented out for future reference or removal
-    /*
     // Send Signal to creator
     try {
       await fetch('/api/call/signal', {
@@ -91,7 +85,6 @@ export default function CreatorClient({
     // Deduct first minute immediately
     await deductBalance(currentRate);
     setTokensSpent(currentRate);
-    */
   };
 
   // Poll for Rejection (DISABLED DEBUGGING)
@@ -269,11 +262,11 @@ export default function CreatorClient({
             </div>
 
             <div className="fixed inset-0 z-[200] bg-black text-white flex flex-col items-center justify-center">
-              <div className="flex flex-col items-center justify-center h-full text-zinc-500 font-mono text-xs uppercase tracking-widest p-12">
-                <span className="block text-4xl mb-4">🚧</span>
-                <p>Call Service Unavailable</p>
-                <button onClick={handleEndCall} className="mt-8 px-6 py-2 border border-zinc-700 hover:border-white transition-colors">Go Back</button>
-              </div>
+              <LiveKitCall
+                room={`supertime-${username}`}
+                username={uid}
+                onDisconnect={handleEndCall}
+              />
             </div>
           </div>
         ) : (
@@ -424,11 +417,17 @@ export default function CreatorClient({
   // --------------------------------------------------------------------------
   // NEO THEME (Default)
   // --------------------------------------------------------------------------
-  <div className="flex flex-col items-center justify-center h-full text-zinc-500 font-mono text-xs uppercase tracking-widest p-12">
-    <span className="block text-4xl mb-4">🚧</span>
-    <p>Call Service Unavailable</p>
-    <button onClick={handleEndCall} className="mt-8 px-6 py-2 border border-zinc-700 hover:border-white transition-colors">Go Back</button>
-  </div>
+  if (isCalling) {
+    return (
+      <div className="fixed inset-0 z-[200] bg-black text-white flex flex-col items-center justify-center">
+        <LiveKitCall
+          room={`supertime-${username}`}
+          username={uid}
+          onDisconnect={handleEndCall}
+        />
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-black text-white p-4 font-mono flex flex-col items-center">

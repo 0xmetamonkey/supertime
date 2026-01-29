@@ -9,8 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@livekit/components-react": "^2.9.19",
+    "@livekit/components-styles": "^1.2.0",
     "@vercel/blob": "^2.0.1",
     "@vercel/kv": "^3.0.0",
+    "livekit-client": "^2.17.0",
+    "livekit-server-sdk": "^2.15.0",
     "next": "16.1.4",
     "next-auth": "^5.0.0-beta.30",
     "razorpay": "^2.9.6",
