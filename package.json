@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@appbuilder/react": "file:agora-app-builder/Builds/react-sdk/appbuilder-react-3.1.13-1-54qS8dgThA.tgz",
     "@daily-co/daily-js": "^0.86.0",
     "@vercel/blob": "^2.0.1",
     "@vercel/kv": "^3.0.0",

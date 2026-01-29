@@ -42,6 +42,9 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# Agora App Builder
+/agora-app-builder/
 .env
 
 

@@ -45,6 +45,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <style type="text/css">{`
+          @font-face {
+            font-family: "Icomoon";
+            src: url("/4e4a228741e386546c85.ttf") format("truetype");
+          }
+        `}</style>
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
