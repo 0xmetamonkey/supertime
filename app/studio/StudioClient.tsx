@@ -445,7 +445,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
           {isCalling ? (
             <div className="fixed inset-0 z-[200] bg-black">
               <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[210] bg-green-500/20 backdrop-blur-xl px-6 py-3 rounded-2xl border border-green-500/50 flex items-center gap-4">
-                <span className="text-green-400 font-bold">💰 Earning</span>
+                <span className="text-green-400 font-bold uppercase tracking-tighter text-[10px]">💰 LIVE EARNINGS</span>
                 <span className="font-mono font-bold text-xl text-white">+{tokensEarned} TKN</span>
               </div>
               {callingProvider === 'agora' ? (
@@ -539,7 +539,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
       <div className="fixed inset-0 z-[200] bg-black">
         {/* Earnings Badge for Creator */}
         <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[60] bg-green-500/20 backdrop-blur-xl px-6 py-3 rounded-2xl border border-green-500/50 flex items-center gap-4">
-          <span className="text-green-400 font-bold">💰 Earning</span>
+          <span className="text-green-400 font-bold uppercase tracking-tighter text-[10px]">💰 LIVE EARNINGS</span>
           <span className="font-mono font-bold text-xl text-white">+{tokensEarned} TKN</span>
         </div>
         {callingProvider === 'agora' ? (
