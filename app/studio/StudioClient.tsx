@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { logout } from '../actions';
-import LiveKitCall from '../components/LiveKitCall';
+import AgoraCall from '../components/AgoraCall';
 import { useTheme } from '../context/ThemeContext';
 import { useSession } from 'next-auth/react';
 
@@ -427,9 +427,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
                 <span className="text-green-400 font-bold uppercase tracking-tighter text-[10px]">💰 Earning</span>
                 <span className="font-mono font-bold text-xl text-white">+{tokensEarned} TKN</span>
               </div>
-              <LiveKitCall
-                room={`supertime-${username}`}
-                username={`${username}-host`}
+              <AgoraCall
+                channelName={`supertime-${username}`}
                 onDisconnect={handleEndCall}
               />
             </div>
@@ -505,16 +504,10 @@ export default function StudioClient({ username, session, initialSettings }: { u
   if (isCalling) {
     return (
       <div className="fixed inset-0 z-[200] bg-black">
-        {/* Earnings Badge for Creator */}
-        <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[60] bg-green-500/20 backdrop-blur-xl px-6 py-3 rounded-2xl border border-green-500/50 flex items-center gap-4">
-          <span className="text-green-400 font-bold uppercase tracking-tighter text-[10px]">💰 Earning</span>
-          <span className="font-mono font-bold text-xl text-white">+{tokensEarned} TKN</span>
+        <div className="absolute top-4 left-4 z-[210] bg-[#CEFF1A] text-black px-4 py-2 font-black uppercase text-xl border-4 border-black shadow-[4px_4px_0px_0px_#fff]">
+          EARNING...
         </div>
-        <LiveKitCall
-          room={`supertime-${username}`}
-          username={`${username}-host`}
-          onDisconnect={handleEndCall}
-        />
+        <AgoraCall channelName={`supertime-${username}`} onDisconnect={handleEndCall} />
       </div>
     );
   }

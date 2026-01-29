@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import WalletManager from '../components/WalletManager';
-import LiveKitCall from '../components/LiveKitCall';
+import AgoraCall from '../components/AgoraCall';
 import { useSession } from 'next-auth/react';
 import { useTheme } from '../context/ThemeContext';
 import { logout, loginWithGoogle } from '../actions';
@@ -262,9 +262,8 @@ export default function CreatorClient({
             </div>
 
             <div className="fixed inset-0 z-[200] bg-black text-white flex flex-col items-center justify-center">
-              <LiveKitCall
-                room={`supertime-${username}`}
-                username={uid}
+              <AgoraCall
+                channelName={`supertime-${username}`}
                 onDisconnect={handleEndCall}
               />
             </div>
@@ -420,9 +419,8 @@ export default function CreatorClient({
   if (isCalling) {
     return (
       <div className="fixed inset-0 z-[200] bg-black text-white flex flex-col items-center justify-center">
-        <LiveKitCall
-          room={`supertime-${username}`}
-          username={uid}
+        <AgoraCall
+          channelName={`supertime-${username}`}
           onDisconnect={handleEndCall}
         />
       </div>
