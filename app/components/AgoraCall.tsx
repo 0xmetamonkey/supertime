@@ -73,7 +73,7 @@ function AgoraStage({
   uid: number;
   onDisconnect: () => void;
 }) {
-  const client = useRTCClient(AgoraRTC.createClient({ codec: 'vp8', mode: 'rtc' }));
+  const client = useRTCClient(AgoraRTC.createClient({ codec: 'vp8', mode: 'rtc' }) as any);
 
   return (
     <AgoraRTCProvider client={client}>
