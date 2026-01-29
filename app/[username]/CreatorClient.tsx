@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import WalletManager from '../components/WalletManager';
-import AgoraCall from '../components/AgoraCall';
 import DailyCall from '../components/DailyCall';
 import { useSession } from 'next-auth/react';
 import { useTheme } from '../context/ThemeContext';
@@ -19,7 +18,6 @@ interface CreatorClientProps {
   videoRate?: number;
   audioRate?: number;
   profileImage?: string;
-  callingProvider?: 'agora' | 'daily';
 }
 
 export default function CreatorClient({
@@ -31,8 +29,7 @@ export default function CreatorClient({
   socials,
   videoRate = 100,
   audioRate = 50,
-  profileImage = "",
-  callingProvider = 'agora'
+  profileImage = ""
 }: CreatorClientProps) {
 
   const [guestId] = useState(() => Math.random().toString(36).slice(2, 7));
@@ -249,12 +246,12 @@ export default function CreatorClient({
             {/* Live Billing Info */}
             <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[60] bg-black/80 backdrop-blur-xl px-6 py-3 rounded-2xl border border-zinc-700 flex items-center gap-6">
               <div className="text-center">
-                <span className="text-zinc-500 font-bold uppercase tracking-tighter text-[9px] block">LIVE DURATION</span>
+                <span className="text-xs text-zinc-400 block">Duration</span>
                 <span className="font-mono font-bold text-xl text-white">{formatTime(callDuration)}</span>
               </div>
               <div className="w-px h-10 bg-zinc-700" />
               <div className="text-center">
-                <span className="text-purple-500 font-bold uppercase tracking-tighter text-[9px] block">LIVE SPENT</span>
+                <span className="text-xs text-zinc-400 block">Spent</span>
                 <span className="font-mono font-bold text-xl text-purple-400">{tokensSpent} TKN</span>
               </div>
               <div className="w-px h-10 bg-zinc-700" />
@@ -264,22 +261,11 @@ export default function CreatorClient({
               </div>
             </div>
 
-            {callingProvider === 'agora' ? (
-              <AgoraCall
-                channelName={`channel-${username}`}
-                uid={uid}
-                remoteName={username}
-                callType={callType}
-                onEndCall={handleEndCall}
-                onTimeUpdate={handleTimeUpdate}
-              />
-            ) : (
-              <DailyCall
-                channelName={`channel-${username}`}
-                remoteName={username}
-                onEndCall={handleEndCall}
-              />
-            )}
+            <DailyCall
+              channelName={`channel-${username}`}
+              remoteName={username}
+              onEndCall={handleEndCall}
+            />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center min-h-screen relative z-10 px-4 text-center pt-16">
@@ -430,22 +416,11 @@ export default function CreatorClient({
   // NEO THEME (Default)
   // --------------------------------------------------------------------------
   if (isCalling) {
-    return callingProvider === 'agora' ? (
-      <AgoraCall
-        channelName={`channel-${username || 'fallback'}`}
-        uid={uid || `guest-${guestId}`}
-        remoteName={username}
-        callType={callType}
-        onEndCall={handleEndCall}
-        onTimeUpdate={handleTimeUpdate}
-      />
-    ) : (
-      <DailyCall
-        channelName={`channel-${username || 'fallback'}`}
-        remoteName={username}
-        onEndCall={handleEndCall}
-      />
-    );
+    <DailyCall
+      channelName={`channel-${username || 'fallback'}`}
+      remoteName={username}
+      onEndCall={handleEndCall}
+    />
   }
 
   return (

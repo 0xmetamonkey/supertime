@@ -9,11 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@appbuilder/react": "file:packages/agora-app-builder-sdk.tgz",
     "@daily-co/daily-js": "^0.86.0",
     "@vercel/blob": "^2.0.1",
     "@vercel/kv": "^3.0.0",
-    "agora-rtc-sdk-ng": "^4.24.2",
     "agora-token": "^2.0.5",
     "next": "16.1.4",
     "next-auth": "^5.0.0-beta.30",
