@@ -249,12 +249,12 @@ export default function CreatorClient({
             {/* Live Billing Info */}
             <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[60] bg-black/80 backdrop-blur-xl px-6 py-3 rounded-2xl border border-zinc-700 flex items-center gap-6">
               <div className="text-center">
-                <span className="text-xs text-zinc-400 block">Duration</span>
+                <span className="text-zinc-500 font-bold uppercase tracking-tighter text-[9px] block">LIVE DURATION</span>
                 <span className="font-mono font-bold text-xl text-white">{formatTime(callDuration)}</span>
               </div>
               <div className="w-px h-10 bg-zinc-700" />
               <div className="text-center">
-                <span className="text-xs text-zinc-400 block">Spent</span>
+                <span className="text-purple-500 font-bold uppercase tracking-tighter text-[9px] block">LIVE SPENT</span>
                 <span className="font-mono font-bold text-xl text-purple-400">{tokensSpent} TKN</span>
               </div>
               <div className="w-px h-10 bg-zinc-700" />
