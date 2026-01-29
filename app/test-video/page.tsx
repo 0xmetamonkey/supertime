@@ -1,7 +1,7 @@
 
 "use client";
 
-import LiveKitCall from '../../components/LiveKitCall';
+import LiveKitCall from '../components/LiveKitCall';
 import { useState } from 'react';
 
 export default function TestVideoPage() {
