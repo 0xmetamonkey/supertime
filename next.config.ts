@@ -2,7 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
-  devIndicators: false, // Try boolean shorthand which is supported in many versions
+  devIndicators: false,
+  transpilePackages: ["@appbuilder/react", "agora-rtc-sdk-ng"],
 };
 
 export default nextConfig;
