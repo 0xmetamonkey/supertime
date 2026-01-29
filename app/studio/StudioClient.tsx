@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { logout } from '../actions';
-import AgoraCall from '../components/AgoraCall';
+import dynamic from 'next/dynamic';
+const AgoraCall = dynamic(() => import('../components/AgoraCall'), { ssr: false });
 import { useTheme } from '../context/ThemeContext';
 import { useSession } from 'next-auth/react';
 

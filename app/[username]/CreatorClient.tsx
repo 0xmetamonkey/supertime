@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import WalletManager from '../components/WalletManager';
-import AgoraCall from '../components/AgoraCall';
+import dynamic from 'next/dynamic';
+const AgoraCall = dynamic(() => import('../components/AgoraCall'), { ssr: false });
 import { useSession } from 'next-auth/react';
 import { useTheme } from '../context/ThemeContext';
 import { logout, loginWithGoogle } from '../actions';
