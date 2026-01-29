@@ -11,8 +11,8 @@ export async function GET() {
     status: 'Diagnostic Report',
     timestamp: new Date().toISOString(),
     env: {
-      LIVEKIT_API_KEY: apiKey ? `Present (Starts with ${apiKey.slice(0, 3)}...)` : 'MISSING',
-      LIVEKIT_API_SECRET: apiSecret ? `Present (Length: ${apiSecret.length})` : 'MISSING',
+      LIVEKIT_API_KEY: apiKey ? `Present (Starts with ${apiKey.slice(0, 3)}...) [Length: ${apiKey.length}] [Spaces: ${apiKey !== apiKey.trim() ? 'YES' : 'NO'}]` : 'MISSING',
+      LIVEKIT_API_SECRET: apiSecret ? `Present (Length: ${apiSecret.length}) [Spaces: ${apiSecret !== apiSecret.trim() ? 'YES' : 'NO'}]` : 'MISSING',
       LIVEKIT_URL: url || 'MISSING',
       NEXT_PUBLIC_LIVEKIT_URL: publicUrl || 'MISSING',
     },
