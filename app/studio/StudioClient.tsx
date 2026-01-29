@@ -565,6 +565,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
             </button>
             <p className="mt-4 text-[10px] text-zinc-500 font-mono uppercase">
               {isLive ? '>> Waiting for incoming calls...' : '>> You are not visible to callers.'}
+              <br />v3.0 (LiveKit)
             </p>
           </div>
 

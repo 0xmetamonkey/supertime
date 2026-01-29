@@ -25,14 +25,15 @@ export default function LiveKitCall({
   useEffect(() => {
     (async () => {
       try {
-        const resp = await fetch(
-          `/api/livekit/token?room=${room}&username=${username}`
-        );
+        const url = `/api/livekit/token?room=${encodeURIComponent(room)}&username=${encodeURIComponent(username)}`;
+        console.log("Fetching token from:", url);
+        const resp = await fetch(url);
         const data = await resp.json();
         if (data.error) {
           setError(data.error);
           return;
         }
+        console.log("Token received:", data.token?.slice(0, 10) + "...");
         setToken(data.token);
       } catch (e: any) {
         console.error(e);
