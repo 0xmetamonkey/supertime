@@ -5,7 +5,6 @@ import { kv } from '@vercel/kv';
 declare global {
   var mockSignalStore: Map<string, any>;
 }
-
 if (!global.mockSignalStore) {
   global.mockSignalStore = new Map();
 }
@@ -17,18 +16,27 @@ export async function POST(req: NextRequest) {
     const { action, from, to, type } = await req.json();
 
     if (action === 'call') {
-      // Guest is calling Creator (to)
-      const signalData = { from, type, timestamp: Date.now() };
+      // Generate unique channel name
+      const channelName = `supertime-${to}-${Date.now()}`;
+      console.log('[Signal API] Creating call signal:', { from, to, type, channelName });
+
+      const signalData = {
+        from,
+        type,
+        timestamp: Date.now(),
+        channelName
+      };
 
       if (hasKV) {
         await kv.set(`call_signal:${to}`, JSON.stringify(signalData), { ex: 60 });
       } else {
         console.log(`[MockKV] Setting signal for ${to}:`, signalData);
         global.mockSignalStore.set(`call_signal:${to}`, signalData);
-        // Clean up mock after 60s
         setTimeout(() => global.mockSignalStore.delete(`call_signal:${to}`), 60000);
       }
-      return NextResponse.json({ success: true });
+
+      console.log('[Signal API] Returning channelName to caller:', channelName);
+      return NextResponse.json({ success: true, channelName });
     }
 
     if (action === 'reject') {
@@ -36,7 +44,7 @@ export async function POST(req: NextRequest) {
       const rejectData = { rejected: true, timestamp: Date.now() };
 
       if (hasKV) {
-        await kv.set(`call_signal:${targetUser}`, JSON.stringify(rejectData), { ex: 10 }); // Keep for 10s
+        await kv.set(`call_signal:${targetUser}`, JSON.stringify(rejectData), { ex: 10 });
       } else {
         global.mockSignalStore.set(`call_signal:${targetUser}`, rejectData);
         setTimeout(() => global.mockSignalStore.delete(`call_signal:${targetUser}`), 10000);
@@ -45,9 +53,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'answer' || action === 'end') {
-      // Clean up for either sender (from) or receiver (to)
       const targetUser = from || to;
-      // ... delete logic ...
+
       if (hasKV) {
         await kv.del(`call_signal:${targetUser}`);
         if (to) await kv.del(`call_signal:${to}`);
@@ -84,9 +91,21 @@ export async function GET(req: NextRequest) {
       signal = global.mockSignalStore.get(`call_signal:${username}`);
     }
 
-    if (signal) {
-      return NextResponse.json({ active: true, ...signal });
+    if (signal && !signal.rejected) {
+      console.log('[Signal API] Returning signal to creator:', {
+        username,
+        channelName: signal.channelName,
+        from: signal.from,
+        type: signal.type
+      });
+      return NextResponse.json({
+        active: true,
+        from: signal.from,
+        type: signal.type,
+        channelName: signal.channelName
+      });
     }
+
     return NextResponse.json({ active: false });
   } catch (error) {
     console.error("Signal GET Error:", error);

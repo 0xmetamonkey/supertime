@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
   const email = session.user.email.toLowerCase();
   const requestData = await req.json();
-  const { socials, videoRate, audioRate } = requestData;
+  const { socials, videoRate, audioRate, isLive, templates, availability } = requestData;
 
   try {
     if (process.env.KV_URL) {
@@ -18,6 +18,9 @@ export async function POST(req: NextRequest) {
       if (videoRate !== undefined) await kv.set(`user:${email}:rate:video`, videoRate);
       if (audioRate !== undefined) await kv.set(`user:${email}:rate:audio`, audioRate);
       if (requestData.profileImage) await kv.set(`user:${email}:profileImage`, requestData.profileImage);
+      if (isLive !== undefined) await kv.set(`user:${email}:isLive`, isLive);
+      if (templates !== undefined) await kv.set(`user:${email}:templates`, templates);
+      if (availability !== undefined) await kv.set(`user:${email}:availability`, availability);
     }
 
     return NextResponse.json({ success: true });

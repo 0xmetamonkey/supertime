@@ -20,6 +20,9 @@ export default async function StudioPage() {
     audioRate: 50,
     socials: { instagram: '', x: '', youtube: '', website: '' },
     profileImage: '',
+    isLive: false,
+    templates: [] as any[],
+    availability: {} as any,
   };
 
   if (email && process.env.KV_URL) {
@@ -27,6 +30,9 @@ export default async function StudioPage() {
     const aRate = await kv.get(`user:${email}:rate:audio`);
     const socials = await kv.get(`user:${email}:socials`) as any;
     const profileImage = await kv.get(`user:${email}:profileImage`);
+    const isLive = await kv.get(`user:${email}:isLive`);
+    const templates = await kv.get(`user:${email}:templates`) as any[];
+    const availability = await kv.get(`user:${email}:availability`);
 
     if (vRate !== null) settings.videoRate = Number(vRate);
     if (aRate !== null) settings.audioRate = Number(aRate);
@@ -39,6 +45,9 @@ export default async function StudioPage() {
       settings.socials = { ...settings.socials, ...socials };
     }
     if (profileImage) (settings as any).profileImage = profileImage;
+    if (isLive !== null) settings.isLive = !!isLive;
+    if (templates) settings.templates = templates;
+    if (availability) settings.availability = availability;
   }
 
   return <StudioClient username={username || null} session={session} initialSettings={settings} />;

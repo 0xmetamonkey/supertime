@@ -153,14 +153,14 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
                 {[100, 500, 1000, 5000].map((tkn) => (
                   <button
                     key={tkn}
-                    onClick={() => handleRecharge(Math.floor(tkn / 10))} // Passing INR amount. 10 TKN = 1 INR
+                    onClick={() => handleRecharge(tkn)} // 1 TKN = 1 INR
                     disabled={loading}
                     className="relative group py-4 px-4 bg-zinc-800 rounded-xl hover:bg-purple-600 active:scale-95 transition-all text-left border border-zinc-700 hover:border-purple-500"
                   >
                     <span className="block text-xs text-zinc-400 group-hover:text-purple-200 mb-1">Get</span>
                     <span className="text-xl font-bold text-white group-hover:text-white">{tkn} TKN</span>
                     <span className="absolute top-4 right-4 text-xs font-mono text-zinc-500 group-hover:text-white opacity-50">
-                      ₹{Math.floor(tkn / 10)}
+                      ₹{tkn}
                     </span>
                   </button>
                 ))}
@@ -191,9 +191,6 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
                     [DEV MODE] FAUCET: +5000 TKN
                   </button>
                 )}
-                <button onClick={() => window.location.href = '/api/auth/signout'} className="text-xs text-red-500 font-bold hover:text-red-400 mt-2">
-                  Sign Out
-                </button>
               </div>
             </div>
           </div>

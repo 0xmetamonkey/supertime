@@ -41,9 +41,9 @@ export async function POST(req: NextRequest) {
       const order = await instance.orders.fetch(razorpay_order_id);
 
       // Amount is in paise. 100 paise = 1 INR.
-      // 1 INR = 10 TKN (example conversion rate)
+      // 1 INR = 1 TKN
       const amountInRupees = Number(order.amount) / 100;
-      const tokensToAdd = amountInRupees * 10;
+      const tokensToAdd = amountInRupees;
 
       // Credit Wallet using EMAIL as identifier
       if (process.env.KV_URL) {

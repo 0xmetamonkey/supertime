@@ -50,7 +50,6 @@ export default function RootLayout({
       >
         <ThemeProvider>
           {children}
-          <ThemeToggle />
         </ThemeProvider>
       </body>
     </html>
