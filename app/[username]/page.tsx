@@ -71,6 +71,7 @@ export default async function CreatorPage({ params }: Props) {
   let profileImage = "";
   let isLive = false;
   let templates: any[] = [];
+  let artifacts: any[] = [];
 
   if (ownerEmail && process.env.KV_URL) {
     isVerified = !!(await kv.get(`user:${ownerEmail}:verified`));
@@ -82,11 +83,13 @@ export default async function CreatorPage({ params }: Props) {
     const pImage = await kv.get(`user:${ownerEmail}:profileImage`);
     const liveStatus = await kv.get(`user:${ownerEmail}:isLive`);
     const tpls = await kv.get(`user:${ownerEmail}:templates`) as any[];
+    const arts = await kv.get(`user:${ownerEmail}:artifacts`) as any[];
     if (vRate !== null) videoRate = Number(vRate);
     if (aRate !== null) audioRate = Number(aRate);
     if (pImage) profileImage = String(pImage);
     if (liveStatus !== null) isLive = !!liveStatus;
     if (tpls) templates = tpls;
+    if (arts) artifacts = arts;
   }
 
   return (
@@ -102,6 +105,7 @@ export default async function CreatorPage({ params }: Props) {
       profileImage={profileImage}
       isLive={isLive}
       templates={templates}
+      artifacts={artifacts}
     />
   );
 }

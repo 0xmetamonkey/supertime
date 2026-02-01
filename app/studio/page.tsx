@@ -23,6 +23,7 @@ export default async function StudioPage() {
     isLive: false,
     templates: [] as any[],
     availability: {} as any,
+    artifacts: [] as any[],
   };
 
   if (email && process.env.KV_URL) {
@@ -33,6 +34,7 @@ export default async function StudioPage() {
     const isLive = await kv.get(`user:${email}:isLive`);
     const templates = await kv.get(`user:${email}:templates`) as any[];
     const availability = await kv.get(`user:${email}:availability`);
+    const artifacts = await kv.get(`user:${email}:artifacts`) as any[];
 
     if (vRate !== null) settings.videoRate = Number(vRate);
     if (aRate !== null) settings.audioRate = Number(aRate);
@@ -48,6 +50,7 @@ export default async function StudioPage() {
     if (isLive !== null) settings.isLive = !!isLive;
     if (templates) settings.templates = templates;
     if (availability) settings.availability = availability;
+    if (artifacts) settings.artifacts = artifacts;
   }
 
   return <StudioClient username={username || null} session={session} initialSettings={settings} />;

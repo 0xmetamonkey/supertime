@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
   const email = session.user.email.toLowerCase();
   const requestData = await req.json();
-  const { socials, videoRate, audioRate, isLive, templates, availability } = requestData;
+  const { socials, videoRate, audioRate, isLive, templates, availability, artifact } = requestData;
 
   try {
     if (process.env.KV_URL) {
@@ -21,6 +21,17 @@ export async function POST(req: NextRequest) {
       if (isLive !== undefined) await kv.set(`user:${email}:isLive`, isLive);
       if (templates !== undefined) await kv.set(`user:${email}:templates`, templates);
       if (availability !== undefined) await kv.set(`user:${email}:availability`, availability);
+
+      if (artifact) {
+        const existingArtifacts = await kv.get(`user:${email}:artifacts`) as any[] || [];
+        const newArtifact = {
+          id: Math.random().toString(36).slice(2, 9),
+          url: artifact,
+          timestamp: Date.now(),
+          type: 'video'
+        };
+        await kv.set(`user:${email}:artifacts`, [newArtifact, ...existingArtifacts]);
+      }
     }
 
     return NextResponse.json({ success: true });

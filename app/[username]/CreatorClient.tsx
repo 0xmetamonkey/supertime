@@ -23,6 +23,7 @@ interface CreatorClientProps {
   isLive?: boolean;
   templates?: any[];
   availability?: any;
+  artifacts?: any[];
 }
 
 export default function CreatorClient({
@@ -37,7 +38,8 @@ export default function CreatorClient({
   profileImage = "",
   isLive = false,
   templates = [],
-  availability = {}
+  availability = {},
+  artifacts = []
 }: CreatorClientProps) {
 
   const [guestId] = useState(() => Math.random().toString(36).slice(2, 7));
@@ -651,6 +653,36 @@ export default function CreatorClient({
                     </div>
                   )}
 
+                  {/* Artifacts/Recordings Section (Slick) */}
+                  {artifacts && artifacts.length > 0 && (
+                    <div className="w-full max-w-sm mt-8 pb-10">
+                      <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest text-center mb-4">Past Sessions & Highlights</h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        {artifacts.map((art: any) => (
+                          <div key={art.id} className="group relative aspect-video bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden hover:border-purple-500 transition-all">
+                            <video
+                              src={art.url}
+                              className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+                              onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
+                              onMouseLeave={(e) => (e.target as HTMLVideoElement).pause()}
+                              muted
+                              loop
+                            />
+                            <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black to-transparent">
+                              <p className="text-[8px] text-zinc-400 font-bold uppercase">{new Date(art.timestamp).toLocaleDateString()}</p>
+                            </div>
+                            <button
+                              onClick={() => window.open(art.url, '_blank')}
+                              className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <div className="bg-white text-black p-2 rounded-full font-black text-[10px] uppercase tracking-tighter">Watch</div>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Not logged in - show login prompt */}
                   {!isLoggedIn && (
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 mb-4">
@@ -883,6 +915,27 @@ export default function CreatorClient({
                 [ Schedule Session ]
               </button>
             </div>
+
+            {/* Artifacts Section (Brutalist) */}
+            {artifacts && artifacts.length > 0 && (
+              <div className="w-full mt-12 mb-10 text-left">
+                <label className="text-[10px] text-zinc-500 font-bold uppercase block mb-3 border-b border-zinc-800 pb-1">Artifact Library</label>
+                <div className="grid grid-cols-1 gap-2">
+                  {artifacts.map((art: any) => (
+                    <div key={art.id} className="border-2 border-zinc-800 p-2 flex gap-4 bg-black hover:border-white transition-all group">
+                      <div className="w-24 aspect-video bg-zinc-900 border border-zinc-800 overflow-hidden">
+                        <video src={art.url} className="w-full h-full object-cover grayscale group-hover:grayscale-0" muted />
+                      </div>
+                      <div className="flex flex-col justify-center">
+                        <p className="text-[10px] font-black text-white uppercase mb-1">Session Highlight #{art.id.toUpperCase()}</p>
+                        <p className="text-[8px] text-zinc-600 font-mono italic">{new Date(art.timestamp).toLocaleString()}</p>
+                        <a href={art.url} target="_blank" className="text-[8px] text-[#CEFF1A] font-bold mt-2 uppercase hover:underline">Download Material</a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Call Actions */}
             <div className="w-full grid gap-4">

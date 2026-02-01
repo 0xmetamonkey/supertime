@@ -8,9 +8,10 @@ interface SuperCallProps {
   channelName: string;
   type?: 'audio' | 'video' | string | null;
   onDisconnect: () => void;
+  onSaveArtifact?: (url: string) => void;
 }
 
-export default function SuperCall({ channelName, type, onDisconnect }: SuperCallProps) {
+export default function SuperCall({ channelName, type, onDisconnect, onSaveArtifact }: SuperCallProps) {
   return (
     <div className="fixed inset-0 z-50 bg-black text-white overflow-hidden">
       <ErrorBoundary>
@@ -18,6 +19,7 @@ export default function SuperCall({ channelName, type, onDisconnect }: SuperCall
           channelName={channelName}
           type={type === 'video' ? 'video' : 'audio'}
           onDisconnect={onDisconnect}
+          onSaveArtifact={onSaveArtifact}
         />
       </ErrorBoundary>
     </div>

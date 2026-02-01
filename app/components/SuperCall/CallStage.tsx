@@ -12,15 +12,22 @@ interface CallStageProps {
   channelName: string;
   type: string | null;
   onDisconnect: () => void;
+  onSaveArtifact?: (url: string) => void;
 }
 
-export default function CallStage({ channelName, type, onDisconnect }: CallStageProps) {
+export default function CallStage({ channelName, type, onDisconnect, onSaveArtifact }: CallStageProps) {
   const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID!;
   const [client, setClient] = useState<IAgoraRTCClient | null>(null);
   const [localTracks, setLocalTracks] = useState<any>(null);
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
   const [uid] = useState(Math.floor(Math.random() * 1000000));
   const [volumes, setVolumes] = useState<Record<string, number>>({});
+
+  // Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   // Dragging state for PiP
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -162,6 +169,75 @@ export default function CallStage({ channelName, type, onDisconnect }: CallStage
     }
   };
 
+  const startRecording = async () => {
+    try {
+      const stream = new MediaStream();
+
+      // Add local tracks
+      if (localTracks) {
+        localTracks.forEach((track: any) => {
+          const mediaTrack = track.getMediaStreamTrack();
+          if (mediaTrack) stream.addTrack(mediaTrack);
+        });
+      }
+
+      // Add remote tracks (mixing would be better but this is MVP)
+      remoteUsers.forEach(user => {
+        if (user.audioTrack) stream.addTrack(user.audioTrack.getMediaStreamTrack());
+        if (user.videoTrack) stream.addTrack(user.videoTrack.getMediaStreamTrack());
+      });
+
+      if (stream.getTracks().length === 0) {
+        alert("No active tracks to record");
+        return;
+      }
+
+      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+        await uploadRecording(blob);
+      };
+
+      recorder.start();
+      setIsRecording(true);
+    } catch (e) {
+      console.error("Recording start failed", e);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const uploadRecording = async (blob: Blob) => {
+    setIsUploading(true);
+    try {
+      const filename = `recording-${Date.now()}.webm`;
+      const res = await fetch(`/api/upload?filename=${filename}`, {
+        method: 'POST',
+        body: blob
+      });
+      const data = await res.json();
+      if (data.url && onSaveArtifact) {
+        onSaveArtifact(data.url);
+      }
+    } catch (e) {
+      console.error("Upload failed", e);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const mainRemoteUser = remoteUsers.find(u => u.videoTrack) || remoteUsers[0];
 
   return (
@@ -238,6 +314,17 @@ export default function CallStage({ channelName, type, onDisconnect }: CallStage
           )}
           <button onClick={onDisconnect} className="w-14 h-14 rounded-full bg-red-600 flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform">
             <span className="text-xl">📞</span>
+          </button>
+
+          <div className="w-[1px] h-8 bg-white/10 my-auto" />
+
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={isUploading}
+            className={`w-14 h-14 rounded-full flex flex-col items-center justify-center transition-all ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-white/10 text-white hover:bg-white/20'}`}
+          >
+            <span className="text-xl">{isUploading ? '⌛' : (isRecording ? '⏹️' : '⏺️')}</span>
+            <span className="text-[8px] font-bold mt-[-4px]">{isUploading ? 'SAVING' : (isRecording ? 'STOP' : 'REC')}</span>
           </button>
         </div>
       </div>

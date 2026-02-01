@@ -46,6 +46,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
     saturday: { active: false, start: '09:00', end: '17:00' },
     sunday: { active: false, start: '09:00', end: '17:00' },
   });
+  const [artifacts, setArtifacts] = useState<any[]>(initialSettings?.artifacts || []);
   const [isUploading, setIsUploading] = useState(false);
 
   const saveSettings = async () => {
@@ -205,6 +206,26 @@ export default function StudioClient({ username, session, initialSettings }: { u
     const interval = setInterval(fetchBookings, 20000);
     return () => clearInterval(interval);
   }, [username]);
+
+  const handleSaveArtifact = async (url: string) => {
+    try {
+      await fetch('/api/studio/update', {
+        method: 'POST',
+        body: JSON.stringify({ artifact: url })
+      });
+      // Update local state
+      const newArtifact = {
+        id: Math.random().toString(36).slice(2, 9),
+        url,
+        timestamp: Date.now(),
+        type: 'video'
+      };
+      setArtifacts(prev => [newArtifact, ...prev]);
+      alert("Highlight saved to profile!");
+    } catch (e) {
+      console.error("Failed to save artifact", e);
+    }
+  };
 
   const answerCall = async () => {
     if (!incomingCall) return;
@@ -420,6 +441,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
           channelName={activeChannelName || `supertime-${username}`}
           type={callType}
           onDisconnect={handleEndCall}
+          onSaveArtifact={handleSaveArtifact}
         />
       </div>
     );

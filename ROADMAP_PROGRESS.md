@@ -23,3 +23,10 @@
 - [x] Improve mobile responsiveness and visual hierarchy.
 - [x] Refine call stage interactions and billing visualizers.
 - [x] Standardize Brutalist theme with high-contrast elements.
+
+## Phase 5: Call Recording & Artifacts [DONE]
+- [x] Implement `MediaRecorder` logic in `CallStage`.
+- [x] Add recording UI (⏺️ REC button) to the call controls.
+- [x] Auto-upload recordings to `@vercel/blob` on stop.
+- [x] Save recording URLs as "Artifacts" to creator KV data.
+- [x] Display "Artifact Library" on the public profile.
