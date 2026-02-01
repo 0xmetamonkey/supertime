@@ -30,3 +30,10 @@
 - [x] Auto-upload recordings to `@vercel/blob` on stop.
 - [x] Save recording URLs as "Artifacts" to creator KV data.
 - [x] Display "Artifact Library" on the public profile.
+
+## Phase 6: Recording Consent [DONE]
+- [x] Implement Agora Stream Messaging for in-call signaling.
+- [x] Add recording request logic (REQ_REC).
+- [x] Implement consent overlay for the other party.
+- [x] Create consent response logic (RES_REC_OK / RES_REC_NO).
+- [x] Ensure recording only starts after explicit consent is granted.

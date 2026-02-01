@@ -23,11 +23,13 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
   const [uid] = useState(Math.floor(Math.random() * 1000000));
   const [volumes, setVolumes] = useState<Record<string, number>>({});
 
-  // Recording State
+  // Recording & Consent State
   const [isRecording, setIsRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [consentState, setConsentState] = useState<'idle' | 'requesting' | 'pending_approval' | 'granted' | 'denied'>('idle');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const dataStreamIdRef = useRef<number | null>(null);
 
   // Dragging state for PiP
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -98,6 +100,10 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
         tracksRef.current = tracks;
         await client.publish(tracks);
 
+        // Initialize Data Stream for Consent/Signals
+        const dsId = (client as any).createDataStream({ reliable: true, ordered: true });
+        dataStreamIdRef.current = dsId;
+
       } catch (err: any) {
         console.error("Connection error:", err);
         // Throwing error so ErrorBoundary can catch it
@@ -112,6 +118,27 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
       await client.subscribe(user, mediaType);
       setRemoteUsers(prev => [...prev.filter(u => u.uid !== user.uid), user]);
       if (mediaType === 'audio') user.audioTrack?.play();
+    });
+
+    client.on('stream-message', (uid, data) => {
+      try {
+        const decoded = new TextDecoder().decode(data);
+        const json = JSON.parse(decoded);
+        console.log('[CallStage] Received stream message:', json);
+
+        if (json.type === 'REQ_REC') {
+          setConsentState('pending_approval');
+        } else if (json.type === 'RES_REC_OK') {
+          setConsentState('granted');
+          // In practice, we'd start recording here if we were the requestor
+        } else if (json.type === 'RES_REC_NO') {
+          setConsentState('denied');
+          setIsRecording(false);
+          alert("Recording consent was denied.");
+        }
+      } catch (e) {
+        console.error("Stream message parse error", e);
+      }
     });
 
     client.on('user-unpublished', (user, mediaType) => {
@@ -169,6 +196,30 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
     }
   };
 
+  const sendSignal = (msg: any) => {
+    if (client && dataStreamIdRef.current !== null) {
+      const encoded = new TextEncoder().encode(JSON.stringify(msg));
+      (client as any).sendStreamMessage(dataStreamIdRef.current, encoded);
+    }
+  };
+
+  const requestRecording = () => {
+    setConsentState('requesting');
+    sendSignal({ type: 'REQ_REC' });
+  };
+
+  const respondToConsent = (granted: boolean) => {
+    setConsentState(granted ? 'granted' : 'denied');
+    sendSignal({ type: granted ? 'RES_REC_OK' : 'RES_REC_NO' });
+  };
+
+  useEffect(() => {
+    if (consentState === 'granted' && !isRecording && !isUploading && onSaveArtifact) {
+      // Only the party with a save destination actually triggers the recording
+      startRecording();
+    }
+  }, [consentState, onSaveArtifact]);
+
   const startRecording = async () => {
     try {
       const stream = new MediaStream();
@@ -209,6 +260,7 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
       setIsRecording(true);
     } catch (e) {
       console.error("Recording start failed", e);
+      setConsentState('idle');
     }
   };
 
@@ -216,6 +268,7 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      setConsentState('idle');
     }
   };
 
@@ -319,15 +372,40 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
           <div className="w-[1px] h-8 bg-white/10 my-auto" />
 
           <button
-            onClick={isRecording ? stopRecording : startRecording}
-            disabled={isUploading}
-            className={`w-14 h-14 rounded-full flex flex-col items-center justify-center transition-all ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-white/10 text-white hover:bg-white/20'}`}
+            onClick={isRecording ? stopRecording : requestRecording}
+            disabled={isUploading || consentState === 'requesting'}
+            className={`w-14 h-14 rounded-full flex flex-col items-center justify-center transition-all ${isRecording ? 'bg-red-500 animate-pulse' : (consentState === 'requesting' ? 'bg-zinc-700' : 'bg-white/10 text-white hover:bg-white/20')}`}
           >
-            <span className="text-xl">{isUploading ? '⌛' : (isRecording ? '⏹️' : '⏺️')}</span>
-            <span className="text-[8px] font-bold mt-[-4px]">{isUploading ? 'SAVING' : (isRecording ? 'STOP' : 'REC')}</span>
+            <span className="text-xl">{isUploading || consentState === 'requesting' ? '⌛' : (isRecording ? '⏹️' : '⏺️')}</span>
+            <span className="text-[8px] font-bold mt-[-4px]">{isUploading ? 'SAVING' : (consentState === 'requesting' ? 'WAIT' : (isRecording ? 'STOP' : 'REC'))}</span>
           </button>
         </div>
       </div>
+
+      {/* CONSENT MODAL */}
+      {consentState === 'pending_approval' && (
+        <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 text-center">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-sm animate-in zoom-in duration-300">
+            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">⏺️</div>
+            <h2 className="text-xl font-bold mb-2">Recording Consent</h2>
+            <p className="text-zinc-400 text-sm mb-6">The creator would like to record this session for the Artifact Library. Do you consent to being recorded?</p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => respondToConsent(false)}
+                className="flex-1 py-3 bg-zinc-800 text-white font-bold rounded-2xl hover:bg-zinc-700 transition-colors"
+              >
+                Decline
+              </button>
+              <button
+                onClick={() => respondToConsent(true)}
+                className="flex-1 py-3 bg-[#CEFF1A] text-black font-black rounded-2xl hover:bg-[#dfff5e] transition-colors"
+              >
+                I Consent
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx global>{`
         video { object-fit: cover !important; width: 100% !important; height: 100% !important; border-radius: inherit; }
