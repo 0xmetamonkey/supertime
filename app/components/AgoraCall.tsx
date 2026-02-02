@@ -101,7 +101,7 @@ function CallLogic({
   uid: number;
   onDisconnect: () => void;
 }) {
-  const { isLoading: isJoining } = useJoin(
+  const { isLoading: isJoining, isConnected } = useJoin(
     { appid: appId, channel: channel, token: token, uid: uid },
     true
   );
@@ -109,12 +109,12 @@ function CallLogic({
   const [micOn, setMicOn] = useState(true);
   const [cameraOn, setCameraOn] = useState(true);
 
-  // Local Tracks
-  const { localMicrophoneTrack } = useLocalMicrophoneTrack(micOn);
-  const { localCameraTrack } = useLocalCameraTrack(cameraOn);
+  // Local Tracks - only create after connected
+  const { localMicrophoneTrack } = useLocalMicrophoneTrack(micOn && isConnected);
+  const { localCameraTrack } = useLocalCameraTrack(cameraOn && isConnected);
 
-  // Publish
-  usePublish([localMicrophoneTrack, localCameraTrack]);
+  // Publish - only after connected and tracks exist
+  usePublish(isConnected ? [localMicrophoneTrack, localCameraTrack] : []);
 
   // Remote Users
   const remoteUsers = useRemoteUsers();
