@@ -34,7 +34,6 @@ interface CreatorClientProps {
   artifacts?: any[];
   roomType?: 'audio' | 'video';
   isRoomFree?: boolean;
-  studioMode?: 'solitude' | 'theatre' | 'private';
 }
 
 export default function CreatorClient({
@@ -52,8 +51,7 @@ export default function CreatorClient({
   availability = {},
   artifacts = [],
   roomType = 'audio',
-  isRoomFree = true,
-  studioMode = 'solitude'
+  isRoomFree = true
 }: CreatorClientProps) {
 
   const [guestId] = useState(() => Math.random().toString(36).slice(2, 7));
@@ -62,7 +60,7 @@ export default function CreatorClient({
   const router = useRouter();
 
   // State
-  const [balance, setBalance] = useState<number>(5000); // TEST MODE: Free Tokens
+  const [balance, setBalance] = useState<number>(0);
   const [isCalling, setIsCalling] = useState(false);
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -79,13 +77,10 @@ export default function CreatorClient({
   const lastDeductMinuteRef = useRef<number>(0);
 
   const handleJoinRoom = async () => {
-    // GUEST MODE
-    /*
     if (!isLoggedIn && !isRoomFree) {
       loginWithGoogle(window.location.pathname);
       return;
     }
-    */
 
     if (isOwner) {
       window.location.href = '/studio';
@@ -123,21 +118,15 @@ export default function CreatorClient({
   };
 
   const handleStartCall = async (type: 'audio' | 'video') => {
-    // GUEST MODE
-    /*
     if (!isLoggedIn) {
       loginWithGoogle(window.location.pathname);
       return;
     }
-    */
 
-    // Self-call check bypassed for development testing
-    /*
     if (isOwner) {
       showError("You can't call yourself! Go to Studio to receive calls.");
       return;
     }
-    */
 
     const currentRate = type === 'video' ? videoRate : audioRate;
 
@@ -403,13 +392,13 @@ export default function CreatorClient({
             <motion.div
               initial={{ scale: 0.9, rotate: -2 }}
               animate={{ scale: 1, rotate: 0 }}
-              className="bg-white border-8 border-black shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] md:shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-6 md:p-12 max-w-sm w-full text-center"
+              className="bg-white border-8 border-black shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-12 max-w-sm w-full text-center"
             >
-              <div className="w-16 h-16 md:w-24 md:h-24 bg-neo-pink border-4 border-black mx-auto mb-6 flex items-center justify-center text-3xl md:text-4xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+              <div className="w-24 h-24 bg-neo-pink border-4 border-black mx-auto mb-6 flex items-center justify-center text-4xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
                 👤
               </div>
-              <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter mb-2 break-words">{incomingCall.from || 'Guest'}</h2>
-              <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] mb-8 md:mb-12 text-zinc-400">Incoming {incomingCall.type} call</p>
+              <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-2">{incomingCall.from || 'Guest'}</h2>
+              <p className="text-xs font-black uppercase tracking-[0.2em] mb-12 text-zinc-400">Incoming {incomingCall.type} call</p>
               <div className="flex gap-4">
                 <button onClick={handleRejectCall} className="flex-1 neo-btn bg-red-500 text-white py-4">REJECT</button>
                 <button onClick={() => handleAcceptCall(incomingCall.type)} className="flex-1 neo-btn bg-neo-green text-black py-4 animate-bounce">ACCEPT</button>
@@ -421,14 +410,14 @@ export default function CreatorClient({
 
       {isCalling && activeChannelName && (
         <div className="fixed inset-0 z-[300] bg-black">
-          <div className="absolute top-4 right-4 md:top-24 md:left-6 z-[310] flex flex-col gap-2 items-end md:items-start">
-            <div className="bg-neo-yellow border-4 border-black p-2 md:p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] md:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-black">
+          <div className="absolute top-24 left-6 z-[310] flex flex-col gap-2">
+            <div className="bg-neo-yellow border-4 border-black p-3 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-black">
               <p className="text-[10px] font-black uppercase mb-1">Live Connection</p>
-              <p className="text-sm md:text-lg font-black tabular-nums">{formatTime(callDuration)}</p>
+              <p className="text-lg font-black tabular-nums">{formatTime(callDuration)}</p>
             </div>
-            <div className="bg-neo-pink border-4 border-black p-2 md:p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] md:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-white">
+            <div className="bg-neo-pink border-4 border-black p-3 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-white">
               <p className="text-[10px] font-black uppercase mb-1 text-white/80">Energy Exchange</p>
-              <p className="text-sm md:text-lg font-black tabular-nums">{tokensSpent} TKN</p>
+              <p className="text-lg font-black tabular-nums">{tokensSpent} TKN</p>
             </div>
           </div>
           <AgoraCall
@@ -439,11 +428,11 @@ export default function CreatorClient({
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 md:pt-32">
-        <div className="grid lg:grid-cols-12 gap-8 md:gap-12">
+      <main className="max-w-7xl mx-auto px-6 pt-32">
+        <div className="grid lg:grid-cols-12 gap-12">
           <div className="lg:col-span-5 space-y-8">
             <div className="relative inline-block">
-              <div className="w-32 h-32 md:w-48 md:h-48 bg-white border-4 md:border-8 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] md:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+              <div className="w-48 h-48 bg-white border-8 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
                 {profileImage ? (
                   <img src={profileImage} alt={username} className="w-full h-full object-cover" />
                 ) : (
@@ -455,9 +444,9 @@ export default function CreatorClient({
               )}
             </div>
             <div className="space-y-4">
-              <h1 className="text-4xl md:text-7xl font-black uppercase leading-[0.9] md:leading-[0.8] tracking-tighter flex items-center gap-2 md:gap-4 flex-wrap break-words">
+              <h1 className="text-7xl font-black uppercase leading-[0.8] tracking-tighter flex items-center gap-4 flex-wrap">
                 {username}
-                {isVerified && <Zap className="w-8 h-8 md:w-12 md:h-12 text-neo-blue fill-neo-blue" />}
+                {isVerified && <Zap className="w-12 h-12 text-neo-blue fill-neo-blue" />}
               </h1>
               <div className="flex gap-4 flex-wrap">
                 <button
@@ -482,7 +471,7 @@ export default function CreatorClient({
             ) : (
               <div className="space-y-4">
                 {isLive && (
-                  <button onClick={handleJoinRoom} className="w-full neo-btn bg-neo-green text-black py-6 md:py-8 flex flex-col items-center gap-3 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] md:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] md:hover:translate-x-[4px] md:hover:translate-y-[4px] transition-all relative group mb-6">
+                  <button onClick={handleJoinRoom} className="w-full neo-btn bg-neo-green text-black py-8 flex flex-col items-center gap-3 border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[4px] hover:translate-y-[4px] transition-all relative group mb-6">
                     <div className="flex items-center gap-4 relative z-10 w-full px-6 text-left">
                       <div className="w-16 h-16 bg-white flex items-center justify-center border-4 border-black rounded-full text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                         <Mic className={`w-8 h-8 ${roomType === 'video' ? 'text-neo-pink' : 'text-neo-blue'}`} />
@@ -499,13 +488,13 @@ export default function CreatorClient({
                   </button>
                 )}
                 <div className="grid grid-cols-2 gap-4">
-                  <button onClick={() => handleStartCall('video')} className="neo-btn bg-neo-pink text-white py-6 md:py-8 flex flex-col items-center border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] md:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transition-all">
-                    <span className="text-xl md:text-2xl font-black">VIDEO</span>
-                    <span className="text-[10px] md:text-xs font-bold opacity-80">{videoRate} TKN/MIN</span>
+                  <button onClick={() => handleStartCall('video')} className="neo-btn bg-neo-pink text-white py-8 flex flex-col items-center border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transition-all">
+                    <span className="text-2xl font-black">VIDEO</span>
+                    <span className="text-xs font-bold opacity-80">{videoRate} TKN/MIN</span>
                   </button>
-                  <button onClick={() => handleStartCall('audio')} className="neo-btn bg-neo-blue text-white py-6 md:py-8 flex flex-col items-center border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] md:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transition-all">
-                    <span className="text-xl md:text-2xl font-black">AUDIO</span>
-                    <span className="text-[10px] md:text-xs font-bold opacity-80">{audioRate} TKN/MIN</span>
+                  <button onClick={() => handleStartCall('audio')} className="neo-btn bg-neo-blue text-white py-8 flex flex-col items-center border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transition-all">
+                    <span className="text-2xl font-black">AUDIO</span>
+                    <span className="text-xs font-bold opacity-80">{audioRate} TKN/MIN</span>
                   </button>
                 </div>
                 <div className="bg-neo-yellow border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">

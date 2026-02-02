@@ -2,6 +2,7 @@ import { auth } from "../../auth";
 import CreatorClient from "./CreatorClient";
 import { kv } from "@vercel/kv";
 import { Metadata } from 'next';
+import { trackEvent } from "../lib/analytics";
 
 type Props = {
   params: Promise<{ username: string }>
@@ -97,6 +98,7 @@ export default async function CreatorPage({ params }: Props) {
     const liveStatus = await kv.get(`user:${ownerEmail}:isLive`);
     const roomType = await kv.get(`user:${ownerEmail}:roomType`);
     const isRoomFree = await kv.get(`user:${ownerEmail}:isRoomFree`);
+    const studioMode = await kv.get(`user:${ownerEmail}:mode`) || 'solitude';
     const tpls = await kv.get(`user:${ownerEmail}:templates`) as any[];
     const arts = await kv.get(`user:${ownerEmail}:artifacts`) as any[];
     if (vRate !== null) videoRate = Number(vRate);
@@ -108,6 +110,12 @@ export default async function CreatorPage({ params }: Props) {
     if (arts) artifacts = arts;
     (socials as any).roomType = roomType || 'audio';
     (socials as any).isRoomFree = isRoomFree === null ? true : !!isRoomFree;
+    (socials as any).studioMode = studioMode;
+
+    // Track Profile View (Server-side)
+    if (!isOwner) {
+      await trackEvent(username, "view");
+    }
   }
 
   return (

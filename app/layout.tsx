@@ -12,14 +12,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-
-
 export const viewport: Viewport = {
   themeColor: '#000000',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false, // Prevents zooming on inputs, app-like feel
+  userScalable: false,
 }
 
 export const metadata: Metadata = {
@@ -30,13 +28,11 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
     title: 'Supertime',
   },
+  manifest: '/manifest.json',
   formatDetection: {
     telephone: false,
   },
 };
-
-import { ThemeProvider } from "./context/ThemeContext";
-import ThemeToggle from "./components/ThemeToggle";
 
 export default function RootLayout({
   children,
@@ -48,9 +44,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+        {children}
       </body>
     </html>
   );

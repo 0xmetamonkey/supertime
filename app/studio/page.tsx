@@ -36,7 +36,8 @@ export default async function StudioPage() {
     const isRoomFree = await kv.get(`user:${email}:isRoomFree`);
     const templates = await kv.get(`user:${email}:templates`) as any[];
     const availability = await kv.get(`user:${email}:availability`);
-    const artifacts = await kv.get(`user:${email}:artifacts`) as any[];
+    const artifacts = await kv.get(`user:${email}:artifacts`) as any[] || [];
+    const mode = await kv.get(`user:${email}:mode`) || 'solitude';
 
     if (vRate !== null) settings.videoRate = Number(vRate);
     if (aRate !== null) settings.audioRate = Number(aRate);
@@ -56,6 +57,7 @@ export default async function StudioPage() {
     if (templates) settings.templates = templates;
     if (availability) settings.availability = availability;
     if (artifacts) settings.artifacts = artifacts;
+    (settings as any).mode = mode;
   }
 
   return <StudioClient username={username || null} session={session} initialSettings={settings} />;

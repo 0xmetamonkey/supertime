@@ -1,11 +1,14 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { Zap } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 type WalletProps = {
   onBalanceChange: (balance: number) => void;
 };
 
 export default function WalletManager({ onBalanceChange }: WalletProps) {
+  const router = useRouter();
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [showRecharge, setShowRecharge] = useState(false);
@@ -117,81 +120,16 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
   return (
     <>
       <button
-        onClick={() => setShowRecharge(true)}
-        className="flex items-center gap-2 bg-white dark:bg-black border-4 border-black dark:border-white px-4 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_theme(colors.neo-pink)] transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+        onClick={() => router.push('/wallet')}
+        className="flex items-center gap-2 bg-white dark:bg-black border-4 border-black dark:border-white px-4 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_theme(colors.neo-pink)] transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none translate-x-[-2px] translate-y-[-2px]"
       >
         <span className="text-black dark:text-white font-black text-sm tabular-nums">
           {balance === null ? '...' : balance} <span className="text-[10px]">TKN</span>
         </span>
-        <div className="w-6 h-6 bg-neo-green border-2 border-black flex items-center justify-center text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+        <div className="w-6 h-6 bg-neo-green border-2 border-black flex items-center justify-center text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] group-hover:bg-neo-yellow">
           +
         </div>
       </button>
-
-      {/* Recharge Modal Overlay */}
-      {showRecharge && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-6">
-          <div className="w-full max-w-md bg-white dark:bg-zinc-900 border-8 border-black dark:border-white shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] dark:shadow-[24px_24px_0px_0px_theme(colors.neo-pink)] p-8 relative overflow-hidden">
-
-            <div className="flex justify-between items-start mb-8 pb-4 border-b-4 border-black dark:border-white">
-              <h2 className="text-3xl font-black uppercase italic tracking-tighter">Energy Vault</h2>
-              <button
-                onClick={() => setShowRecharge(false)}
-                className="w-10 h-10 border-4 border-black dark:border-white flex items-center justify-center font-black hover:bg-red-500 hover:text-white transition-all text-xl"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-widest mb-8 leading-relaxed">
-              Exchange your currency for <span className="text-neo-pink font-black">Super Tokens</span>. 1 TKN = ₹1.00
-            </p>
-
-            <div className="grid grid-cols-2 gap-4 mb-10">
-              {[100, 500, 1000, 5000].map((tkn) => (
-                <button
-                  key={tkn}
-                  onClick={() => handleRecharge(tkn)}
-                  disabled={loading}
-                  className="neo-box bg-white dark:bg-black p-4 text-left hover:bg-neo-yellow dark:hover:bg-neo-yellow transition-colors group"
-                >
-                  <p className="text-[10px] font-black uppercase text-zinc-400 group-hover:text-black">Get Pack</p>
-                  <p className="text-2xl font-black tabular-nums group-hover:text-black">{tkn} <span className="text-xs">TKN</span></p>
-                  <p className="text-[10px] font-bold text-neo-pink font-mono mt-2">₹{tkn}.00</p>
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-4">
-              {loading && (
-                <div className="text-center py-4 bg-neo-blue text-white font-black uppercase italic animate-pulse border-4 border-black">
-                  Securing Transaction...
-                </div>
-              )}
-
-              {process.env.NODE_ENV === 'development' && (
-                <button
-                  onClick={async () => {
-                    await fetch('/api/wallet', {
-                      method: 'POST',
-                      body: JSON.stringify({ action: 'dev_faucet' })
-                    });
-                    fetchBalance();
-                    alert("Dev Faucet: Added 5000 TKN");
-                  }}
-                  className="w-full neo-btn bg-neo-green text-black py-4 hover:bg-neo-green/80"
-                >
-                  DEV FAUCET: +5000 TKN
-                </button>
-              )}
-            </div>
-
-            <p className="mt-8 text-[10px] font-black uppercase text-zinc-400 text-center tracking-[0.2em]">
-              Verified Secure by Razorpay
-            </p>
-          </div>
-        </div>
-      )}
     </>
   );
 }

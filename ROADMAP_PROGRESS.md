@@ -38,9 +38,9 @@
 - [x] Create consent response logic (RES_REC_OK / RES_REC_NO).
 - [x] Ensure recording only starts after explicit consent is granted.
 
-## Phase 7: Live Analytics & Performance [PLANNED]
-- [ ] Implement visitor tracking for Creator Profiles.
-- [ ] Add "Session History" data visualization (Earnings over time).
+## Phase 7: Live Analytics & Performance [IN PROGRESS]
+- [x] Implement visitor tracking for Creator Profiles.
+- [x] Add "Session History" data visualization (Earnings over time).
 - [ ] Optimize Agora connection speeds and retry logic.
 - [ ] Implement SEO metadata for social sharing.
 

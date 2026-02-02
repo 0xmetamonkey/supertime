@@ -99,6 +99,9 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
 
         setLocalTracks(tracks);
         tracksRef.current = tracks;
+
+        // JOIN CHANNEL BEFORE PUBLISHING
+        await client.join(appId, channelName, data.token, uid);
         await client.publish(tracks);
 
         // Initialize Data Stream for Consent/Signals

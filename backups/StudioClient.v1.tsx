@@ -16,16 +16,7 @@ import {
   Calendar,
   Clock,
   Sparkles,
-  ArrowRight,
-  Users,
-  Lock,
-  Shield,
-  Infinity as InfinityIcon,
-  ExternalLink,
-  ChevronRight,
-  Eye,
-  Camera,
-  Play
+  ArrowRight
 } from 'lucide-react';
 import { logout, checkAvailability, claimUsername } from '../actions';
 import dynamic from 'next/dynamic';
@@ -70,22 +61,6 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [upiId, setUpiId] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
-
-  // Mode Logic
-  const [studioMode, setStudioMode] = useState<'solitude' | 'theatre' | 'private'>(initialSettings?.mode || 'solitude');
-
-  const handleModeChange = async (newMode: 'solitude' | 'theatre' | 'private') => {
-    setStudioMode(newMode);
-    try {
-      await fetch('/api/studio/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: newMode })
-      });
-    } catch (e) {
-      console.error("Failed to update mode", e);
-    }
-  };
 
   const fetchDetailedWallet = async () => {
     try {
@@ -216,24 +191,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
       try {
         const res = await fetch(`/api/call/signal?username=${username}`);
         const data = await res.json();
-        // console.log("Studio Polling Signal:", data); 
-
-        // HYBRID HANDLER: Supports both v1 (Live) and v2 (Local) signal formats
-        if (data.incoming) {
-          console.log("INCOMING (V2):", data.incoming);
-          setIncomingCall(data.incoming);
-        } else if (data.active && data.from) {
-          // Legacy support for deployed version
-          console.log("INCOMING (V1):", data);
-          setIncomingCall({
-            from: data.from,
-            type: data.type || 'audio',
-            channelName: data.channelName
-          });
-        }
-      } catch (e) {
-        console.error("Polling Error:", e);
-      }
+        if (data.incoming) setIncomingCall(data.incoming);
+      } catch (e) { }
     }, 3000);
     return () => clearInterval(interval);
   }, [isLive, isCalling, username]);
@@ -413,43 +372,6 @@ export default function StudioClient({ username, session, initialSettings }: { u
       </nav>
 
       <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
-
-        {/* FLIGHT DECK: MODE SWITCHER */}
-        <div className="mb-12">
-          <div className="flex flex-col md:flex-row gap-6 items-stretch">
-            <div className="flex-1 bg-black border-4 border-black p-2 flex gap-1 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-              {[
-                { id: 'solitude', icon: Shield, label: 'Solitude', desc: 'Private focus' },
-                { id: 'theatre', icon: Globe, label: 'Theatre', desc: 'Public room' },
-                { id: 'private', icon: Lock, label: 'Private', desc: '1:1 Session' }
-              ].map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => handleModeChange(m.id as any)}
-                  className={`flex-1 flex flex-col items-center justify-center py-4 px-2 transition-all ${studioMode === m.id ? 'bg-neo-green text-black' : 'bg-zinc-900 text-zinc-500 hover:text-white'}`}
-                >
-                  <m.icon className={`w-6 h-6 mb-1 ${studioMode === m.id ? 'animate-pulse' : ''}`} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">{m.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="bg-neo-blue border-4 border-black p-6 flex flex-col justify-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-white flex-1 md:flex-[0_0_300px]">
-              <div className="flex items-center gap-3 mb-1">
-                <div className={`w-3 h-3 rounded-full ${studioMode === 'solitude' ? 'bg-zinc-500' : 'bg-neo-green animate-ping'}`} />
-                <p className="text-[10px] font-black uppercase tracking-[0.3em]">
-                  {studioMode === 'solitude' ? 'Ghost Mode' : studioMode === 'theatre' ? 'Broadcasting Public' : 'Private Session'}
-                </p>
-              </div>
-              <p className="text-xl font-black italic uppercase tracking-tighter">
-                {studioMode === 'solitude' && "The Lab is yours."}
-                {studioMode === 'theatre' && "The Room is Open."}
-                {studioMode === 'private' && "Exchanging Energy."}
-              </p>
-            </div>
-          </div>
-        </div>
-
         <div className="grid lg:grid-cols-12 gap-12">
 
           {/* LEFT COLUMN: CONTROL PANEL */}
@@ -463,15 +385,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
                 )}
               </div>
               <h2 className="text-3xl font-black uppercase text-center mb-2 tracking-tighter italic text-black">{username}</h2>
-              {/* DEBUG DASHBOARD (DEV ONLY) */}
-              <div className="bg-zinc-900 border-4 border-black p-4 text-[10px] font-mono text-neo-green mb-8">
-                <p className="uppercase text-white border-b border-white/20 pb-1 mb-2">System Status</p>
-                <p>ID: <span className="text-white">{username}</span></p>
-                <p>Mode: <span className="text-white">{studioMode}</span></p>
-                <p>Signal: <span className="text-white">{incomingCall ? 'ACTIVE' : 'IDLE'}</span></p>
-                <p>Live: <span className="text-white">{isLive ? 'YES' : 'NO'}</span></p>
-                <p>Calling: <span className="text-white">{isCalling ? 'YES' : 'NO'}</span></p>
-              </div>
+              <p className="text-center font-bold text-zinc-400 uppercase text-[10px] tracking-widest mb-8">Creator Studio Instance</p>
 
               <button
                 onClick={async () => {
@@ -563,206 +477,68 @@ export default function StudioClient({ username, session, initialSettings }: { u
               )}
             </AnimatePresence>
 
-            {studioMode === 'solitude' ? (
-              <div className="space-y-12">
-                {/* SOLITUDE LAB STAGE */}
-                <div className="neo-box bg-black p-8 border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] text-white">
-                  <div className="flex justify-between items-center mb-8">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                      <h3 className="text-3xl font-black uppercase italic tracking-tighter">Solitude Lab</h3>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-1 bg-zinc-800 text-[10px] font-black uppercase border-2 border-black">
-                      <Shield className="w-3 h-3 text-neo-green" /> Offline
-                    </div>
-                  </div>
-
-                  <div className="relative aspect-video bg-zinc-900 border-4 border-white/10 overflow-hidden mb-8 group">
-                    <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-40 transition-opacity">
-                      <Zap className="w-32 h-32" />
-                    </div>
-                    {/* Simulated Stage Feed */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-8">
-                      <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">Preview Active</p>
-                      <h4 className="text-2xl font-black uppercase tracking-tighter">System Baseline</h4>
-                    </div>
-
-                    <div className="absolute top-6 left-6 flex gap-2">
-                      <div className="bg-neo-pink text-[8px] font-black uppercase px-2 py-0.5 border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">DEV_ENV</div>
-                      <div className="bg-white text-black text-[8px] font-black uppercase px-2 py-0.5 border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">4K_READY</div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-zinc-800 border-4 border-black hover:bg-neo-pink hover:text-white transition-all group">
-                      <Camera className="w-6 h-6" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Snapshot</span>
-                    </button>
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-zinc-800 border-4 border-black hover:bg-neo-blue hover:text-white transition-all group">
-                      <Play className="w-6 h-6" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Record</span>
-                    </button>
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-zinc-800 border-4 border-black hover:bg-neo-green hover:text-black transition-all group">
-                      <Users className="w-6 h-6" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Training</span>
-                    </button>
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-zinc-800 border-4 border-black hover:bg-neo-yellow hover:text-black transition-all group">
-                      <Plus className="w-6 h-6" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Add App</span>
-                    </button>
-                  </div>
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* WAITLIST */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-2xl font-black uppercase tracking-tighter italic text-black">Waitlist</h3>
+                  <div className="h-1 flex-1 bg-black" />
+                  <span className="text-[10px] font-black bg-black text-white px-2 py-0.5">{requests.length}</span>
                 </div>
-
-                {/* DEVELOPER ECOSYSTEM TEASER */}
-                <div className="neo-box bg-neo-yellow/5 border-4 border-black border-dashed p-10 text-center relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-neo-yellow/10 rounded-full translate-x-8 translate-y-[-8px] blur-3xl" />
-                  <InfinityIcon className="w-12 h-12 text-zinc-300 mx-auto mb-4 group-hover:rotate-180 transition-transform duration-700" />
-                  <h3 className="text-xl font-black uppercase italic mb-2 text-black">Extensible Stage</h3>
-                  <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest max-w-md mx-auto leading-relaxed">
-                    Build custom apps and plug them directly into your Studio. Coming soon to Supertime SDK.
-                  </p>
-                </div>
-              </div>
-            ) : studioMode === 'theatre' ? (
-              <div className="space-y-12">
-                {/* THEATRE STAGE */}
-                <div className="neo-box bg-neo-pink p-8 border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] text-white">
-                  <div className="flex justify-between items-center mb-8">
-                    <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 bg-neo-green rounded-full animate-ping" />
-                      <h3 className="text-3xl font-black uppercase italic tracking-tighter">Live Stage</h3>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2 px-3 py-1 bg-black/20 text-[10px] font-black uppercase border-2 border-white/20">
-                        <Users className="w-3 h-3" /> 14 Admirers
-                      </div>
-                      <div className="flex items-center gap-2 px-3 py-1 bg-neo-yellow text-black text-[10px] font-black uppercase border-2 border-black">
-                        TICKET: 20 TKN
-                      </div>
-                    </div>
+                {requests.length === 0 ? (
+                  <div className="border-4 border-black border-dashed p-10 text-center">
+                    <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">Queue Empty</p>
                   </div>
-
-                  <div className="grid lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-6">
-                      <div className="relative aspect-video bg-black border-4 border-black shadow-[8px_8px_0px_0px_rgba(255,255,255,0.1)] overflow-hidden">
-                        {/* Live Stream Preview */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Globe className="w-24 h-24 text-white/5 animate-spin-slow" />
+                ) : (
+                  <div className="space-y-3">
+                    {requests.map((req, i) => (
+                      <div key={i} className="neo-box bg-white p-4 flex justify-between items-center group">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-neo-yellow border-2 border-black text-sm font-black italic text-black">#{i + 1}</div>
+                          <div>
+                            <p className="font-black uppercase text-sm text-black">{req.from || 'Guest'}</p>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{new Date(req.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
                         </div>
-                        <div className="absolute top-4 left-4 bg-red-600 px-3 py-1 font-black uppercase text-[10px] tracking-widest">LIVE BROADCAST</div>
-                      </div>
-
-                      <div className="flex gap-4">
-                        <button className="flex-1 neo-btn bg-white text-black py-4 font-black uppercase flex items-center justify-center gap-2">
-                          <Mic className="w-5 h-5" /> Mic On
-                        </button>
-                        <button className="flex-1 neo-btn bg-black text-white py-4 font-black uppercase flex items-center justify-center gap-2 border-white">
-                          <Video className="w-5 h-5" /> Cam Off
+                        <button className="w-8 h-8 border-2 border-black flex items-center justify-center hover:bg-black hover:text-white transition-all">
+                          <ArrowRight className="w-4 h-4" />
                         </button>
                       </div>
-                    </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-                    <div className="space-y-6">
-                      <div className="bg-black/20 border-4 border-black p-4 h-[300px] flex flex-col">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest mb-4 border-b border-white/10 pb-2">Audience Chat</h4>
-                        <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar">
-                          <p className="text-[10px] font-bold text-white/40 italic">Waiting for connection...</p>
+              {/* SCHEDULE */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-2xl font-black uppercase tracking-tighter italic text-black">Schedule</h3>
+                  <div className="h-1 flex-1 bg-black" />
+                  <span className="text-[10px] font-black bg-black text-white px-2 py-0.5">{bookings.length}</span>
+                </div>
+                {bookings.length === 0 ? (
+                  <div className="border-4 border-black border-dashed p-10 text-center">
+                    <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">No bookings</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {bookings.map((booking, i) => (
+                      <div key={i} className="neo-box bg-white p-4 group">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-[#D652FF]">{booking.date} @ {booking.time}</span>
+                          <div className="w-2 h-2 rounded-full bg-neo-pink animate-pulse" />
                         </div>
-                        <div className="mt-4 flex gap-2">
-                          <input type="text" placeholder="Say something..." className="flex-1 bg-black/40 border-2 border-black p-2 text-[10px] font-bold outline-none" />
-                          <button className="bg-white text-black px-3 font-black">SEND</button>
+                        <p className="font-black uppercase text-lg italic tracking-tight mb-1 text-black">{booking.visitorEmail.split('@')[0]}</p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{booking.duration} Min {booking.type}</span>
+                          <button onClick={() => window.open(`mailto:${booking.visitorEmail}`)} className="text-[10px] font-black uppercase underline decoration-2 decoration-neo-blue underline-offset-4 text-black">Notify Client</button>
                         </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                </div>
-
-                {/* THEATRE CONTROLS */}
-                <div className="grid md:grid-cols-3 gap-6">
-                  <div className="neo-box bg-white p-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-40">Entry Fee</h4>
-                    <div className="flex items-end gap-2">
-                      <span className="text-3xl font-black">20</span>
-                      <span className="text-xs font-bold mb-1">TKN</span>
-                    </div>
-                  </div>
-                  <div className="neo-box bg-white p-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-40">Revenue Share</h4>
-                    <div className="flex items-end gap-2">
-                      <span className="text-3xl font-black">₹4.2k</span>
-                      <span className="text-xs font-bold mb-1 italic">TONIGHT</span>
-                    </div>
-                  </div>
-                  <button className="neo-box bg-neo-green p-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black flex flex-col items-center justify-center hover:bg-neo-yellow transition-all">
-                    <Globe className="w-6 h-6 mb-1" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Share Stage</span>
-                  </button>
-                </div>
+                )}
               </div>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-8">
-                {/* WAITLIST */}
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <h3 className="text-2xl font-black uppercase tracking-tighter italic text-black">Waitlist</h3>
-                    <div className="h-1 flex-1 bg-black" />
-                    <span className="text-[10px] font-black bg-black text-white px-2 py-0.5">{requests.length}</span>
-                  </div>
-                  {requests.length === 0 ? (
-                    <div className="border-4 border-black border-dashed p-10 text-center text-black">
-                      <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">Queue Empty</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {requests.map((req, i) => (
-                        <div key={i} className="neo-box bg-white p-4 flex justify-between items-center group">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-neo-yellow border-2 border-black text-sm font-black italic text-black flex items-center justify-center">#{i + 1}</div>
-                            <div>
-                              <p className="font-black uppercase text-sm text-black">{req.from || 'Guest'}</p>
-                              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{new Date(req.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                            </div>
-                          </div>
-                          <button className="w-8 h-8 border-2 border-black flex items-center justify-center hover:bg-black hover:text-white transition-all text-black">
-                            <ArrowRight className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* SCHEDULE */}
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <h3 className="text-2xl font-black uppercase tracking-tighter italic text-black">Schedule</h3>
-                    <div className="h-1 flex-1 bg-black" />
-                    <span className="text-[10px] font-black bg-black text-white px-2 py-0.5">{bookings.length}</span>
-                  </div>
-                  {bookings.length === 0 ? (
-                    <div className="border-4 border-black border-dashed p-10 text-center text-black">
-                      <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">No bookings</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {bookings.map((booking, i) => (
-                        <div key={i} className="neo-box bg-white p-4 group">
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-[#D652FF]">{booking.date} @ {booking.time}</span>
-                            <div className="w-2 h-2 rounded-full bg-neo-pink animate-pulse" />
-                          </div>
-                          <p className="font-black uppercase text-lg italic tracking-tight mb-1 text-black">{booking.visitorEmail.split('@')[0]}</p>
-                          <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{booking.duration} Min {booking.type}</span>
-                            <button onClick={() => window.open(`mailto:${booking.visitorEmail}`)} className="text-[10px] font-black uppercase underline decoration-2 decoration-neo-blue underline-offset-4 text-black">Notify Client</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            </div>
 
             {/* ARTIFACTS GRID */}
             <div className="space-y-6">

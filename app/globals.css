@@ -21,11 +21,6 @@
   --font-mono: var(--font-geist-mono);
 }
 
-.dark {
-  --background: #000000;
-  --foreground: #ffffff;
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
@@ -42,18 +37,9 @@ body {
   transition-duration: 150ms;
 }
 
-.dark .neo-box {
-  border-color: white;
-  box-shadow: 8px 8px 0px 0px var(--neo-pink);
-}
-
 .neo-box-hover:hover {
   transform: translate(-2px, -2px);
   box-shadow: 12px 12px 0px 0px rgba(0, 0, 0, 1);
-}
-
-.dark .neo-box-hover:hover {
-  box-shadow: 12px 12px 0px 0px var(--neo-pink);
 }
 
 .neo-btn {
@@ -70,10 +56,6 @@ body {
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
-}
-
-.dark .neo-btn {
-  border-color: white;
 }
 
 .neo-btn:active {
@@ -106,7 +88,7 @@ nextjs-portal {
 }
 
 .outline-text {
-  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.1);
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.2);
   color: transparent;
 }
 
@@ -119,34 +101,16 @@ nextjs-portal {
   border-left: 2px solid black;
 }
 
-.dark .custom-scrollbar::-webkit-scrollbar-track {
-  background: #111;
-  border-left: 2px solid white;
-}
-
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: black;
-}
-
-.dark .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: white;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #333;
 }
 
-.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #ccc;
-}
-
 .neo-box-sm {
   border-width: 2px;
   border-color: black;
   box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
-}
-
-.dark .neo-box-sm {
-  border-color: white;
-  box-shadow: 4px 4px 0px 0px var(--neo-pink);
 }
