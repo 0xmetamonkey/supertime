@@ -62,7 +62,7 @@ export default function CreatorClient({
   const router = useRouter();
 
   // State
-  const [balance, setBalance] = useState<number>(0);
+  const [balance, setBalance] = useState<number>(5000); // TEST MODE: Backdoor Enabled
   const [isCalling, setIsCalling] = useState(false);
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null);
   const [errorMsg, setErrorMsg] = useState('');

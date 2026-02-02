@@ -203,6 +203,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
   }, [username]);
 
   useEffect(() => {
+    setIsLive(true); // TEST MODE: Force Online
     if (!username || !isLive || isCalling) {
       if (!isLive) setActiveChannelName(null);
       return;
