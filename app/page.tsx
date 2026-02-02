@@ -1,8 +1,18 @@
 import { auth } from "../auth";
-import { kv } from "@vercel/kv";
 import LandingPageClient from "./LandingPageClient";
 import { redirect } from "next/navigation";
 import { resolveUsername } from "./actions";
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: "Supertime | World's First Energy Exchange Platform",
+  description: "Turn your time into pure art. A mission to make each moment a beautiful asset. High-end video & audio energy exchanges for creators.",
+  openGraph: {
+    title: "Supertime - The Energy Exchange Platform",
+    description: "Exchange your presence for value. Turn your time into art.",
+    images: ['/og-image.png'],
+  }
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -11,16 +21,12 @@ export default async function LandingPage() {
   let username: string | null = null;
   const email = session?.user?.email;
 
-  console.log(`[LandingPage] Processing request for: ${email || 'Anonymous'}`);
-
   if (email) {
     username = await resolveUsername(email);
-    console.log(`[LandingPage] Resolved username: ${username || 'NULL'}`);
   }
 
   // Redirect if logged in AND has username
   if (email && username) {
-    console.log(`[LandingPage] Redirecting to /studio`);
     redirect("/studio");
   }
 

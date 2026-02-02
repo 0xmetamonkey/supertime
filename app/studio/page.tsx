@@ -32,6 +32,8 @@ export default async function StudioPage() {
     const socials = await kv.get(`user:${email}:socials`) as any;
     const profileImage = await kv.get(`user:${email}:profileImage`);
     const isLive = await kv.get(`user:${email}:isLive`);
+    const roomType = await kv.get(`user:${email}:roomType`);
+    const isRoomFree = await kv.get(`user:${email}:isRoomFree`);
     const templates = await kv.get(`user:${email}:templates`) as any[];
     const availability = await kv.get(`user:${email}:availability`);
     const artifacts = await kv.get(`user:${email}:artifacts`) as any[];
@@ -47,7 +49,10 @@ export default async function StudioPage() {
       settings.socials = { ...settings.socials, ...socials };
     }
     if (profileImage) (settings as any).profileImage = profileImage;
-    if (isLive !== null) settings.isLive = !!isLive;
+    if (isLive === null) settings.isLive = true; // Default to TRUE
+    else settings.isLive = !!isLive;
+    if (roomType) (settings as any).roomType = roomType;
+    if (isRoomFree !== null) (settings as any).isRoomFree = !!isRoomFree;
     if (templates) settings.templates = templates;
     if (availability) settings.availability = availability;
     if (artifacts) settings.artifacts = artifacts;

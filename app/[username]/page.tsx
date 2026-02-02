@@ -56,10 +56,23 @@ export default async function CreatorPage({ params }: Props) {
 
   if (!ownerEmail) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
-        <h1 className="text-4xl font-bold mb-4">User not found</h1>
-        <p className="text-zinc-500 mb-8">The username <strong>{username}</strong> is available.</p>
-        <a href="/" className="bg-white text-black px-6 py-3 rounded-full font-bold">Claim it now</a>
+      <div className="min-h-screen bg-white text-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        {/* Animated Background Elements */}
+        <div className="absolute top-40 -left-20 w-80 h-80 bg-neo-blue/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 -right-20 w-[500px] h-[500px] bg-neo-pink/10 rounded-full blur-3xl" />
+
+        <div className="relative z-10 text-center max-w-md">
+          <div className="w-24 h-24 bg-neo-yellow border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center mx-auto mb-8 rotate-3">
+            <span className="text-4xl">?</span>
+          </div>
+          <h1 className="text-5xl font-black uppercase tracking-tighter mb-4">User not found</h1>
+          <p className="text-xl font-bold text-zinc-600 mb-12 uppercase">
+            The username <span className="text-neo-pink italic">@{username}</span> is available for you to claim!
+          </p>
+          <a href="/" className="neo-btn bg-black text-white hover:bg-zinc-800 inline-block px-12 py-6 text-xl">
+            Claim it now
+          </a>
+        </div>
       </div>
     );
   }
@@ -82,14 +95,19 @@ export default async function CreatorPage({ params }: Props) {
     const aRate = await kv.get(`user:${ownerEmail}:rate:audio`);
     const pImage = await kv.get(`user:${ownerEmail}:profileImage`);
     const liveStatus = await kv.get(`user:${ownerEmail}:isLive`);
+    const roomType = await kv.get(`user:${ownerEmail}:roomType`);
+    const isRoomFree = await kv.get(`user:${ownerEmail}:isRoomFree`);
     const tpls = await kv.get(`user:${ownerEmail}:templates`) as any[];
     const arts = await kv.get(`user:${ownerEmail}:artifacts`) as any[];
     if (vRate !== null) videoRate = Number(vRate);
     if (aRate !== null) audioRate = Number(aRate);
     if (pImage) profileImage = String(pImage);
-    if (liveStatus !== null) isLive = !!liveStatus;
+    if (liveStatus === null) isLive = true; // Default to LIVE
+    else isLive = !!liveStatus;
     if (tpls) templates = tpls;
     if (arts) artifacts = arts;
+    (socials as any).roomType = roomType || 'audio';
+    (socials as any).isRoomFree = isRoomFree === null ? true : !!isRoomFree;
   }
 
   return (
@@ -106,6 +124,8 @@ export default async function CreatorPage({ params }: Props) {
       isLive={isLive}
       templates={templates}
       artifacts={artifacts}
+      roomType={(socials as any).roomType}
+      isRoomFree={(socials as any).isRoomFree}
     />
   );
 }

@@ -7,6 +7,7 @@ import AgoraRTC, {
   IMicrophoneAudioTrack,
   IAgoraRTCRemoteUser
 } from 'agora-rtc-sdk-ng';
+import { Sparkles } from 'lucide-react';
 
 interface CallStageProps {
   channelName: string;
@@ -157,9 +158,13 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
 
     client.on('user-left', (user) => {
       setRemoteUsers(prev => prev.filter(u => u.uid !== user.uid));
-      // Billing Safety: If the other user leaves, end the call immediately
-      console.log('[CallStage] Remote user left, ending call for safety');
-      onDisconnect();
+
+      // Billing Safety: If it's a private call (not a 'room-') and the peer leaves, end it.
+      // If it's a 'room-', we allow multiple people to stay.
+      if (!channelName.startsWith('room-')) {
+        console.log('[CallStage] Remote user left private call, ending for safety');
+        onDisconnect();
+      }
     });
 
     return () => {
@@ -295,30 +300,56 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
 
   return (
     <div className="fixed inset-0 bg-black text-white font-sans overflow-hidden select-none">
+      {/* ROOM HEADER */}
+      <div className="absolute top-0 inset-x-0 z-30 p-8 flex justify-between items-start pointer-events-none">
+        <div className="flex flex-col gap-2 pointer-events-auto">
+          <div className={`px-4 py-1.5 border-4 border-black font-black uppercase text-xs shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] ${type === 'video' ? 'bg-neo-pink text-white' : 'bg-neo-blue text-white'}`}>
+            {channelName.startsWith('room-') ? 'Studio Space' : 'Private Session'}
+          </div>
+          <div className="flex items-center gap-2 bg-white border-4 border-black p-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-widest">{type} active</span>
+          </div>
+        </div>
+        <div className="bg-neo-yellow border-4 border-black px-6 py-2 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black flex items-center gap-4 pointer-events-auto">
+          <div className="flex flex-col">
+            <span className="text-[8px] font-black uppercase tracking-widest leading-none opacity-40">Live Audience</span>
+            <span className="text-xl font-black tabular-nums leading-none tracking-tighter">{(remoteUsers.length + 1).toString().padStart(2, '0')}</span>
+          </div>
+          <Sparkles className="w-5 h-5" />
+        </div>
+      </div>
 
       {/* REMOTE DISPLAY */}
-      <div className="absolute inset-0 z-0 bg-zinc-950 flex flex-col items-center justify-center">
-        {!mainRemoteUser ? (
+      <div className="absolute inset-0 z-0 bg-zinc-950 flex flex-col items-center justify-center p-6 pb-40">
+        {!remoteUsers.length ? (
           <div className="flex flex-col items-center justify-center h-full">
-            <div className="text-zinc-500 font-bold uppercase tracking-widest animate-pulse">Connecting...</div>
+            <div className="text-zinc-500 font-black uppercase tracking-[0.3em] animate-pulse italic">Waiting for connection...</div>
           </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center relative">
-            {mainRemoteUser.videoTrack ? (
-              <VideoPlayer track={mainRemoteUser.videoTrack} />
-            ) : (
-              <div className="flex flex-col items-center gap-6">
-                <div className="relative">
-                  <VoiceAura volume={volumes[mainRemoteUser.uid.toString()] || 0} />
-                  <div className="w-32 h-32 rounded-full bg-zinc-900 flex items-center justify-center text-5xl border-2 border-white/5 relative z-10 shadow-2xl overflow-hidden">
-                    <span className="opacity-40">👤</span>
+          <div className={`w-full h-full grid gap-6 ${remoteUsers.length === 1 ? 'grid-cols-1' : (remoteUsers.length <= 4 ? 'grid-cols-2' : 'grid-cols-3')} overflow-y-auto custom-scrollbar pt-20`}>
+            {remoteUsers.map((user) => (
+              <div key={user.uid} className="relative flex flex-col items-center justify-center bg-black/40 border-4 border-white/5 shadow-2xl overflow-hidden group">
+                {user.videoTrack ? (
+                  <VideoPlayer track={user.videoTrack} />
+                ) : (
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="relative">
+                      <VoiceAura volume={volumes[user.uid.toString()] || 0} />
+                      <div className="w-24 h-24 rounded-full bg-zinc-900 flex items-center justify-center text-4xl border-2 border-white/5 relative z-10">
+                        <span className="opacity-40">👤</span>
+                      </div>
+                    </div>
+                    <div className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/10">
+                      <span className="text-[10px] font-black text-white/50 tracking-widest uppercase italic">Participant</span>
+                    </div>
                   </div>
-                </div>
-                <div className="px-4 py-1.5 bg-black/40 backdrop-blur-md rounded-full border border-white/10 z-10">
-                  <span className="text-xs font-bold text-white/50 tracking-widest uppercase">Participant</span>
+                )}
+                <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 text-[8px] font-black uppercase tracking-widest text-white/40">
+                  UID: {user.uid}
                 </div>
               </div>
-            )}
+            ))}
           </div>
         )}
       </div>
