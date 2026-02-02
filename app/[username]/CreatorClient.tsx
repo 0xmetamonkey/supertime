@@ -62,7 +62,7 @@ export default function CreatorClient({
   const router = useRouter();
 
   // State
-  const [balance, setBalance] = useState<number>(5000); // TEST MODE: Free Tokens
+  const [balance, setBalance] = useState<number>(0);
   const [isCalling, setIsCalling] = useState(false);
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -79,13 +79,10 @@ export default function CreatorClient({
   const lastDeductMinuteRef = useRef<number>(0);
 
   const handleJoinRoom = async () => {
-    // GUEST MODE
-    /*
     if (!isLoggedIn && !isRoomFree) {
       loginWithGoogle(window.location.pathname);
       return;
     }
-    */
 
     if (isOwner) {
       window.location.href = '/studio';
@@ -123,21 +120,15 @@ export default function CreatorClient({
   };
 
   const handleStartCall = async (type: 'audio' | 'video') => {
-    // GUEST MODE
-    /*
     if (!isLoggedIn) {
       loginWithGoogle(window.location.pathname);
       return;
     }
-    */
 
-    // Self-call check bypassed for development testing
-    /*
     if (isOwner) {
       showError("You can't call yourself! Go to Studio to receive calls.");
       return;
     }
-    */
 
     const currentRate = type === 'video' ? videoRate : audioRate;
 
