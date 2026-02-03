@@ -11,17 +11,21 @@ import { Sparkles } from 'lucide-react';
 
 interface CallStageProps {
   channelName: string;
+  uid: string | number;
   type: string | null;
   onDisconnect: () => void;
   onSaveArtifact?: (url: string) => void;
 }
 
-export default function CallStage({ channelName, type, onDisconnect, onSaveArtifact }: CallStageProps) {
-  const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID!;
+export default function CallStage({ channelName, uid: passedUid, type, onDisconnect, onSaveArtifact }: CallStageProps) {
   const [client, setClient] = useState<IAgoraRTCClient | null>(null);
   const [localTracks, setLocalTracks] = useState<any>(null);
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
-  const [uid] = useState(Math.floor(Math.random() * 1000000));
+  const [isConnected, setIsConnected] = useState(false);
+
+  // Agora UID must be a number for some older SDK versions or if we want better compatibility,
+  // but string is supported in v4+. We'llHash it if it's a string just in case, or use as is.
+  const uid = typeof passedUid === 'number' ? passedUid : (passedUid ? Number(passedUid.replace(/[^0-9]/g, '').slice(0, 8)) : Math.floor(Math.random() * 1000000));
   const [volumes, setVolumes] = useState<Record<string, number>>({});
 
   // Recording & Consent State
@@ -36,6 +40,9 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef({ startX: 0, startY: 0, lastX: 0, lastY: 0 });
+
+  // Guard against concurrent connection attempts
+  const isConnectingRef = useRef(false);
 
   const onDragStart = (e: any) => {
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -75,19 +82,113 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
     if (!client) return;
     let active = true;
 
+    // Listeners for remote user events
+    // We attach these BEFORE calling connect() so we don't miss any events during join
+    const handleUserPublished = async (user: IAgoraRTCRemoteUser, mediaType: 'audio' | 'video') => {
+      if (user.uid === uid) return;
+      console.log(`[CALL] 📥 Remote user published: ${user.uid} (${mediaType})`);
+      try {
+        await client.subscribe(user, mediaType);
+        console.log(`[CALL] ✨ Subscribed to ${user.uid} (${mediaType})`);
+
+        // Update state to trigger re-render
+        // We use a functional update to ensure we always have the freshest list
+        setRemoteUsers(prev => {
+          const exists = prev.find(u => u.uid === user.uid);
+          if (exists) {
+            // Already in list, just force refresh to pick up new track
+            return [...prev.filter(u => u.uid !== user.uid), user];
+          }
+          return [...prev, user];
+        });
+
+        if (mediaType === 'audio') {
+          user.audioTrack?.play();
+        }
+      } catch (err) {
+        console.error(`[CALL] ❌ Subscription failed for ${user.uid}`, err);
+      }
+    };
+
+    const handleUserUnpublished = (user: IAgoraRTCRemoteUser, mediaType: 'audio' | 'video') => {
+      console.log(`[CALL] 📤 Remote user unpublished: ${user.uid} (${mediaType})`);
+      if (mediaType === 'video') {
+        setRemoteUsers(prev => [...prev]); // Force refresh to clear video player
+      }
+    };
+
+    const handleUserLeft = (user: IAgoraRTCRemoteUser) => {
+      console.log(`[CALL] 👋 Remote user left: ${user.uid}`);
+      setRemoteUsers(prev => prev.filter(u => u.uid !== user.uid));
+
+      if (!channelName.startsWith('room-')) {
+        console.log('[CALL] 🛡️ Ending private session as peer has left');
+        onDisconnect();
+      }
+    };
+
+    const handleVolumeIndicator = (result: { uid: string | number; level: number }[]) => {
+      const newVols: Record<string, number> = {};
+      result.forEach(v => { newVols[v.uid.toString()] = v.level; });
+      setVolumes(newVols);
+    };
+
+    const handleStreamMessage = (uid: string | number, data: Uint8Array) => {
+      try {
+        const decoded = new TextDecoder().decode(data);
+        const json = JSON.parse(decoded);
+        console.log('[CALL] 📨 Received metadata signal:', json);
+        if (json.type === 'REQ_REC') setConsentState('pending_approval');
+        else if (json.type === 'RES_REC_OK') setConsentState('granted');
+        else if (json.type === 'RES_REC_NO') {
+          setConsentState('denied');
+          setIsRecording(false);
+          alert("Recording consent was denied.");
+        }
+      } catch (e) {
+        console.error("[CALL] ❌ Metadata parse error", e);
+      }
+    };
+
+    // Attach listeners
+    client.on('user-published', handleUserPublished);
+    client.on('user-unpublished', handleUserUnpublished);
+    client.on('user-left', handleUserLeft);
+    client.on('volume-indicator', handleVolumeIndicator);
+    client.on('stream-message', handleStreamMessage);
+
+    const hashUID = (str: string) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+      }
+      return Math.abs(hash);
+    };
+
+    const uid = typeof passedUid === 'number' ? passedUid : hashUID(passedUid || 'anonymous');
+
     const connect = async () => {
+      if (isConnectingRef.current) {
+        console.log("[CALL] 🛑 Connection already in progress, skipping start");
+        return;
+      }
+      isConnectingRef.current = true;
+
+      console.log(`[CALL] ✨ Initiating Flow | Channel: ${channelName} | UID: ${uid}`);
       try {
         const res = await fetch(`/api/agora/token?channelName=${encodeURIComponent(channelName)}&uid=${uid}`);
         const data = await res.json();
+
+        if (!data.token || !data.appId) {
+          throw new Error("Missing Token/AppID from Bridge");
+        }
+
+        console.log(`[CALL] ✅ Config Locked. AppID: ${data.appId.slice(0, 5)}...`);
         if (!active) return;
 
-        const audioConfig: any = {
-          encoderConfig: "music_standard",
-          AEC: true,
-          AGC: true,
-          ANS: true
-        };
-
+        const audioConfig: any = { encoderConfig: "music_standard", AEC: true, AGC: true, ANS: true };
         const tracks = isVideo
           ? await AgoraRTC.createMicrophoneAndCameraTracks(audioConfig, undefined)
           : [await AgoraRTC.createMicrophoneAudioTrack(audioConfig)];
@@ -100,92 +201,70 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
         setLocalTracks(tracks);
         tracksRef.current = tracks;
 
-        // JOIN CHANNEL BEFORE PUBLISHING
-        await client.join(appId, channelName, data.token, uid);
-        await client.publish(tracks);
+        if (client.connectionState === 'DISCONNECTED' || client.connectionState === 'DISCONNECTING') {
+          console.log(`[CALL] 🔗 client.join(${channelName}) starting...`);
+          try {
+            await client.join(data.appId, channelName, data.token, uid);
+            setIsConnected(true);
+            console.log(`[CALL] 🎉 JOINED | State: ${client.connectionState}`);
 
-        // Initialize Data Stream for Consent/Signals
+            if (tracks.length > 0) {
+              console.log(`[CALL] 📡 client.publish starting...`);
+              await client.publish(tracks);
+              console.log(`[CALL] 🌍 BROADCASTING ACTIVE`);
+            }
+          } catch (joinErr: any) {
+            console.error("[CALL] ❌ Join/Publish Error:", joinErr);
+            if (joinErr.code !== 'JOIN_ALREADY_IN_PROGRESS') throw joinErr;
+          }
+
+          if (client.remoteUsers.length > 0) {
+            console.log(`[CALL] 👥 Syncing ${client.remoteUsers.length} existing peers`);
+            client.remoteUsers.forEach(async (user) => {
+              if (user.hasAudio || user.hasVideo) await handleUserPublished(user, user.hasVideo ? 'video' : 'audio');
+            });
+          }
+        }
+
         const dsId = (client as any).createDataStream({ reliable: true, ordered: true });
         dataStreamIdRef.current = dsId;
 
       } catch (err: any) {
-        console.error("Connection error:", err);
-        // Throwing error so ErrorBoundary can catch it
-        throw err;
+        console.error("[CALL] 💥 BOOM | Critical Failure:", err);
+        if (tracksRef.current) tracksRef.current.forEach(t => t.close());
+      } finally {
+        isConnectingRef.current = false;
       }
     };
 
     connect();
 
-    client.on('user-published', async (user, mediaType) => {
-      if (user.uid === uid) return;
-      await client.subscribe(user, mediaType);
-      setRemoteUsers(prev => [...prev.filter(u => u.uid !== user.uid), user]);
-      if (mediaType === 'audio') user.audioTrack?.play();
-    });
-
-    client.on('stream-message', (uid, data) => {
-      try {
-        const decoded = new TextDecoder().decode(data);
-        const json = JSON.parse(decoded);
-        console.log('[CallStage] Received stream message:', json);
-
-        if (json.type === 'REQ_REC') {
-          setConsentState('pending_approval');
-        } else if (json.type === 'RES_REC_OK') {
-          setConsentState('granted');
-          // In practice, we'd start recording here if we were the requestor
-        } else if (json.type === 'RES_REC_NO') {
-          setConsentState('denied');
-          setIsRecording(false);
-          alert("Recording consent was denied.");
-        }
-      } catch (e) {
-        console.error("Stream message parse error", e);
-      }
-    });
-
-    client.on('user-unpublished', (user, mediaType) => {
-      console.log('[CallStage] User unpublished:', user.uid, mediaType);
-      if (mediaType === 'video') {
-        // Force state refresh to clear stuck video players
-        setRemoteUsers(prev => [...prev]);
-      }
-    });
-
-    client.on('volume-indicator', (result) => {
-      const newVols: Record<string, number> = {};
-      result.forEach(v => { newVols[v.uid.toString()] = v.level; });
-      setVolumes(newVols);
-    });
-
-    client.on('user-left', (user) => {
-      setRemoteUsers(prev => prev.filter(u => u.uid !== user.uid));
-
-      // Billing Safety: If it's a private call (not a 'room-') and the peer leaves, end it.
-      // If it's a 'room-', we allow multiple people to stay.
-      if (!channelName.startsWith('room-')) {
-        console.log('[CallStage] Remote user left private call, ending for safety');
-        onDisconnect();
-      }
-    });
-
     return () => {
       active = false;
+      client.off('user-published', handleUserPublished);
+      client.off('user-unpublished', handleUserUnpublished);
+      client.off('user-left', handleUserLeft);
+      client.off('volume-indicator', handleVolumeIndicator);
+      client.off('stream-message', handleStreamMessage);
+
       tracksRef.current.forEach(t => { t.stop(); t.close(); });
       client.leave();
     };
-  }, [client, channelName, uid, isVideo, appId]);
+  }, [client, channelName, passedUid, isVideo]);
 
   const toggleMic = async () => {
     if (!client || !localTracks?.[0]) return;
     const track = localTracks[0];
     if (track.enabled) {
-      await client.unpublish(track);
+      if (client.connectionState === 'CONNECTED') {
+        await client.unpublish(track);
+      }
       await track.setEnabled(false);
     } else {
       await track.setEnabled(true);
-      await client.publish(track);
+      if (client.connectionState === 'CONNECTED') {
+        await client.publish(track);
+      }
     }
     setLocalTracks([...localTracks]);
   };
@@ -194,11 +273,15 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
     if (isVideo && client && localTracks?.[1]) {
       const track = localTracks[1];
       if (track.enabled) {
-        await client.unpublish(track);
+        if (client.connectionState === 'CONNECTED') {
+          await client.unpublish(track);
+        }
         await track.setEnabled(false);
       } else {
         await track.setEnabled(true);
-        await client.publish(track);
+        if (client.connectionState === 'CONNECTED') {
+          await client.publish(track);
+        }
       }
       setLocalTracks([...localTracks]);
     }
@@ -301,8 +384,20 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
 
   const mainRemoteUser = remoteUsers.find(u => u.videoTrack) || remoteUsers[0];
 
+  console.log(`[CALL] Render: isVideo=${isVideo}, isConnected=${isConnected}, localTracks=${!!localTracks}, remoteUsers=${remoteUsers.length}`);
+
   return (
     <div className="fixed inset-0 bg-black text-white font-sans overflow-hidden select-none">
+      {/* DEBUG OVERLAY (Only on localhost) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed top-2 left-2 z-[999] bg-black/80 p-2 text-[8px] font-mono pointer-events-none border border-white/20">
+          <div>STAT: {isConnected ? 'CONNECTED' : 'CONNECTING...'}</div>
+          <div>CHAN: {channelName}</div>
+          <div>TYPE: {type}</div>
+          <div>LOC_T: {localTracks ? 'OK' : 'NULL'}</div>
+          <div>REM_U: {remoteUsers.length}</div>
+        </div>
+      )}
       {/* ROOM HEADER */}
       <div className="absolute top-0 inset-x-0 z-30 p-8 flex justify-between items-start pointer-events-none">
         <div className="flex flex-col gap-2 pointer-events-auto">
@@ -323,11 +418,27 @@ export default function CallStage({ channelName, type, onDisconnect, onSaveArtif
         </div>
       </div>
 
-      {/* REMOTE DISPLAY */}
+      {/* REMOTE / PRIMARY DISPLAY */}
       <div className="absolute inset-0 z-0 bg-zinc-950 flex flex-col items-center justify-center p-6 pb-40">
         {!remoteUsers.length ? (
-          <div className="flex flex-col items-center justify-center h-full">
-            <div className="text-zinc-500 font-black uppercase tracking-[0.3em] animate-pulse italic">Waiting for connection...</div>
+          <div className="relative w-full h-full flex flex-col items-center justify-center">
+            {/* If we have local video but no remote, show local video in center (bigger) for Studio check */}
+            {isVideo && localTracks?.[1] ? (
+              <div className="w-full h-full max-w-4xl aspect-video bg-zinc-900 border-4 border-white/10 shadow-2xl overflow-hidden relative group">
+                <VideoPlayer track={localTracks[1]} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                <div className="absolute bottom-8 left-8">
+                  <span className="bg-neo-yellow text-black px-4 py-1 font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    Local Preview: Studio Ready
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full">
+                <div className="text-zinc-500 font-black uppercase tracking-[0.3em] animate-pulse italic">Waiting for connection...</div>
+                <div className="mt-4 text-[10px] text-zinc-700 font-mono tracking-widest">{channelName}</div>
+              </div>
+            )}
           </div>
         ) : (
           <div className={`w-full h-full grid gap-6 ${remoteUsers.length === 1 ? 'grid-cols-1' : (remoteUsers.length <= 4 ? 'grid-cols-2' : 'grid-cols-3')} overflow-y-auto custom-scrollbar pt-20`}>

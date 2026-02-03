@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { logout, checkAvailability, claimUsername } from '../actions';
 import dynamic from 'next/dynamic';
-const AgoraCall = dynamic(() => import('../components/AgoraCall'), { ssr: false });
+const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
 import WalletManager from '../components/WalletManager';
 
 export default function StudioClient({ username, session, initialSettings }: { username: string | null, session: any, initialSettings?: any }) {
@@ -203,7 +203,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
   }, [username]);
 
   useEffect(() => {
-    setIsLive(true); // TEST MODE: Force Online
+    // setIsLive(true); // TEST MODE: Force Online (DISABLED FOR SIMPLICITY)
     if (!username || !isLive || isCalling) {
       if (!isLive) setActiveChannelName(null);
       return;
@@ -370,8 +370,10 @@ export default function StudioClient({ username, session, initialSettings }: { u
               </div>
             </div>
           )}
-          <AgoraCall
+          <SuperCall
+            key={activeChannelName}
             channelName={activeChannelName}
+            uid={session?.user?.id || 'studio-host'}
             type={isCalling ? callType! : roomType}
             onDisconnect={() => {
               if (isCalling) handleEndCall();
@@ -392,7 +394,13 @@ export default function StudioClient({ username, session, initialSettings }: { u
               </div>
               <span className="text-xl font-black uppercase tracking-tighter text-black">Studio</span>
             </a>
-            <div className="hidden md:flex gap-6">
+            <div className="hidden md:flex items-center gap-6">
+              <button
+                onClick={() => window.open(`/${username}?sim=true`, '_blank')}
+                className="bg-neo-yellow border-2 border-black px-3 py-1 text-[8px] font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+              >
+                Launch Simulator
+              </button>
               <a href={`/${username}`} className="text-[10px] font-black uppercase tracking-widest text-black/60 hover:text-neo-pink transition-colors">Public Profile</a>
               <button onClick={() => setShowSettings(true)} className="text-[10px] font-black uppercase tracking-widest text-black/60 hover:text-neo-pink transition-colors">Settings</button>
             </div>
@@ -435,18 +443,19 @@ export default function StudioClient({ username, session, initialSettings }: { u
               ))}
             </div>
 
-            <div className="bg-neo-blue border-4 border-black p-6 flex flex-col justify-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-white flex-1 md:flex-[0_0_300px]">
-              <div className="flex items-center gap-3 mb-1">
-                <div className={`w-3 h-3 rounded-full ${studioMode === 'solitude' ? 'bg-zinc-500' : 'bg-neo-green animate-ping'}`} />
+            <div className={`border-4 border-black p-6 flex flex-col justify-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex-1 md:flex-[0_0_350px] transition-colors ${isLive ? 'bg-neo-pink text-white' : 'bg-neo-blue text-white'}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-3 h-3 rounded-full ${isLive ? 'bg-neo-green animate-ping' : 'bg-white/30'}`} />
                 <p className="text-[10px] font-black uppercase tracking-[0.3em]">
-                  {studioMode === 'solitude' ? 'Ghost Mode' : studioMode === 'theatre' ? 'Broadcasting Public' : 'Private Session'}
+                  {isLive ? 'Broadcasting Energy' : 'Studio Partitioned'}
                 </p>
               </div>
-              <p className="text-xl font-black italic uppercase tracking-tighter">
-                {studioMode === 'solitude' && "The Lab is yours."}
-                {studioMode === 'theatre' && "The Room is Open."}
-                {studioMode === 'private' && "Exchanging Energy."}
-              </p>
+              <button
+                onClick={() => setIsLive(!isLive)}
+                className={`w-full py-4 border-4 border-black font-black uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all ${isLive ? 'bg-black text-white' : 'bg-neo-yellow text-black'}`}
+              >
+                {isLive ? '✕ END SESSION' : '⚡ GO LIVE'}
+              </button>
             </div>
           </div>
         </div>

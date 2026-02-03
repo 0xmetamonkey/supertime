@@ -38,12 +38,20 @@
 - [x] Create consent response logic (RES_REC_OK / RES_REC_NO).
 - [x] Ensure recording only starts after explicit consent is granted.
 
-## Phase 7: Live Analytics & Performance [IN PROGRESS]
-- [x] Implement visitor tracking for Creator Profiles.
-- [x] Add "Session History" data visualization (Earnings over time).
-- [ ] Optimize Agora connection speeds and retry logic.
-- [ ] Implement SEO metadata for social sharing.
+## Phase 7: Live Analytics & Performance (ACTIVE)
+- [x] Optimize Agora connection speeds and retry logic <!-- id: 50 -->
+- [ ] Implement SEO metadata for social sharing <!-- id: 51 -->
+- [x] Refactor calling logic for "Time Sharing" v2 consistency <!-- id: 52 -->
 
+## Phase 8: Build in Public & Open Source
+- [x] Codebase cleanup and legacy removal <!-- id: 53 -->
+- [x] Vision-driven `README.md` rewrite <!-- id: 54 -->
+- [ ] Standardize theme variables and UI patterns <!-- id: 55 -->
+- [ ] Implement "Public Log" for project updates <!-- id: 56 -->
+- [ ] Prepare repository for public visibility <!-- id: 57 -->
+
+---
+*Last update: 2026-02-03 - Transitioning to Open Source / Direct Economy model.*
 ## 🛠️ The Refinement Backlog (Design Debt)
 *These are ongoing UI/UX tasks that aren't blockers but need a "Polish Sprint" later.*
 - [ ] **Theme Variable Audit**: Standardize all `--neo-shadow` and `--neo-border` colors to react automatically to `.dark`.

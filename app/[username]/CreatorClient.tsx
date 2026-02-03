@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Zap,
@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import WalletManager from '../components/WalletManager';
 import dynamic from 'next/dynamic';
-const AgoraCall = dynamic(() => import('../components/AgoraCall'), { ssr: false });
+const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
 import { loginWithGoogle, logout } from '../actions';
 
 interface CreatorClientProps {
@@ -60,6 +60,8 @@ export default function CreatorClient({
   const uid = user?.id || `guest-${guestId}`;
   const isLoggedIn = !!user;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isSimulated = searchParams.get('sim') === 'true';
 
   // State
   const [balance, setBalance] = useState<number>(5000); // TEST MODE: Backdoor Enabled
@@ -79,7 +81,7 @@ export default function CreatorClient({
   const lastDeductMinuteRef = useRef<number>(0);
 
   const handleJoinRoom = async () => {
-    if (!isLoggedIn && !isRoomFree) {
+    if (!isLoggedIn && !isRoomFree && !isSimulated) {
       loginWithGoogle(window.location.pathname);
       return;
     }
@@ -91,7 +93,7 @@ export default function CreatorClient({
 
     const currentRate = roomType === 'video' ? videoRate : audioRate;
 
-    if (!isRoomFree && balance < currentRate) {
+    if (!isRoomFree && balance < currentRate && !isSimulated) {
       showError(`${currentRate} TKN required to join ${roomType} room.`);
       return;
     }
@@ -120,7 +122,7 @@ export default function CreatorClient({
   };
 
   const handleStartCall = async (type: 'audio' | 'video') => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn && !isSimulated) {
       loginWithGoogle(window.location.pathname);
       return;
     }
@@ -132,7 +134,7 @@ export default function CreatorClient({
 
     const currentRate = type === 'video' ? videoRate : audioRate;
 
-    if (balance < currentRate) {
+    if (balance < currentRate && !isSimulated) {
       showError(`Add ${currentRate} TKN to start a ${type} call.`);
       return;
     }
@@ -422,12 +424,13 @@ export default function CreatorClient({
               <p className="text-sm md:text-lg font-black tabular-nums">{tokensSpent} TKN</p>
             </div>
           </div>
-          <AgoraCall
+          <SuperCall
+            key={activeChannelName}
             channelName={activeChannelName}
+            uid={uid}
             type={callType!}
             onDisconnect={handleEndCall}
-          />
-        </div>
+          /></div>
       )}
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 md:pt-32">
