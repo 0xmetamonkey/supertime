@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { auth } from "../../../auth";
+import {
+  getDetailedWallet,
+  processSplitPayment,
+  recordWithdrawalRequest
+} from '@/app/lib/economics';
 
 // Fallback memory store for dev without KV keys
 declare global {
@@ -33,7 +38,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const email = session.user.email.toLowerCase();
-  const balance = await getBalance(email);
+  const { balance, withdrawable } = await getDetailedWallet(email);
 
   // Check if they are a creator (have a username)
   let isCreator = false;
@@ -42,7 +47,12 @@ export async function GET(req: NextRequest) {
     isCreator = !!username;
   }
 
-  return NextResponse.json({ balance, isCreator });
+  return NextResponse.json({
+    balance,
+    withdrawable,
+    withdrawable_inr: withdrawable, // 1:1 for INR display
+    isCreator
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -80,6 +90,35 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ balance: senderBalance });
+  }
+
+  // NEW: Split Deduction (60/40)
+  if (action === 'deduct_split') {
+    if (typeof amount !== 'number' || !recipientEmail) {
+      return NextResponse.json({ error: 'Amount and recipientEmail required' }, { status: 400 });
+    }
+
+    try {
+      const result = await processSplitPayment(senderEmail, recipientEmail, amount);
+      return NextResponse.json(result);
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message }, { status: 402 });
+    }
+  }
+
+  // NEW: Withdrawal Flow
+  if (action === 'withdraw') {
+    const { upiId, amount: withdrawAmount } = body;
+    if (!upiId || !withdrawAmount || typeof withdrawAmount !== 'number') {
+      return NextResponse.json({ error: 'UPI ID and Amount required' }, { status: 400 });
+    }
+
+    try {
+      const request = await recordWithdrawalRequest(senderEmail, withdrawAmount, upiId);
+      return NextResponse.json({ success: true, request });
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message }, { status: 400 });
+    }
   }
 
   // DEV FAUCET (Only in development)

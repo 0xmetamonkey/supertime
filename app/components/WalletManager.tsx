@@ -1,11 +1,14 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { Zap } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 type WalletProps = {
   onBalanceChange: (balance: number) => void;
 };
 
 export default function WalletManager({ onBalanceChange }: WalletProps) {
+  const router = useRouter();
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [showRecharge, setShowRecharge] = useState(false);
@@ -117,88 +120,16 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
   return (
     <>
       <button
-        onClick={() => setShowRecharge(true)}
-        className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 transition-colors px-4 py-2 rounded-full border border-white/5"
+        onClick={() => router.push('/wallet')}
+        className="flex items-center gap-2 bg-white dark:bg-black border-4 border-black dark:border-white px-4 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_theme(colors.neo-pink)] transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none translate-x-[-2px] translate-y-[-2px]"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="text-purple-400">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-        </svg>
-        <span className="text-white font-mono font-bold text-sm">
-          {balance === null ? '...' : balance}
+        <span className="text-black dark:text-white font-black text-sm tabular-nums">
+          {balance === null ? '...' : balance} <span className="text-[10px]">TKN</span>
         </span>
-        <div className="w-5 h-5 rounded-full bg-white text-black flex items-center justify-center text-xs font-bold leading-none ml-1">
+        <div className="w-6 h-6 bg-neo-green border-2 border-black flex items-center justify-center text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] group-hover:bg-neo-yellow">
           +
         </div>
       </button>
-
-      {/* Recharge Modal Overlay */}
-      {showRecharge && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/90 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-10 fade-in duration-300">
-
-            <div className="p-6 pb-2 flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-white">Add Credits</h2>
-              <div className="flex gap-4">
-                <a href="/wallet" className="text-zinc-500 hover:text-white text-sm font-bold flex items-center">Open Wallet →</a>
-                <button onClick={() => setShowRecharge(false)} className="w-8 h-8 flex items-center justify-center bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-colors">✕</button>
-              </div>
-            </div>
-
-            <div className="p-6 pt-4">
-              <p className="text-zinc-400 text-sm mb-4">
-                Select a pack to recharge. Secure payment via Razorpay.
-              </p>
-
-              <div className="grid grid-cols-2 gap-3">
-                {[100, 500, 1000, 5000].map((tkn) => (
-                  <button
-                    key={tkn}
-                    onClick={() => handleRecharge(Math.floor(tkn / 10))} // Passing INR amount. 10 TKN = 1 INR
-                    disabled={loading}
-                    className="relative group py-4 px-4 bg-zinc-800 rounded-xl hover:bg-purple-600 active:scale-95 transition-all text-left border border-zinc-700 hover:border-purple-500"
-                  >
-                    <span className="block text-xs text-zinc-400 group-hover:text-purple-200 mb-1">Get</span>
-                    <span className="text-xl font-bold text-white group-hover:text-white">{tkn} TKN</span>
-                    <span className="absolute top-4 right-4 text-xs font-mono text-zinc-500 group-hover:text-white opacity-50">
-                      ₹{Math.floor(tkn / 10)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              <p className="text-xs text-center text-zinc-500">
-                Secured by Razorpay. 100% Safe.
-              </p>
-              {loading && (
-                <div className="mt-4 text-center text-purple-400 text-sm animate-pulse">
-                  Opening Secure Payment...
-                </div>
-              )}
-
-              <div className="mt-4 pt-4 border-t border-zinc-800 flex flex-col gap-2 justify-center text-center">
-                {process.env.NODE_ENV === 'development' && (
-                  <button
-                    onClick={async () => {
-                      await fetch('/api/wallet', {
-                        method: 'POST',
-                        body: JSON.stringify({ action: 'dev_faucet' })
-                      });
-                      fetchBalance();
-                      alert("Dev Faucet: Added 5000 TKN");
-                    }}
-                    className="text-xs font-mono text-green-500 hover:text-green-400 border border-green-500/20 bg-green-500/10 px-4 py-2 rounded-lg"
-                  >
-                    [DEV MODE] FAUCET: +5000 TKN
-                  </button>
-                )}
-                <button onClick={() => window.location.href = '/api/auth/signout'} className="text-xs text-red-500 font-bold hover:text-red-400 mt-2">
-                  Sign Out
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

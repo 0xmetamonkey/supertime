@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-type Theme = 'neo' | 'slick';
+type Theme = 'light' | 'dark';
 
 interface ThemeContextType {
   theme: Theme;
@@ -12,33 +12,35 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-// ... (imports remain)
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('neo'); // Server default
+  const [theme, setTheme] = useState<Theme>('light'); // Server default
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Load saved theme
     const saved = localStorage.getItem('supertime-theme') as Theme;
-    if (saved && (saved === 'neo' || saved === 'slick')) {
-      setTheme(saved);
-    }
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialTheme = saved || (systemDark ? 'dark' : 'light');
+
+    handleSetTheme(initialTheme as Theme);
     setMounted(true);
   }, []);
 
   const handleSetTheme = (newTheme: Theme) => {
     setTheme(newTheme);
     localStorage.setItem('supertime-theme', newTheme);
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   };
 
   const toggleTheme = () => {
-    handleSetTheme(theme === 'neo' ? 'slick' : 'neo');
+    handleSetTheme(theme === 'light' ? 'dark' : 'light');
   };
 
   const contextValue = { theme, setTheme: handleSetTheme, toggleTheme };
 
-  // Prevent hydration mismatch / flash of wrong theme
-  // CRITICAL: Must still wrap in Provider because children (like LandingPageClient) use useTheme()
   if (!mounted) {
     return (
       <ThemeContext.Provider value={contextValue}>
@@ -49,9 +51,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider value={contextValue}>
-      <div className={theme === 'neo' ? 'theme-neo' : 'theme-slick'}>
-        {children}
-      </div>
+      {children}
     </ThemeContext.Provider>
   );
 }

@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ⚡ Supertime
 
-## Getting Started
+### The Direct Economy of Human Interaction
 
-First, run the development server:
+Supertime is a high-fidelity "Time Sharing" platform designed for artists, learners, and admirers to exchange value through real-time communication. We believe that human presence is the most valuable asset, and we've built the engine to monetize it directly, transparently, and beautifully.
 
+#### 🚀 The Vision: Build in Public
+We are transitioning to an open-source, profitable model. This repository is our stage. 
+- **Direct Approach**: No middleman bloat. Just creators and their admirers.
+- **Neo-Brutalist Aesthetic**: A UI that feels alive, intentional, and bold.
+- **Pay-Per-Moment**: Integrated wallet systems using Razorpay/UPI for instant value transfer.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Core**: [Next.js](https://nextjs.org/) (App Router)
+- **Communication Engine**: [Agora RTC](https://www.agora.io/) (High-fidelity audio/video)
+- **Persistance**: [Vercel KV](https://vercel.com/storage/kv) (Redis-backed signaling & state)
+- **Styling**: Vanilla CSS + Tailwind + Framer Motion (Neo-Brutalism)
+- **Payments**: Razorpay / UPI Integration
+
+---
+
+## 🏗️ Getting Started
+
+### 1. Requirements
+- Node.js 18+
+- Vercel KV Database
+- Agora Dev Account (App ID & Certificate)
+
+### 2. Environment Variables
+Create a `.env.local` with:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Agora Configuration
+NEXT_PUBLIC_AGORA_APP_ID=your_app_id
+AGORA_APP_CERTIFICATE=your_app_certificate
+
+# Vercel KV
+KV_URL=...
+KV_REST_API_URL=...
+KV_REST_API_TOKEN=...
+KV_REST_API_READ_ONLY_TOKEN=...
+
+# Auth & Payments
+NEXTAUTH_SECRET=...
+RAZORPAY_KEY_ID=...
+RAZORPAY_KEY_SECRET=...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Installation
+```bash
+npm install
+npm run dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🎨 Design Philosophy
+The Supertime UI follows a **Neo-Brutalist** design system:
+- **High Contrast**: Solid black borders (4px-8px).
+- **Vibrant Palette**: Neo-Pink, Neo-Yellow, Neo-Green.
+- **Interaction**: Micro-animations and hover-state "depth" shifts.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🗺️ Roadmap
+Check [ROADMAP_PROGRESS.md](ROADMAP_PROGRESS.md) for current engineering milestones.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+*Built with energy for the creators of tomorrow.*
