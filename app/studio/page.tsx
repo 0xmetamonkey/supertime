@@ -52,7 +52,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
       settings.socials = { ...settings.socials, ...socials };
     }
     if (profileImage) (settings as any).profileImage = profileImage;
-    if (isLive === null) settings.isLive = true; // Default to TRUE
+    if (isLive === null) settings.isLive = false; // Default to FALSE
     else settings.isLive = !!isLive;
     if (roomType) (settings as any).roomType = roomType;
     if (isRoomFree !== null) (settings as any).isRoomFree = !!isRoomFree;
