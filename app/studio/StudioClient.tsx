@@ -224,15 +224,26 @@ export default function StudioClient({ username, session, initialSettings }: { u
   }, [effectiveUsername]);
 
   useEffect(() => {
-    // When creator goes live (broadcasting), join the public room
-    if (!effectiveUsername || !isLive || isCalling) {
-      if (!isLive) setActiveChannelName(null);
+    // This effect manages the PUBLIC BROADCAST channel.
+    // IF we are in a 1:1 call (isCalling), we stay hands-off.
+    if (isCalling) return;
+
+    if (!effectiveUsername || !isLive) {
+      // Only clear if we were using a broadcast channel
+      if (activeChannelName?.startsWith('room-')) {
+        console.log('[Studio] Not live, clearing broadcast channel');
+        setActiveChannelName(null);
+      }
       return;
     }
-    // Broadcasting = join public room
-    console.log(`[Studio] Broadcasting live, joining room-${effectiveUsername}`);
-    setActiveChannelName(`room-${effectiveUsername}`);
-  }, [isLive, isCalling, effectiveUsername]);
+
+    // Join broadcast room
+    const broadcastChannel = `room-${effectiveUsername}`;
+    if (activeChannelName !== broadcastChannel) {
+      console.log(`[Studio] Broadcasting live, joining ${broadcastChannel}`);
+      setActiveChannelName(broadcastChannel);
+    }
+  }, [isLive, isCalling, effectiveUsername, activeChannelName]);
 
   // Ably real-time signaling (injected from StudioWrapper)
   const ablySignaling = initialSettings?._ablySignaling;
@@ -288,6 +299,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
   }, [isCalling, isPeerConnected, callType, pendingVideoRate, pendingAudioRate]);
 
   const handleAcceptCall = (type: 'audio' | 'video') => {
+    console.log(`[Studio] 📞 ACCEPTING CALL: ${type}`, incomingCall);
     setCallType(type);
     setIsCalling(true);
     setActiveChannelName(incomingCall.channelName);
@@ -332,8 +344,12 @@ export default function StudioClient({ username, session, initialSettings }: { u
   };
 
   const handleEndCall = () => {
+    console.log('[Studio] 👋 Ending 1:1 Call Session');
     setIsCalling(false);
     setActiveChannelName(null);
+    setIsPeerConnected(false);
+    setCallDuration(0);
+    setTokensEarned(0);
   };
 
   const handleSaveArtifact = async (url: string) => {
