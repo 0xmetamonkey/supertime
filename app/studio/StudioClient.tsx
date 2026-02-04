@@ -42,6 +42,15 @@ export default function StudioClient({ username, session, initialSettings }: { u
   // Use a mock username if in simulator mode
   const effectiveUsername = isSimulated ? (username || 'test-creator') : username;
 
+  useEffect(() => {
+    console.log('[Studio] Component Mounted:', {
+      username,
+      effectiveUsername,
+      hasSession: !!session,
+      isSimulated
+    });
+  }, []);
+
   const [isLive, setIsLive] = useState(initialSettings?.isLive ?? false);
   const [incomingCall, setIncomingCall] = useState<any>(null);
   const [isCalling, setIsCalling] = useState(false);

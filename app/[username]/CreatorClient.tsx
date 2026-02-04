@@ -137,6 +137,7 @@ export default function CreatorClient({
       return;
     }
 
+    console.log('[Caller] Starting call...', { type, providerConnected: _ablySignaling?.isConnected });
     let callChannelName: string | null = null;
     try {
       // Use Ably for instant signaling if available
@@ -181,12 +182,15 @@ export default function CreatorClient({
     });
   };
 
-  const handleTimeUpdate = async (seconds: number) => {
+  const handleTimeUpdate = React.useCallback(async (seconds: number) => {
     const currentMinute = Math.floor(seconds / 60);
     const currentRate = callType === 'video' ? videoRate : audioRate;
     const isRoom = activeChannelName?.startsWith('room-');
 
+    console.log(`[Timer] Tick: ${seconds}s, CurrentMinute: ${currentMinute}, LastMinute: ${lastDeductMinuteRef.current}`);
+
     if (currentMinute > lastDeductMinuteRef.current) {
+      console.log(`[Timer] 🔔 NEW MINUTE DETECTED: Charging ${currentRate} TKN`);
       lastDeductMinuteRef.current = currentMinute;
       if (!(isRoom && isRoomFree) && !isSimulated) {
         const success = await deductBalance(currentRate);
@@ -201,7 +205,7 @@ export default function CreatorClient({
       }
     }
     setCallDuration(seconds);
-  };
+  }, [callType, videoRate, audioRate, activeChannelName, isRoomFree, isSimulated, username]);
 
   const [incomingCall, setIncomingCall] = useState<any>(null);
 

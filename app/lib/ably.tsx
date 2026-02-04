@@ -25,6 +25,11 @@ export function AblyProvider({ children, clientId }: AblyProviderProps) {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
+    if (!clientId) {
+      console.log('[Ably] Waiting for clientId...');
+      return;
+    }
+
     const normalizedClientId = clientId.toLowerCase();
     console.log('[Ably] Initializing client for:', normalizedClientId);
 
