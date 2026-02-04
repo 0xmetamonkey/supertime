@@ -1,7 +1,7 @@
 import { auth } from "../../auth";
 import { kv } from "@vercel/kv";
 import { redirect } from "next/navigation";
-import StudioClient from "./StudioClient";
+import StudioWrapper from "./StudioWrapper";
 import { resolveUsername } from "../actions";
 
 export default async function StudioPage() {
@@ -60,5 +60,5 @@ export default async function StudioPage() {
     (settings as any).mode = mode;
   }
 
-  return <StudioClient username={username || null} session={session} initialSettings={settings} />;
+  return <StudioWrapper username={username || null} session={session} initialSettings={settings} />;
 }

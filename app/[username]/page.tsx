@@ -1,5 +1,5 @@
 import { auth } from "../../auth";
-import CreatorClient from "./CreatorClient";
+import CreatorWrapper from "./CreatorWrapper";
 import { kv } from "@vercel/kv";
 import { Metadata } from 'next';
 import { trackEvent } from "../lib/analytics";
@@ -119,7 +119,7 @@ export default async function CreatorPage({ params }: Props) {
   }
 
   return (
-    <CreatorClient
+    <CreatorWrapper
       username={username}
       user={session?.user}
       isOwner={isOwner}

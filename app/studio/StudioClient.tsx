@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { AblyProvider, useCallSignaling } from '@/app/lib/ably';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -211,33 +212,17 @@ export default function StudioClient({ username, session, initialSettings }: { u
     setActiveChannelName(`room-${username}`);
   }, [isLive, isCalling, username]);
 
-  useEffect(() => {
-    if (!username || !isLive || isCalling) return;
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/call/signal?username=${username}`);
-        const data = await res.json();
-        // console.log("Studio Polling Signal:", data); 
+  // Ably real-time signaling (injected from StudioWrapper)
+  const ablySignaling = initialSettings?._ablySignaling;
 
-        // HYBRID HANDLER: Supports both v1 (Live) and v2 (Local) signal formats
-        if (data.incoming) {
-          console.log("INCOMING (V2):", data.incoming);
-          setIncomingCall(data.incoming);
-        } else if (data.active && data.from) {
-          // Legacy support for deployed version
-          console.log("INCOMING (V1):", data);
-          setIncomingCall({
-            from: data.from,
-            type: data.type || 'audio',
-            channelName: data.channelName
-          });
-        }
-      } catch (e) {
-        console.error("Polling Error:", e);
-      }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [isLive, isCalling, username]);
+  // Listen for incoming calls via Ably
+  useEffect(() => {
+    if (ablySignaling?.incomingCall && !isCalling) {
+      console.log('[Studio] Ably incoming call:', ablySignaling.incomingCall);
+      setIncomingCall(ablySignaling.incomingCall);
+    }
+  }, [ablySignaling?.incomingCall, isCalling]);
+
 
   const handleAcceptCall = (type: 'audio' | 'video') => {
     setCallType(type);

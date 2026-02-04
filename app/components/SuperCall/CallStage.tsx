@@ -22,10 +22,22 @@ export default function CallStage({ channelName, uid: passedUid, type, onDisconn
   const [localTracks, setLocalTracks] = useState<any>(null);
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
   const [isConnected, setIsConnected] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Agora UID must be a number for some older SDK versions or if we want better compatibility,
   // but string is supported in v4+. We'llHash it if it's a string just in case, or use as is.
-  const uid = typeof passedUid === 'number' ? passedUid : (passedUid ? Number(passedUid.replace(/[^0-9]/g, '').slice(0, 8)) : Math.floor(Math.random() * 1000000));
+  // Agora UID must be a number
+  const hashUID = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash);
+  };
+
+  const uid = typeof passedUid === 'number' ? passedUid : hashUID(passedUid || 'anonymous');
   const [volumes, setVolumes] = useState<Record<string, number>>({});
 
   // Recording & Consent State
@@ -157,38 +169,21 @@ export default function CallStage({ channelName, uid: passedUid, type, onDisconn
     client.on('volume-indicator', handleVolumeIndicator);
     client.on('stream-message', handleStreamMessage);
 
-    const hashUID = (str: string) => {
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; // Convert to 32bit integer
-      }
-      return Math.abs(hash);
-    };
-
-    const uid = typeof passedUid === 'number' ? passedUid : hashUID(passedUid || 'anonymous');
-
     const connect = async () => {
-      if (isConnectingRef.current) {
-        console.log("[CALL] 🛑 Connection already in progress, skipping start");
-        return;
-      }
+      if (isConnectingRef.current) return;
       isConnectingRef.current = true;
+      setErrorMessage(null);
 
-      console.log(`[CALL] ✨ Initiating Flow | Channel: ${channelName} | UID: ${uid}`);
       try {
+        console.log(`[CALL] 1. Requesting token for ${channelName}...`);
         const res = await fetch(`/api/agora/token?channelName=${encodeURIComponent(channelName)}&uid=${uid}`);
         const data = await res.json();
 
-        if (!data.token || !data.appId) {
-          throw new Error("Missing Token/AppID from Bridge");
-        }
-
-        console.log(`[CALL] ✅ Config Locked. AppID: ${data.appId.slice(0, 5)}...`);
+        if (!data.token) throw new Error("Could not acquire token from server. Refresh?");
         if (!active) return;
 
-        const audioConfig: any = { encoderConfig: "music_standard", AEC: true, AGC: true, ANS: true };
+        console.log(`[CALL] 2. Initializing media tracks...`);
+        const audioConfig: any = { AEC: true, AGC: true, ANS: true };
         const tracks = isVideo
           ? await AgoraRTC.createMicrophoneAndCameraTracks(audioConfig, undefined)
           : [await AgoraRTC.createMicrophoneAudioTrack(audioConfig)];
@@ -201,36 +196,17 @@ export default function CallStage({ channelName, uid: passedUid, type, onDisconn
         setLocalTracks(tracks);
         tracksRef.current = tracks;
 
-        if (client.connectionState === 'DISCONNECTED' || client.connectionState === 'DISCONNECTING') {
-          console.log(`[CALL] 🔗 client.join(${channelName}) starting...`);
-          try {
-            await client.join(data.appId, channelName, data.token, uid);
-            setIsConnected(true);
-            console.log(`[CALL] 🎉 JOINED | State: ${client.connectionState}`);
+        console.log(`[CALL] 3. Joining channel...`);
+        await client.join(data.appId, channelName, data.token, uid);
+        setIsConnected(true);
 
-            if (tracks.length > 0) {
-              console.log(`[CALL] 📡 client.publish starting...`);
-              await client.publish(tracks);
-              console.log(`[CALL] 🌍 BROADCASTING ACTIVE`);
-            }
-          } catch (joinErr: any) {
-            console.error("[CALL] ❌ Join/Publish Error:", joinErr);
-            if (joinErr.code !== 'JOIN_ALREADY_IN_PROGRESS') throw joinErr;
-          }
-
-          if (client.remoteUsers.length > 0) {
-            console.log(`[CALL] 👥 Syncing ${client.remoteUsers.length} existing peers`);
-            client.remoteUsers.forEach(async (user) => {
-              if (user.hasAudio || user.hasVideo) await handleUserPublished(user, user.hasVideo ? 'video' : 'audio');
-            });
-          }
-        }
-
-        const dsId = (client as any).createDataStream({ reliable: true, ordered: true });
-        dataStreamIdRef.current = dsId;
+        console.log(`[CALL] 4. Publishing tracks...`);
+        await client.publish(tracks);
+        console.log(`[CALL] 🚀 Connection established`);
 
       } catch (err: any) {
-        console.error("[CALL] 💥 BOOM | Critical Failure:", err);
+        console.error("[CALL] FATAL ERROR:", err);
+        setErrorMessage(err.message || "Unknown Connection Failure");
         if (tracksRef.current) tracksRef.current.forEach(t => t.close());
       } finally {
         isConnectingRef.current = false;
@@ -420,7 +396,25 @@ export default function CallStage({ channelName, uid: passedUid, type, onDisconn
 
       {/* REMOTE / PRIMARY DISPLAY */}
       <div className="absolute inset-0 z-0 bg-zinc-950 flex flex-col items-center justify-center p-6 pb-40">
-        {!remoteUsers.length ? (
+        {errorMessage ? (
+          <div className="flex flex-col items-center justify-center h-full max-w-md text-center px-6">
+            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-6 text-3xl">⚠️</div>
+            <h2 className="text-xl font-black uppercase italic tracking-tighter mb-2 text-red-500">Connection Failed</h2>
+            <p className="text-zinc-400 text-sm mb-8 leading-relaxed font-medium">{errorMessage}</p>
+            <button
+              onClick={() => {
+                setErrorMessage(null);
+                // The connect function is called automatically when errorMessage becomes null 
+                // because of the useEffect dependency on client/channel/etc if we trigger a re-mount or manual call.
+                // In this simplified version, let's just reload the component state.
+                window.location.reload();
+              }}
+              className="neo-btn bg-white text-black px-8 py-3 font-black uppercase italic tracking-widest text-xs hover:bg-neo-yellow transition-colors"
+            >
+              Force Restart Call
+            </button>
+          </div>
+        ) : !remoteUsers.length ? (
           <div className="relative w-full h-full flex flex-col items-center justify-center">
             {/* If we have local video but no remote, show local video in center (bigger) for Studio check */}
             {isVideo && localTracks?.[1] ? (

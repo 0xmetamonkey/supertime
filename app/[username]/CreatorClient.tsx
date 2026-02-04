@@ -35,6 +35,7 @@ interface CreatorClientProps {
   roomType?: 'audio' | 'video';
   isRoomFree?: boolean;
   studioMode?: 'solitude' | 'theatre' | 'private';
+  _ablySignaling?: any; // Injected from CreatorWrapper for real-time signaling
 }
 
 export default function CreatorClient({
@@ -53,7 +54,8 @@ export default function CreatorClient({
   artifacts = [],
   roomType = 'audio',
   isRoomFree = true,
-  studioMode = 'solitude'
+  studioMode = 'solitude',
+  _ablySignaling
 }: CreatorClientProps) {
 
   const [guestId] = useState(() => Math.random().toString(36).slice(2, 7));
@@ -105,7 +107,7 @@ export default function CreatorClient({
     setTokensSpent(0);
     lastDeductMinuteRef.current = 0;
 
-    if (!isRoomFree) {
+    if (!isRoomFree && !isSimulated) {
       await deductBalance(currentRate);
       setTokensSpent(currentRate);
       // Track Earning
@@ -141,20 +143,30 @@ export default function CreatorClient({
 
     let callChannelName: string | null = null;
     try {
-      const response = await fetch('/api/call/signal', {
-        method: 'POST',
-        body: JSON.stringify({ action: 'call', from: uid, to: username, type })
-      });
-      const data = await response.json();
-
-      if (data.success && data.channelName) {
-        callChannelName = data.channelName;
-        setActiveChannelName(data.channelName);
+      // Use Ably for instant signaling if available
+      if (_ablySignaling?.isConnected && _ablySignaling?.initiateCall) {
+        console.log('[Caller] Using Ably to initiate call to:', username);
+        callChannelName = await _ablySignaling.initiateCall(username, type);
+        setActiveChannelName(callChannelName);
       } else {
-        showError("Failed to connect. Please try again.");
-        return;
+        // Fallback to old API if Ably not connected
+        console.log('[Caller] Fallback: Using signal API');
+        const response = await fetch('/api/call/signal', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'call', from: uid, to: username, type })
+        });
+        const data = await response.json();
+
+        if (data.success && data.channelName) {
+          callChannelName = data.channelName;
+          setActiveChannelName(data.channelName);
+        } else {
+          showError("Failed to connect. Please try again.");
+          return;
+        }
       }
     } catch (e) {
+      console.error('[Caller] Error initiating call:', e);
       showError("Connection error. Please try again.");
       return;
     }
@@ -165,8 +177,10 @@ export default function CreatorClient({
     setTokensSpent(0);
     lastDeductMinuteRef.current = 0;
 
-    await deductBalance(currentRate);
-    setTokensSpent(currentRate);
+    if (!isSimulated) {
+      await deductBalance(currentRate);
+      setTokensSpent(currentRate);
+    }
 
     // Track Call Start
     fetch('/api/analytics/track', {
@@ -187,7 +201,7 @@ export default function CreatorClient({
 
     if (currentMinute > lastDeductMinuteRef.current) {
       lastDeductMinuteRef.current = currentMinute;
-      if (!(isRoom && isRoomFree)) {
+      if (!(isRoom && isRoomFree) && !isSimulated) {
         const success = await deductBalance(currentRate);
         if (success) {
           setTokensSpent(prev => prev + currentRate);
