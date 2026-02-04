@@ -4,13 +4,15 @@ import { redirect } from "next/navigation";
 import StudioWrapper from "./StudioWrapper";
 import { resolveUsername } from "../actions";
 
-export default async function StudioPage() {
-  const session = await auth();
+export default async function StudioPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const params = await searchParams;
+  const isSimulated = params.sim === 'true';
+  const session = await auth().catch(() => null);
   const email = session?.user?.email?.toLowerCase(); // Normalize email
 
-  if (!email) return redirect("/");
+  if (!email && !isSimulated) return redirect("/");
 
-  const username = await resolveUsername(email);
+  const username = email ? await resolveUsername(email) : null;
 
   // if (!username) return redirect("/"); // Allow callers to enter Studio
 
