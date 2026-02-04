@@ -450,23 +450,23 @@ export default function CreatorClient({
         />
       )}
 
-      {/* 1:1 Call → SuperCall */}
+      {/* 1:1 Call → SuperCall (Premium HUD) */}
       {isCalling && activeChannelName && (
-        <div className="fixed inset-0 z-[300] bg-black">
-          {/* Status Bar for 1:1 calls */}
-          <div className="absolute top-4 left-4 right-4 z-[310] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-white text-xs font-black uppercase tracking-wider">
-                1:1 with {username}
+        <div className="fixed inset-0 z-[500] bg-zinc-950">
+          {/* Status Bar for 1:1 calls - Standardized Premium Style */}
+          <div className="absolute top-6 left-6 right-6 z-[510] flex items-center justify-between">
+            <div className="flex items-center gap-4 bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-full">
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_theme(colors.red.500)]" />
+              <span className="text-white text-[10px] font-black uppercase tracking-[0.3em]">
+                Secure 1:1 Session
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="bg-neo-yellow px-3 py-1 border-2 border-black">
-                <span className="text-sm font-black tabular-nums">{formatTime(callDuration)}</span>
+              <div className="bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-xl">
+                <span className="text-white text-sm font-black tabular-nums">{formatTime(callDuration)}</span>
               </div>
-              <div className="bg-neo-pink px-3 py-1 border-2 border-black text-white">
-                <span className="text-sm font-black tabular-nums">-{tokensSpent} TKN</span>
+              <div className="bg-neo-pink/10 border border-neo-pink/20 px-4 py-2 rounded-xl">
+                <span className="text-neo-pink text-sm font-black tabular-nums">-{tokensSpent} TKN</span>
               </div>
             </div>
           </div>

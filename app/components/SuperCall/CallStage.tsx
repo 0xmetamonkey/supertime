@@ -400,33 +400,12 @@ export default function CallStage({
 
   return (
     <div className="fixed inset-0 bg-black text-white font-sans overflow-hidden select-none">
-      {/* DEBUG OVERLAY (Only on localhost) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed top-2 left-2 z-[999] bg-black/80 p-2 text-[8px] font-mono pointer-events-none border border-white/20">
-          <div>STAT: {isConnected ? 'CONNECTED' : 'CONNECTING...'}</div>
-          <div>CHAN: {channelName}</div>
-          <div>TYPE: {type}</div>
-          <div>LOC_T: {localTracks ? 'OK' : 'NULL'}</div>
-          <div>REM_U: {remoteUsers.length}</div>
-        </div>
-      )}
-      {/* ROOM HEADER */}
+
       <div className="absolute top-0 inset-x-0 z-30 p-8 flex justify-between items-start pointer-events-none">
         <div className="flex flex-col gap-2 pointer-events-auto">
-          <div className={`px-4 py-1.5 border-4 border-black font-black uppercase text-xs shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] ${type === 'video' ? 'bg-neo-pink text-white' : 'bg-neo-blue text-white'}`}>
-            {channelName.startsWith('room-') ? 'Studio Space' : 'Private Session'}
+          <div className="px-4 py-1.5 bg-neo-green/10 text-neo-green border-[1px] border-neo-green/20 font-black uppercase text-[10px] tracking-[0.2em] backdrop-blur-md">
+            Session Established
           </div>
-          <div className="flex items-center gap-2 bg-white border-4 border-black p-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest">{type} active</span>
-          </div>
-        </div>
-        <div className="bg-neo-yellow border-4 border-black px-6 py-2 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black flex items-center gap-4 pointer-events-auto">
-          <div className="flex flex-col">
-            <span className="text-[8px] font-black uppercase tracking-widest leading-none opacity-40">Live Audience</span>
-            <span className="text-xl font-black tabular-nums leading-none tracking-tighter">{(remoteUsers.length + 1).toString().padStart(2, '0')}</span>
-          </div>
-          <Sparkles className="w-5 h-5" />
         </div>
       </div>
 
@@ -447,46 +426,30 @@ export default function CallStage({
           </div>
         ) : !remoteUsers.length ? (
           <div className="relative w-full h-full flex flex-col items-center justify-center">
-            {/* If we have local video but no remote, show local video in center (bigger) for Studio check */}
+            {/* Premium Fullscreen Video Preview */}
             {isVideo && localTracks?.[1] ? (
-              <div className="w-full h-full max-w-4xl aspect-video bg-zinc-900 border-4 border-white/10 shadow-2xl overflow-hidden relative group">
+              <div className="w-full h-full bg-zinc-900 overflow-hidden relative">
                 <VideoPlayer track={localTracks[1]} />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-                <div className="absolute bottom-8 left-8">
-                  <span className="bg-neo-yellow text-black px-4 py-1 font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                    Local Preview: Studio Ready
-                  </span>
-                </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full">
-                <div className="text-zinc-500 font-black uppercase tracking-[0.3em] animate-pulse italic">Waiting for connection...</div>
-                <div className="mt-4 text-[10px] text-zinc-700 font-mono tracking-widest">{channelName}</div>
+                <div className="text-zinc-500 font-bold uppercase tracking-[0.4em] animate-pulse text-xs italic">Awaiting connection...</div>
               </div>
             )}
           </div>
         ) : (
           <div className={`w-full h-full grid gap-6 ${remoteUsers.length === 1 ? 'grid-cols-1' : (remoteUsers.length <= 4 ? 'grid-cols-2' : 'grid-cols-3')} overflow-y-auto custom-scrollbar pt-20`}>
             {remoteUsers.map((user) => (
-              <div key={user.uid} className="relative flex flex-col items-center justify-center bg-black/40 border-4 border-white/5 shadow-2xl overflow-hidden group">
+              <div key={user.uid} className="w-full h-full relative bg-zinc-900">
                 {user.videoTrack ? (
                   <VideoPlayer track={user.videoTrack} />
                 ) : (
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="relative">
-                      <VoiceAura volume={volumes[user.uid.toString()] || 0} />
-                      <div className="w-24 h-24 rounded-full bg-zinc-900 flex items-center justify-center text-4xl border-2 border-white/5 relative z-10">
-                        <span className="opacity-40">👤</span>
-                      </div>
-                    </div>
-                    <div className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/10">
-                      <span className="text-[10px] font-black text-white/50 tracking-widest uppercase italic">Participant</span>
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <div className="w-32 h-32 rounded-full bg-zinc-800 flex items-center justify-center text-4xl border border-white/5">
+                      👤
                     </div>
                   </div>
                 )}
-                <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 text-[8px] font-black uppercase tracking-widest text-white/40">
-                  UID: {user.uid}
-                </div>
               </div>
             ))}
           </div>
@@ -507,17 +470,14 @@ export default function CallStage({
             transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
             transition: dragging ? 'none' : 'transform 0.1s ease-out'
           }}
-          className="absolute bottom-28 right-6 w-32 h-44 bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl z-10 cursor-move touch-none overflow-hidden"
+          className="absolute bottom-32 right-6 w-32 h-44 bg-zinc-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-10 cursor-move touch-none"
         >
           {localTracks[1].enabled ? (
             <VideoPlayer track={localTracks[1]} />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-zinc-950">
-              <div className="relative">
-                <VoiceAura volume={volumes[uid.toString()] || 0} />
-                <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-xl relative z-10 border border-white/10">
-                  😊
-                </div>
+              <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-xl border border-white/10">
+                😊
               </div>
             </div>
           )}
@@ -584,33 +544,7 @@ export default function CallStage({
   );
 }
 
-function VoiceAura({ volume = 0 }: { volume?: number }) {
-  // Volume usually ranges 0-100 in Agora
-  const level = Math.min(volume, 100);
-  const scale = 1 + (level / 60);
-  const opacity = level > 2 ? Math.min(0.4, (level / 100)) : 0;
 
-  return (
-    <>
-      <div
-        className="absolute inset-0 rounded-full bg-[#CEFF1A] transition-all duration-100 pointer-events-none"
-        style={{
-          transform: `scale(${scale})`,
-          opacity: opacity,
-          filter: `blur(${level / 4}px)`,
-        }}
-      />
-      <div
-        className="absolute inset-0 rounded-full bg-[#CEFF1A] transition-all duration-150 pointer-events-none delay-75"
-        style={{
-          transform: `scale(${1 + (level / 100) * 2})`,
-          opacity: opacity * 0.5,
-          filter: `blur(${level / 2}px)`,
-        }}
-      />
-    </>
-  );
-}
 
 function VideoPlayer({ track }: { track: any }) {
   const ref = useRef<HTMLDivElement>(null);
