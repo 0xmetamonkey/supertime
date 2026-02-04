@@ -13,7 +13,8 @@ import {
   CircleDollarSign,
   Palette,
   Heart,
-  Globe
+  Globe,
+  Radio
 } from 'lucide-react';
 
 export default function LandingPageClient({ session, savedUsername }: { session: any, savedUsername: string | null }) {
@@ -139,7 +140,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 bg-black flex items-center justify-center border-2 border-black shadow-[4px_4px_0px_0px_theme(colors.neo-pink)]">
-              <Zap className="text-neo-yellow w-6 h-6 fill-current" />
+              <Radio className="text-neo-yellow w-6 h-6 fill-current" />
             </div>
             <span className="text-2xl font-black uppercase tracking-tighter">Supertime</span>
           </div>
@@ -172,6 +173,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
             initial="hidden"
             animate="visible"
             variants={containerVariants}
+            className="text-center lg:text-left"
           >
             <motion.div variants={itemVariants} className="inline-block px-4 py-1 border-2 border-black bg-neo-yellow mb-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
               <span className="font-black uppercase text-xs tracking-[0.2em] text-black">The World's First Energy Exchange</span>
@@ -182,7 +184,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
               into <span className="text-neo-blue italic">pure art.</span>
             </motion.h1>
 
-            <motion.p variants={itemVariants} className="text-lg md:text-xl font-bold max-w-xl mb-6 text-zinc-600">
+            <motion.p variants={itemVariants} className="text-lg md:text-xl font-bold max-w-xl mb-6 text-zinc-600 mx-auto lg:mx-0">
               We believe our time is your most beautiful asset. A mission to make each moment an asset that evolves into blissful human connection.
             </motion.p>
 
@@ -217,7 +219,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
                   </div>
                 )}
               </form>
-              <p className="mt-6 text-xs font-bold text-zinc-400 uppercase tracking-widest text-left">
+              <p className="mt-6 text-xs font-bold text-zinc-400 uppercase tracking-widest text-center lg:text-left">
                 Join 5,000+ creators exchanging energy daily
               </p>
             </motion.div>

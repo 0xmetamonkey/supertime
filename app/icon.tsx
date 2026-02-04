@@ -31,15 +31,42 @@ export default function Icon() {
       >
         <div
           style={{
-            background: 'linear-gradient(to right, #D652FF, #CEFF1A)',
-            backgroundClip: 'text',
-            color: 'transparent',
-            fontWeight: 900,
-            fontFamily: 'sans-serif',
-            marginBottom: 20
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            width: 250,
+            height: 250,
           }}
         >
-          S
+          {/* Signal Waves */}
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                width: 100 + i * 80,
+                height: 100 + i * 80,
+                borderTop: `${25 - i * 4}px solid #CEFF1A`,
+                borderRadius: '50%',
+                opacity: 1 - (i * 0.2),
+              }}
+            />
+          ))}
+          {/* Base Dot */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 10,
+              width: 50,
+              height: 50,
+              background: '#D652FF',
+              borderRadius: '50%',
+              boxShadow: '0 0 30px #D652FF',
+            }}
+          />
         </div>
       </div>
     ),
