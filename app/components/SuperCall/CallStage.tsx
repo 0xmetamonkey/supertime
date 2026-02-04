@@ -23,6 +23,8 @@ export default function CallStage({ channelName, uid: passedUid, type, onDisconn
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   // Agora UID must be a number for some older SDK versions or if we want better compatibility,
   // but string is supported in v4+. We'llHash it if it's a string just in case, or use as is.
@@ -179,10 +181,12 @@ export default function CallStage({ channelName, uid: passedUid, type, onDisconn
         const res = await fetch(`/api/agora/token?channelName=${encodeURIComponent(channelName)}&uid=${uid}`);
         const data = await res.json();
 
+        console.log(`[CALL] 2. Token received. UID from API: ${data.uid}, channel: ${data.channelName}`);
+
         if (!data.token) throw new Error("Could not acquire token from server. Refresh?");
         if (!active) return;
 
-        console.log(`[CALL] 2. Initializing media tracks...`);
+        console.log(`[CALL] 3. Initializing media tracks...`);
         const audioConfig: any = { AEC: true, AGC: true, ANS: true };
         const tracks = isVideo
           ? await AgoraRTC.createMicrophoneAndCameraTracks(audioConfig, undefined)
@@ -196,13 +200,16 @@ export default function CallStage({ channelName, uid: passedUid, type, onDisconn
         setLocalTracks(tracks);
         tracksRef.current = tracks;
 
-        console.log(`[CALL] 3. Joining channel...`);
-        await client.join(data.appId, channelName, data.token, uid);
+        // CRITICAL: Use the UID from the token API response, not our local uid
+        // This ensures the token was generated for the exact UID we're joining with
+        const joinUid = data.uid;
+        console.log(`[CALL] 4. Joining channel ${channelName} with UID ${joinUid}...`);
+        await client.join(data.appId, channelName, data.token, joinUid);
         setIsConnected(true);
 
-        console.log(`[CALL] 4. Publishing tracks...`);
+        console.log(`[CALL] 5. Publishing tracks...`);
         await client.publish(tracks);
-        console.log(`[CALL] 🚀 Connection established`);
+        console.log(`[CALL] 🚀 Connection established with UID ${joinUid}`);
 
       } catch (err: any) {
         console.error("[CALL] FATAL ERROR:", err);
@@ -227,6 +234,27 @@ export default function CallStage({ channelName, uid: passedUid, type, onDisconn
       client.leave();
     };
   }, [client, channelName, passedUid, isVideo]);
+
+  // Exponential backoff retry logic
+  const handleRetry = async () => {
+    if (retryCount >= 3) {
+      setErrorMessage('Max retries reached. Please refresh the page.');
+      return;
+    }
+
+    setIsRetrying(true);
+    const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+    console.log(`[CALL] 🔄 Retrying connection in ${delay}ms (attempt ${retryCount + 1}/3)`);
+
+    await new Promise(resolve => setTimeout(resolve, delay));
+
+    setRetryCount(prev => prev + 1);
+    setErrorMessage(null);
+    setIsRetrying(false);
+
+    // The useEffect will automatically trigger reconnection when errorMessage becomes null
+    window.location.reload();
+  };
 
   const toggleMic = async () => {
     if (!client || !localTracks?.[0]) return;
@@ -402,16 +430,11 @@ export default function CallStage({ channelName, uid: passedUid, type, onDisconn
             <h2 className="text-xl font-black uppercase italic tracking-tighter mb-2 text-red-500">Connection Failed</h2>
             <p className="text-zinc-400 text-sm mb-8 leading-relaxed font-medium">{errorMessage}</p>
             <button
-              onClick={() => {
-                setErrorMessage(null);
-                // The connect function is called automatically when errorMessage becomes null 
-                // because of the useEffect dependency on client/channel/etc if we trigger a re-mount or manual call.
-                // In this simplified version, let's just reload the component state.
-                window.location.reload();
-              }}
-              className="neo-btn bg-white text-black px-8 py-3 font-black uppercase italic tracking-widest text-xs hover:bg-neo-yellow transition-colors"
+              onClick={handleRetry}
+              disabled={isRetrying}
+              className="neo-btn bg-white text-black px-8 py-3 font-black uppercase italic tracking-widest text-xs hover:bg-neo-yellow transition-colors disabled:opacity-50"
             >
-              Force Restart Call
+              {isRetrying ? `Retrying... (${retryCount}/3)` : 'Retry Connection'}
             </button>
           </div>
         ) : !remoteUsers.length ? (

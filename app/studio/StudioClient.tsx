@@ -28,9 +28,10 @@ import {
   Camera,
   Play
 } from 'lucide-react';
-import { logout, checkAvailability, claimUsername } from '../actions';
 import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
+const BroadcastHost = dynamic(() => import('../components/Broadcast/BroadcastHost'), { ssr: false });
+import { logout, checkAvailability, claimUsername } from '../actions';
 import WalletManager from '../components/WalletManager';
 
 export default function StudioClient({ username, session, initialSettings }: { username: string | null, session: any, initialSettings?: any }) {
@@ -78,19 +79,21 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
-  // Mode Logic
-  const [studioMode, setStudioMode] = useState<'solitude' | 'theatre' | 'private'>(initialSettings?.mode || 'solitude');
+  // SEPARATE STATES: Broadcast and Calls are independent
+  const [isAcceptingCalls, setIsAcceptingCalls] = useState(initialSettings?.isAcceptingCalls ?? true);
+  // isLive = broadcasting, isAcceptingCalls = taking 1:1 calls
 
-  const handleModeChange = async (newMode: 'solitude' | 'theatre' | 'private') => {
-    setStudioMode(newMode);
+  const handleToggleCalls = async () => {
+    const next = !isAcceptingCalls;
+    setIsAcceptingCalls(next);
     try {
       await fetch('/api/studio/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: newMode })
+        body: JSON.stringify({ isAcceptingCalls: next })
       });
     } catch (e) {
-      console.error("Failed to update mode", e);
+      console.error("Failed to update calls status", e);
     }
   };
 
@@ -210,13 +213,15 @@ export default function StudioClient({ username, session, initialSettings }: { u
   }, [effectiveUsername]);
 
   useEffect(() => {
-    // setIsLive(true); // TEST MODE: Force Online (DISABLED FOR SIMPLICITY)
+    // When creator goes live (broadcasting), join the public room
     if (!effectiveUsername || !isLive || isCalling) {
       if (!isLive) setActiveChannelName(null);
       return;
     }
+    // Broadcasting = join public room
+    console.log(`[Studio] Broadcasting live, joining room-${effectiveUsername}`);
     setActiveChannelName(`room-${effectiveUsername}`);
-  }, [isLive, isCalling, username]);
+  }, [isLive, isCalling, effectiveUsername]);
 
   // Ably real-time signaling (injected from StudioWrapper)
   const ablySignaling = initialSettings?._ablySignaling;
@@ -335,40 +340,50 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
   return (
     <div className="min-h-screen bg-white text-black font-sans selection:bg-neo-pink selection:text-white">
-      {/* ACTIVE CALL / ROOM OVERLAY */}
-      {activeChannelName && (
+      {/* ACTIVE SESSION OVERLAY */}
+      {/* Broadcasting → BroadcastHost */}
+      {isLive && activeChannelName && !isCalling && (
+        <BroadcastHost
+          channelName={activeChannelName}
+          uid={session?.user?.id || 'studio-host'}
+          onEnd={() => {
+            setIsLive(false);
+            setActiveChannelName(null);
+          }}
+          onCallRequest={(req: any) => {
+            setIncomingCall(req);
+          }}
+        />
+      )}
+
+      {/* Active 1:1 Call (any mode) → SuperCall */}
+      {isCalling && activeChannelName && (
         <div className="fixed inset-0 z-[500] bg-black">
-          {isCalling ? (
-            <div className="absolute top-8 left-8 z-[510] flex gap-4">
-              <div className="bg-neo-yellow border-4 border-black p-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-                <p className="text-[10px] font-black uppercase text-black/40 mb-1">Session Duration</p>
-                <p className="text-2xl font-black tabular-nums">{formatTime(callDuration)}</p>
+          {/* Status Bar for 1:1 calls */}
+          <div className="absolute top-4 left-4 right-4 z-[510] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-white text-xs font-black uppercase tracking-wider">
+                1:1 Session
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="bg-neo-yellow px-3 py-1 border-2 border-black">
+                <span className="text-sm font-black tabular-nums">{formatTime(callDuration)}</span>
               </div>
-              <div className="bg-neo-pink border-4 border-black p-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-white">
-                <p className="text-[10px] font-black uppercase text-white/40 mb-1">Energy Earned</p>
-                <p className="text-2xl font-black tabular-nums">{tokensEarned.toFixed(2)} TKN</p>
+              <div className="bg-neo-green px-3 py-1 border-2 border-black">
+                <span className="text-sm font-black tabular-nums">+{tokensEarned.toFixed(0)} TKN</span>
               </div>
             </div>
-          ) : (
-            <div className="absolute top-8 left-8 z-[510] flex flex-col gap-2">
-              <div className="bg-neo-green border-4 border-black p-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
-                <p className="text-[10px] font-black uppercase mb-1">Studio Space Live</p>
-                <p className="text-xl font-black uppercase italic tracking-tighter">Your room is active</p>
-              </div>
-              <div className="bg-white border-4 border-black p-3 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex items-center gap-3 text-black">
-                <div className={`w-3 h-3 rounded-full ${roomType === 'video' ? 'bg-neo-pink' : 'bg-neo-blue'} animate-pulse`} />
-                <span className="text-[10px] font-black uppercase">{roomType} Room • {isRoomFree ? 'Free Access' : 'Paid Access'}</span>
-              </div>
-            </div>
-          )}
+          </div>
           <SuperCall
             key={activeChannelName}
             channelName={activeChannelName}
             uid={session?.user?.id || 'studio-host'}
-            type={isCalling ? callType! : roomType}
+            type={callType || roomType}
             onDisconnect={() => {
-              if (isCalling) handleEndCall();
-              else setIsLive(false);
+              handleEndCall();
+              setActiveChannelName(null);
             }}
             onSaveArtifact={handleSaveArtifact}
           />
@@ -414,38 +429,59 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
       <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
 
-        {/* FLIGHT DECK: MODE SWITCHER */}
-        <div className="mb-12">
-          <div className="flex flex-col md:flex-row gap-6 items-stretch">
-            <div className="flex-1 bg-black border-4 border-black p-2 flex gap-1 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-              {[
-                { id: 'solitude', icon: Shield, label: 'Solitude', desc: 'Private focus' },
-                { id: 'theatre', icon: Globe, label: 'Theatre', desc: 'Public room' },
-                { id: 'private', icon: Lock, label: 'Private', desc: '1:1 Session' }
-              ].map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => handleModeChange(m.id as any)}
-                  className={`flex-1 flex flex-col items-center justify-center py-4 px-2 transition-all ${studioMode === m.id ? 'bg-neo-green text-black' : 'bg-zinc-900 text-zinc-500 hover:text-white'}`}
-                >
-                  <m.icon className={`w-6 h-6 mb-1 ${studioMode === m.id ? 'animate-pulse' : ''}`} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">{m.label}</span>
-                </button>
-              ))}
-            </div>
+        {/* TWO INDEPENDENT CONTROLS: Broadcast & Calls */}
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
 
-            <div className={`border-4 border-black p-6 flex flex-col justify-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex-1 md:flex-[0_0_350px] transition-colors ${isLive ? 'bg-neo-pink text-white' : 'bg-neo-blue text-white'}`}>
-              <div className="flex items-center gap-3 mb-4">
-                <div className={`w-3 h-3 rounded-full ${isLive ? 'bg-neo-green animate-ping' : 'bg-white/30'}`} />
-                <p className="text-[10px] font-black uppercase tracking-[0.3em]">
-                  {isLive ? 'Broadcasting Energy' : 'Studio Partitioned'}
-                </p>
+          {/* BROADCAST PANEL */}
+          <div className={`border-4 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-colors ${isLive ? 'bg-neo-blue' : 'bg-white'}`}>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">📺</span>
+              <h3 className={`text-xl font-black uppercase ${isLive ? 'text-white' : 'text-black'}`}>Broadcast</h3>
+            </div>
+            <p className={`text-xs font-bold uppercase mb-4 ${isLive ? 'text-white/70' : 'text-black/50'}`}>
+              {isLive ? `Streaming on room-${effectiveUsername}` : 'Stream to your fans'}
+            </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {isLive && <div className="w-3 h-3 rounded-full bg-red-500 animate-ping" />}
+                <span className={`text-sm font-black uppercase ${isLive ? 'text-white' : 'text-black/60'}`}>
+                  {isLive ? 'LIVE' : 'Offline'}
+                </span>
               </div>
               <button
-                onClick={() => setIsLive(!isLive)}
-                className={`w-full py-4 border-4 border-black font-black uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all ${isLive ? 'bg-black text-white' : 'bg-neo-yellow text-black'}`}
+                onClick={async () => {
+                  const next = !isLive;
+                  setIsLive(next);
+                  await fetch('/api/studio/update', { method: 'POST', body: JSON.stringify({ isLive: next }) });
+                }}
+                className={`px-6 py-3 border-4 border-black font-black uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all ${isLive ? 'bg-red-500 text-white' : 'bg-neo-green text-black'}`}
               >
-                {isLive ? '✕ END SESSION' : '⚡ GO LIVE'}
+                {isLive ? 'END' : 'GO LIVE'}
+              </button>
+            </div>
+          </div>
+
+          {/* CALLS PANEL */}
+          <div className={`border-4 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-colors ${isAcceptingCalls ? 'bg-neo-pink' : 'bg-white'}`}>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">📞</span>
+              <h3 className={`text-xl font-black uppercase ${isAcceptingCalls ? 'text-white' : 'text-black'}`}>1:1 Calls</h3>
+            </div>
+            <p className={`text-xs font-bold uppercase mb-4 ${isAcceptingCalls ? 'text-white/70' : 'text-black/50'}`}>
+              {isAcceptingCalls ? 'Fans can request calls' : 'Not taking calls'}
+            </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {isAcceptingCalls && <div className="w-3 h-3 rounded-full bg-white animate-pulse" />}
+                <span className={`text-sm font-black uppercase ${isAcceptingCalls ? 'text-white' : 'text-black/60'}`}>
+                  {isAcceptingCalls ? 'READY' : 'Off'}
+                </span>
+              </div>
+              <button
+                onClick={handleToggleCalls}
+                className={`px-6 py-3 border-4 border-black font-black uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all ${isAcceptingCalls ? 'bg-red-500 text-white' : 'bg-neo-green text-black'}`}
+              >
+                {isAcceptingCalls ? 'STOP' : 'ACCEPT'}
               </button>
             </div>
           </div>
@@ -463,27 +499,14 @@ export default function StudioClient({ username, session, initialSettings }: { u
                   <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`} className="w-full h-full object-cover" />
                 )}
               </div>
-              <h2 className="text-3xl font-black uppercase text-center mb-2 tracking-tighter italic text-black">{username}</h2>
-              {/* DEBUG DASHBOARD (DEV ONLY) */}
-              <div className="bg-zinc-900 border-4 border-black p-4 text-[10px] font-mono text-neo-green mb-8">
-                <p className="uppercase text-white border-b border-white/20 pb-1 mb-2">System Status</p>
-                <p>ID: <span className="text-white">{username}</span></p>
-                <p>Mode: <span className="text-white">{studioMode}</span></p>
-                <p>Signal: <span className="text-white">{incomingCall ? 'ACTIVE' : 'IDLE'}</span></p>
-                <p>Live: <span className="text-white">{isLive ? 'YES' : 'NO'}</span></p>
-                <p>Calling: <span className="text-white">{isCalling ? 'YES' : 'NO'}</span></p>
-              </div>
-
-              <button
-                onClick={async () => {
-                  const next = !isLive;
-                  setIsLive(next);
-                  await fetch('/api/studio/update', { method: 'POST', body: JSON.stringify({ isLive: next }) });
-                }}
-                className={`w-full neo-btn py-5 text-xl font-black ${isLive ? 'bg-neo-pink text-white animate-pulse' : 'bg-neo-green text-black'}`}
+              <h2 className="text-3xl font-black uppercase text-center mb-4 tracking-tighter italic text-black">{username}</h2>
+              <a
+                href={`/${username}`}
+                target="_blank"
+                className="block w-full text-center bg-black text-white py-3 font-black uppercase text-xs border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-neo-pink transition-colors"
               >
-                {isLive ? 'FINISH SESSION' : 'GO LIVE NOW'}
-              </button>
+                View Public Profile →
+              </a>
             </div>
 
             <div className="bg-neo-yellow border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
@@ -564,9 +587,10 @@ export default function StudioClient({ username, session, initialSettings }: { u
               )}
             </AnimatePresence>
 
-            {studioMode === 'solitude' ? (
+            {/* Call requests and stats - shown when accepting calls */}
+            {false ? (
               <div className="space-y-12">
-                {/* SOLITUDE LAB STAGE */}
+                {/* REMOVED: Solitude content */}
                 <div className="neo-box bg-black p-8 border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] text-white">
                   <div className="flex justify-between items-center mb-8">
                     <div className="flex items-center gap-3">
@@ -624,9 +648,9 @@ export default function StudioClient({ username, session, initialSettings }: { u
                   </p>
                 </div>
               </div>
-            ) : studioMode === 'theatre' ? (
+            ) : false ? (
               <div className="space-y-12">
-                {/* THEATRE STAGE */}
+                {/* REMOVED: Theatre content */}
                 <div className="neo-box bg-neo-pink p-8 border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] text-white">
                   <div className="flex justify-between items-center mb-8">
                     <div className="flex items-center gap-3">
@@ -1013,6 +1037,6 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </div >
   );
 }

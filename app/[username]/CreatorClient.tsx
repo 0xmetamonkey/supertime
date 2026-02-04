@@ -11,11 +11,14 @@ import {
   Sparkles,
   ArrowRight,
   Mic,
-  Video
+  Video,
+  Instagram,
+  Link as LinkIcon
 } from 'lucide-react';
 import WalletManager from '../components/WalletManager';
 import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
+const BroadcastViewer = dynamic(() => import('../components/Broadcast/BroadcastViewer'), { ssr: false });
 import { loginWithGoogle, logout } from '../actions';
 
 interface CreatorClientProps {
@@ -68,6 +71,7 @@ export default function CreatorClient({
   // State
   const [balance, setBalance] = useState<number>(5000); // TEST MODE: Backdoor Enabled
   const [isCalling, setIsCalling] = useState(false);
+  const [isWatching, setIsWatching] = useState(false); // Watching broadcast (Theatre mode)
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [callDuration, setCallDuration] = useState(0);
@@ -81,7 +85,7 @@ export default function CreatorClient({
   const [isBooking, setIsBooking] = useState(false);
 
   const lastDeductMinuteRef = useRef<number>(0);
-
+  // Handle joining Theatre mode broadcast (watch stream)
   const handleJoinRoom = async () => {
     if (!isLoggedIn && !isRoomFree && !isSimulated) {
       loginWithGoogle(window.location.pathname);
@@ -93,33 +97,17 @@ export default function CreatorClient({
       return;
     }
 
-    const currentRate = roomType === 'video' ? videoRate : audioRate;
-
-    if (!isRoomFree && balance < currentRate && !isSimulated) {
-      showError(`${currentRate} TKN required to join ${roomType} room.`);
-      return;
-    }
-
+    // Theatre mode = watch stream (BroadcastViewer)
     setActiveChannelName(`room-${username}`);
-    setCallType(roomType);
-    setIsCalling(true);
+    setIsWatching(true);
     setCallDuration(0);
     setTokensSpent(0);
     lastDeductMinuteRef.current = 0;
 
-    if (!isRoomFree && !isSimulated) {
-      await deductBalance(currentRate);
-      setTokensSpent(currentRate);
-      // Track Earning
-      fetch('/api/analytics/track', {
-        method: 'POST',
-        body: JSON.stringify({ event: 'earning', username, metadata: { amount: currentRate } })
-      });
-    }
-    // Track Call Start
+    // Track stream join
     fetch('/api/analytics/track', {
       method: 'POST',
-      body: JSON.stringify({ event: 'call_start', username })
+      body: JSON.stringify({ event: 'stream_join', username })
     });
   };
 
@@ -426,16 +414,43 @@ export default function CreatorClient({
         )}
       </AnimatePresence>
 
+      {/* Watching Stream (Theatre mode) → BroadcastViewer */}
+      {isWatching && activeChannelName && (
+        <BroadcastViewer
+          channelName={activeChannelName}
+          uid={uid}
+          creatorUsername={username}
+          userBalance={balance}
+          onLeave={() => {
+            setIsWatching(false);
+            setActiveChannelName(null);
+          }}
+          onRequestCall={(type) => {
+            // Fan wants 1:1 call from within stream
+            setIsWatching(false);
+            handleStartCall(type);
+          }}
+        />
+      )}
+
+      {/* 1:1 Call → SuperCall */}
       {isCalling && activeChannelName && (
         <div className="fixed inset-0 z-[300] bg-black">
-          <div className="absolute top-4 right-4 md:top-24 md:left-6 z-[310] flex flex-col gap-2 items-end md:items-start">
-            <div className="bg-neo-yellow border-4 border-black p-2 md:p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] md:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-black">
-              <p className="text-[10px] font-black uppercase mb-1">Live Connection</p>
-              <p className="text-sm md:text-lg font-black tabular-nums">{formatTime(callDuration)}</p>
+          {/* Status Bar for 1:1 calls */}
+          <div className="absolute top-4 left-4 right-4 z-[310] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-white text-xs font-black uppercase tracking-wider">
+                1:1 with {username}
+              </span>
             </div>
-            <div className="bg-neo-pink border-4 border-black p-2 md:p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] md:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-white">
-              <p className="text-[10px] font-black uppercase mb-1 text-white/80">Energy Exchange</p>
-              <p className="text-sm md:text-lg font-black tabular-nums">{tokensSpent} TKN</p>
+            <div className="flex items-center gap-2">
+              <div className="bg-neo-yellow px-3 py-1 border-2 border-black">
+                <span className="text-sm font-black tabular-nums">{formatTime(callDuration)}</span>
+              </div>
+              <div className="bg-neo-pink px-3 py-1 border-2 border-black text-white">
+                <span className="text-sm font-black tabular-nums">-{tokensSpent} TKN</span>
+              </div>
             </div>
           </div>
           <SuperCall
@@ -444,7 +459,8 @@ export default function CreatorClient({
             uid={uid}
             type={callType!}
             onDisconnect={handleEndCall}
-          /></div>
+          />
+        </div>
       )}
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 md:pt-32">
@@ -476,6 +492,37 @@ export default function CreatorClient({
                   <Heart className={`w-5 h-5 ${isAdmiring ? 'fill-white' : ''}`} />
                   {admirerCount} Admirers
                 </button>
+                {/* Social Links - Restored for MVP */}
+                {socials?.instagram && (
+                  <a
+                    href={`https://instagram.com/${socials.instagram}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 border-4 border-black px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all"
+                  >
+                    <Instagram className="w-5 h-5" />
+                  </a>
+                )}
+                {socials?.x && (
+                  <a
+                    href={`https://x.com/${socials.x}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 border-4 border-black px-4 py-2 bg-black text-white font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all"
+                  >
+                    𝕏
+                  </a>
+                )}
+                {socials?.website && (
+                  <a
+                    href={socials.website.startsWith('http') ? socials.website : `https://${socials.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 border-4 border-black px-4 py-2 bg-neo-blue text-white font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all"
+                  >
+                    <LinkIcon className="w-5 h-5" />
+                  </a>
+                )}
               </div>
             </div>
             {isOwner ? (
@@ -489,40 +536,59 @@ export default function CreatorClient({
               </div>
             ) : (
               <div className="space-y-4">
+                {/* PRIMARY: Join Live Studio */}
                 {isLive && (
-                  <button onClick={handleJoinRoom} className="w-full neo-btn bg-neo-green text-black py-6 md:py-8 flex flex-col items-center gap-3 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] md:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] md:hover:translate-x-[4px] md:hover:translate-y-[4px] transition-all relative group mb-6">
-                    <div className="flex items-center gap-4 relative z-10 w-full px-6 text-left">
-                      <div className="w-16 h-16 bg-white flex items-center justify-center border-4 border-black rounded-full text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                        <Mic className={`w-8 h-8 ${roomType === 'video' ? 'text-neo-pink' : 'text-neo-blue'}`} />
+                  <button
+                    onClick={handleJoinRoom}
+                    className="w-full bg-neo-green border-4 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white rounded-full border-2 border-black flex items-center justify-center">
+                        <Mic className="w-6 h-6 text-black" />
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 text-left">
                         <div className="flex items-center gap-2">
-                          <span className="text-2xl font-black italic tracking-tighter uppercase">Join Studio Space</span>
+                          <span className="text-lg font-black uppercase">Join Studio</span>
                           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                         </div>
-                        <p className="text-[10px] font-black uppercase opacity-60">{roomType} ROOM • {isRoomFree ? 'FREE' : 'PAID'}</p>
+                        <p className="text-xs font-bold uppercase opacity-60">
+                          {isRoomFree ? 'Free' : `${roomType === 'video' ? videoRate : audioRate} TKN/min`}
+                        </p>
                       </div>
-                      <ArrowRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
+                      <ArrowRight className="w-6 h-6" />
                     </div>
                   </button>
                 )}
-                <div className="grid grid-cols-2 gap-4">
-                  <button onClick={() => handleStartCall('video')} className="neo-btn bg-neo-pink text-white py-6 md:py-8 flex flex-col items-center border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] md:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transition-all">
-                    <span className="text-xl md:text-2xl font-black">VIDEO</span>
-                    <span className="text-[10px] md:text-xs font-bold opacity-80">{videoRate} TKN/MIN</span>
+
+                {/* SECONDARY: Direct Call Options */}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => handleStartCall('video')}
+                    className="bg-neo-pink text-white py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex flex-col items-center"
+                  >
+                    <Video className="w-6 h-6 mb-1" />
+                    <span className="text-sm font-black">VIDEO</span>
+                    <span className="text-[10px] opacity-80">{videoRate} TKN/min</span>
                   </button>
-                  <button onClick={() => handleStartCall('audio')} className="neo-btn bg-neo-blue text-white py-6 md:py-8 flex flex-col items-center border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] md:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transition-all">
-                    <span className="text-xl md:text-2xl font-black">AUDIO</span>
-                    <span className="text-[10px] md:text-xs font-bold opacity-80">{audioRate} TKN/MIN</span>
+                  <button
+                    onClick={() => handleStartCall('audio')}
+                    className="bg-neo-blue text-white py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex flex-col items-center"
+                  >
+                    <Mic className="w-6 h-6 mb-1" />
+                    <span className="text-sm font-black">AUDIO</span>
+                    <span className="text-[10px] opacity-80">{audioRate} TKN/min</span>
                   </button>
                 </div>
-                <div className="bg-neo-yellow border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-                  <div className="flex justify-between items-center mb-4 text-black">
-                    <h3 className="text-2xl font-black uppercase">Schedule</h3>
-                    <button onClick={() => { if (!isLoggedIn) loginWithGoogle(window.location.pathname); else setShowBookingModal(true); }} className="bg-black text-white text-[10px] font-black uppercase px-3 py-1 border-2 border-black">Book Now</button>
+
+                {/* Schedule - Hidden for MVP simplicity */}
+                {/* 
+                <div className="bg-neo-yellow border-4 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  <div className="flex justify-between items-center text-black">
+                    <span className="text-sm font-black uppercase">Book Later</span>
+                    <button className="bg-black text-white text-xs px-3 py-1">Schedule</button>
                   </div>
-                  <p className="text-xs font-bold text-black/60 uppercase tracking-widest leading-relaxed">Reserved connection moments</p>
                 </div>
+                */}
               </div>
             )}
           </div>

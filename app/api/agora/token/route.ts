@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RtcTokenBuilder, RtcRole } from 'agora-token';
 
+// Hash UID to ensure consistency with client-side hashing
+// This MUST match the hashUID function in CallStage.tsx
+const hashUID = (str: string): number => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+};
+
 export async function GET(req: NextRequest) {
   const channelName = req.nextUrl.searchParams.get('channelName');
-  const uid = req.nextUrl.searchParams.get('uid') || 0; // 0 for random/default
+  const rawUid = req.nextUrl.searchParams.get('uid') || '0';
+
+  // Hash string UIDs to numbers, or use numeric UIDs directly
+  const uid = typeof rawUid === 'string' && isNaN(Number(rawUid))
+    ? hashUID(rawUid)
+    : Number(rawUid);
+
   const role = RtcRole.PUBLISHER; // Everyone can publish in this 1:1 setup
   const expirationTimeInSeconds = 3600;
   const currentTimestamp = Math.floor(Date.now() / 1000);
@@ -21,18 +39,21 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // Log for debugging
+    console.log('[TOKEN API] Generating token for:', { channelName, uid, rawUid });
+
     const token = RtcTokenBuilder.buildTokenWithUid(
       appId,
       appCertificate,
       channelName,
-      Number(uid),
+      uid,
       role,
       privilegeExpiredTs,
       privilegeExpiredTs
     );
     return NextResponse.json({ token, appId, channelName, uid });
   } catch (error) {
-    console.error(error);
+    console.error('[TOKEN API] Error:', error);
     return NextResponse.json({ error: 'Token generation failed' }, { status: 500 });
   }
 }

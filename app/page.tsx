@@ -1,7 +1,7 @@
 import { auth } from "../auth";
 import { redirect } from "next/navigation";
 import { resolveUsername } from "./actions";
-import WaitlistPage from "./waitlist/page";
+import LandingPageClient from "./LandingPageClient";
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +17,6 @@ export default async function LandingPage() {
     }
   }
 
-  // Everyone else sees the waitlist
-  return <WaitlistPage />;
+  // Show the new Energy Exchange landing page
+  return <LandingPageClient session={session} savedUsername={null} />;
 }
