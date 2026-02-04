@@ -13,8 +13,7 @@ import {
   Mic,
   Video,
   Instagram,
-  Link as LinkIcon,
-  Radio
+  Link as LinkIcon
 } from 'lucide-react';
 import WalletManager from '../components/WalletManager';
 import dynamic from 'next/dynamic';
@@ -377,7 +376,7 @@ export default function CreatorClient({
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <a href="/" className="flex items-center gap-2 group">
             <div className="w-8 h-8 bg-black flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_theme(colors.neo-pink)] transition-transform group-hover:rotate-12">
-              <Radio className="text-neo-yellow w-5 h-5 fill-neo-yellow" />
+              <Zap className="text-neo-yellow w-5 h-5 fill-neo-yellow" />
             </div>
             <span className="text-xl font-black uppercase tracking-tighter">Supertime</span>
           </a>
@@ -501,7 +500,7 @@ export default function CreatorClient({
             <div className="space-y-4">
               <h1 className="text-3xl sm:text-4xl md:text-7xl font-black uppercase leading-[0.9] md:leading-[0.8] tracking-tighter flex items-center justify-center lg:justify-start gap-2 md:gap-4 flex-wrap break-words">
                 {username}
-                {isVerified && <Radio className="w-8 h-8 md:w-12 md:h-12 text-neo-blue fill-neo-blue" />}
+                {isVerified && <Zap className="w-8 h-8 md:w-12 md:h-12 text-neo-blue fill-neo-blue" />}
               </h1>
               <div className="flex gap-4 flex-wrap justify-center lg:justify-start">
                 <button

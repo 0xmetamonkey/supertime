@@ -22,45 +22,27 @@ export default function Icon() {
           color: 'white',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            width: 100,
-            height: 100,
-          }}
+        <svg
+          width="180"
+          height="180"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="url(#gradient)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         >
-          {/* Signal Waves */}
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                width: 40 + i * 30,
-                height: 40 + i * 30,
-                borderTop: `${10 - i * 2}px solid #CEFF1A`,
-                borderRadius: '50%',
-                opacity: 1 - (i * 0.2),
-              }}
-            />
-          ))}
-          {/* Base Dot */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 4,
-              width: 20,
-              height: 20,
-              background: '#D652FF',
-              borderRadius: '50%',
-              boxShadow: '0 0 10px #D652FF',
-            }}
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#D652FF" />
+              <stop offset="100%" stopColor="#CEFF1A" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
+            fill="url(#gradient)"
           />
-        </div>
+        </svg>
       </div>
     ),
     { ...size }

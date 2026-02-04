@@ -13,8 +13,7 @@ import {
   CircleDollarSign,
   Palette,
   Heart,
-  Globe,
-  Radio
+  Globe
 } from 'lucide-react';
 
 export default function LandingPageClient({ session, savedUsername }: { session: any, savedUsername: string | null }) {
@@ -140,7 +139,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 bg-black flex items-center justify-center border-2 border-black shadow-[4px_4px_0px_0px_theme(colors.neo-pink)]">
-              <Radio className="text-neo-yellow w-6 h-6 fill-current" />
+              <Zap className="text-neo-yellow w-6 h-6 fill-current" />
             </div>
             <span className="text-2xl font-black uppercase tracking-tighter">Supertime</span>
           </div>
