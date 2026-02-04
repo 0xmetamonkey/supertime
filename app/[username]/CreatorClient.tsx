@@ -499,7 +499,7 @@ export default function CreatorClient({
               )}
             </div>
             <div className="space-y-4">
-              <h1 className="text-4xl md:text-7xl font-black uppercase leading-[0.9] md:leading-[0.8] tracking-tighter flex items-center gap-2 md:gap-4 flex-wrap break-words">
+              <h1 className="text-3xl sm:text-4xl md:text-7xl font-black uppercase leading-[0.9] md:leading-[0.8] tracking-tighter flex items-center justify-center lg:justify-start gap-2 md:gap-4 flex-wrap break-words">
                 {username}
                 {isVerified && <Radio className="w-8 h-8 md:w-12 md:h-12 text-neo-blue fill-neo-blue" />}
               </h1>

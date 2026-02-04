@@ -168,7 +168,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
         <div className="absolute top-40 -left-20 w-80 h-80 bg-neo-blue/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-20 -right-20 w-[500px] h-[500px] bg-neo-pink/10 rounded-full blur-3xl animate-pulse delay-700" />
 
-        <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-12 items-center relative z-10">
+        <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-8 md:gap-12 items-center relative z-10">
           <motion.div
             initial="hidden"
             animate="visible"
@@ -179,7 +179,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
               <span className="font-black uppercase text-xs tracking-[0.2em] text-black">The World's First Energy Exchange</span>
             </motion.div>
 
-            <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl xl:text-8xl font-black uppercase leading-[0.85] tracking-tighter mb-4 text-black">
+            <motion.h1 variants={itemVariants} className="text-4xl sm:text-5xl md:text-7xl xl:text-8xl font-black uppercase leading-[0.85] tracking-tighter mb-4 text-black">
               Turn your <span className="text-neo-pink">time</span><br />
               into <span className="text-neo-blue italic">pure art.</span>
             </motion.h1>
@@ -190,7 +190,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
 
             <motion.div variants={itemVariants} className="max-w-xl w-full">
               <form onSubmit={handleSubmit} className="relative w-full">
-                <div className="flex flex-col sm:flex-row items-stretch bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] hover:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] transition-all overflow-hidden w-full">
+                <div className="flex flex-col sm:flex-row items-stretch bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] hover:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] transition-all overflow-hidden w-full">
                   <div className="flex-1 flex items-center px-4 md:px-6 py-4 border-b-4 sm:border-b-0 sm:border-r-4 border-black bg-white min-w-0">
                     <span className="text-zinc-400 font-black mr-1 text-sm md:text-lg shrink-0">supertime.wtf/</span>
                     <input
