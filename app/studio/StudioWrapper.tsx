@@ -34,7 +34,8 @@ function StudioWithSignaling({ username, session, initialSettings }: StudioWrapp
 }
 
 export default function StudioWrapper(props: StudioWrapperProps) {
-  const clientId = props.username || props.session?.user?.email || 'anonymous';
+  const isSimulated = typeof window !== 'undefined' && window.location.search.includes('sim=true');
+  const clientId = props.username || props.session?.user?.email || (isSimulated ? 'test-creator' : 'anonymous');
 
   return (
     <AblyProvider clientId={clientId}>

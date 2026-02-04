@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AblyProvider, useCallSignaling } from '@/app/lib/ably';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Zap,
@@ -35,6 +35,12 @@ import WalletManager from '../components/WalletManager';
 
 export default function StudioClient({ username, session, initialSettings }: { username: string | null, session: any, initialSettings?: any }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isSimulated = typeof window !== 'undefined' && window.location.search.includes('sim=true');
+
+  // Use a mock username if in simulator mode
+  const effectiveUsername = isSimulated ? (username || 'test-creator') : username;
+
   const [isLive, setIsLive] = useState(initialSettings?.isLive ?? false);
   const [incomingCall, setIncomingCall] = useState<any>(null);
   const [isCalling, setIsCalling] = useState(false);
@@ -200,16 +206,16 @@ export default function StudioClient({ username, session, initialSettings }: { u
         setLoadingStats(false);
       }
     };
-    if (username) fetchStats();
-  }, [username]);
+    if (effectiveUsername) fetchStats();
+  }, [effectiveUsername]);
 
   useEffect(() => {
     // setIsLive(true); // TEST MODE: Force Online (DISABLED FOR SIMPLICITY)
-    if (!username || !isLive || isCalling) {
+    if (!effectiveUsername || !isLive || isCalling) {
       if (!isLive) setActiveChannelName(null);
       return;
     }
-    setActiveChannelName(`room-${username}`);
+    setActiveChannelName(`room-${effectiveUsername}`);
   }, [isLive, isCalling, username]);
 
   // Ably real-time signaling (injected from StudioWrapper)
@@ -263,7 +269,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (!username) {
+  if (!effectiveUsername) {
     return (
       <main className="min-h-screen bg-white text-black font-sans selection:bg-neo-pink selection:text-white p-6 md:p-12">
         <nav className="max-w-7xl mx-auto flex justify-between items-center mb-16 border-b-4 border-black pb-8">
