@@ -54,6 +54,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [isLive, setIsLive] = useState(initialSettings?.isLive ?? false);
   const [incomingCall, setIncomingCall] = useState<any>(null);
   const [isCalling, setIsCalling] = useState(false);
+  const [ringerError, setRingerError] = useState(false);
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null);
   const [requests, setRequests] = useState<any[]>([]);
   const [callDuration, setCallDuration] = useState(0);
@@ -305,8 +306,13 @@ export default function StudioClient({ username, session, initialSettings }: { u
         ringerRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
         ringerRef.current.loop = true;
       }
-      ringerRef.current.play().catch(e => console.log('Ringer blocked by browser', e));
+      setRingerError(false);
+      ringerRef.current.play().catch(e => {
+        console.log('Ringer blocked by browser', e);
+        setRingerError(true);
+      });
     } else {
+      setRingerError(false);
       if (ringerRef.current) {
         ringerRef.current.pause();
         ringerRef.current.currentTime = 0;
@@ -464,6 +470,68 @@ export default function StudioClient({ username, session, initialSettings }: { u
           />
         </div>
       )}
+
+      {/* TOP-LEVEL INCOMING CALL OVERLAY (IMPOSSIBLE TO MISS) */}
+      <AnimatePresence>
+        {incomingCall && !isCalling && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] bg-neo-pink/40 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 50, rotate: -2 }}
+              animate={{ scale: 1, y: 0, rotate: 0 }}
+              className="bg-neo-blue border-[12px] border-black p-12 shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] text-white max-w-2xl w-full relative overflow-hidden text-center"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rotate-45 translate-x-32 translate-y-[-32px] animate-pulse" />
+
+              <div className="relative z-10">
+                <div className="w-32 h-32 bg-white border-8 border-black flex items-center justify-center text-5xl mx-auto mb-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">👤</div>
+
+                <p className="text-xs font-black uppercase tracking-[0.5em] text-[#CEFF1A] mb-4 animate-pulse">Incoming Video/Audio Signal</p>
+                <h3 className="text-6xl font-black uppercase italic tracking-tighter mb-4">{incomingCall.from || 'Guest'}</h3>
+
+                <div className="flex items-center justify-center gap-4 mb-12">
+                  <span className="px-4 py-1 bg-white text-black text-xs font-black uppercase border-4 border-black">{incomingCall.type} CALL</span>
+                  <span className="text-sm font-black uppercase opacity-60 italic">Connecting via Global Mesh...</span>
+                  {ringerError && (
+                    <span className="flex items-center gap-1 px-2 py-1 bg-neo-yellow text-black text-[10px] font-black border-2 border-black animate-bounce">
+                      🔇 RINGER MUTED - CLICK ANSWER
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-6">
+                  <button
+                    onClick={handleRejectCall}
+                    className="flex-1 neo-btn bg-red-500 text-white py-6 text-xl font-black"
+                  >
+                    REJECT
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Satisfy autoplay policy if ringer was blocked
+                      if (ringerRef.current && ringerRef.current.paused) {
+                        ringerRef.current.play().catch(() => { });
+                      }
+                      handleAcceptCall(incomingCall.type);
+                    }}
+                    className="flex-1 neo-btn bg-neo-green text-black py-6 text-xl font-black animate-bounce shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
+                  >
+                    ANSWER NOW
+                  </button>
+                </div>
+
+                <p className="mt-8 text-[10px] font-black uppercase opacity-40">
+                  Tip: Keep this tab active to receive instant rings
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* HEADER */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b-4 border-black py-4 transition-colors">
@@ -633,34 +701,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
           {/* RIGHT COLUMN: QUEUE & CONTENT */}
           <div className="lg:col-span-8 space-y-12">
 
-            {/* INCOMING CALL BANNER (NEOBRUTALIST STYLE) */}
-            <AnimatePresence>
-              {incomingCall && !isCalling && (
-                <motion.div
-                  initial={{ x: 100, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: 100, opacity: 0 }}
-                  className="bg-neo-blue border-8 border-black p-10 shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] text-white flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden"
-                >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rotate-45 translate-x-16 translate-y-[-16px]" />
-                  <div className="flex items-center gap-6 relative z-10">
-                    <div className="w-20 h-20 bg-white border-4 border-black flex items-center justify-center text-3xl">👤</div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#CEFF1A] mb-1">Incoming Signal</p>
-                      <h3 className="text-4xl font-black uppercase italic tracking-tighter">{incomingCall.from || 'Guest'}</h3>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="px-2 py-0.5 bg-white text-black text-[10px] font-black uppercase border-2 border-black">{incomingCall.type}</span>
-                        <span className="text-xs font-bold uppercase opacity-60 italic">Connecting...</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 relative z-10 w-full md:w-auto">
-                    <button onClick={handleRejectCall} className="flex-1 md:flex-none neo-btn bg-red-500 text-white px-8 py-3 font-black">REJECT</button>
-                    <button onClick={() => handleAcceptCall(incomingCall.type)} className="flex-1 md:flex-none neo-btn bg-neo-green text-black px-12 py-3 font-black animate-bounce shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">ANSWER</button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Incoming call handled by top-level overlay below */}
+
 
             {/* Call requests and stats - shown when accepting calls */}
             {false ? (

@@ -178,12 +178,14 @@ export function useCallSignaling(userId: string) {
   }, [publish, userId]);
 
   const cancelCall = useCallback(async (targetUserId: string) => {
-    await publish(`user:${targetUserId}`, 'call:cancelled', { from: userId });
+    const normalizedTargetId = targetUserId.toLowerCase();
+    await publish(`user:${normalizedTargetId}`, 'call:cancelled', { from: userId });
   }, [publish, userId]);
 
   const rejectCall = useCallback(async () => {
     if (incomingCall) {
-      await publish(`user:${incomingCall.from}`, 'call:rejected', { from: userId });
+      const normalizedFromId = incomingCall.from.toLowerCase();
+      await publish(`user:${normalizedFromId}`, 'call:rejected', { from: userId });
       setIncomingCall(null);
     }
   }, [publish, userId, incomingCall]);
