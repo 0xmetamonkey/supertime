@@ -15,9 +15,13 @@ interface CallStageProps {
   type: string | null;
   onDisconnect: () => void;
   onSaveArtifact?: (url: string) => void;
+  onPeerJoined?: () => void;
+  onPeerLeft?: () => void;
 }
 
-export default function CallStage({ channelName, uid: passedUid, type, onDisconnect, onSaveArtifact }: CallStageProps) {
+export default function CallStage({
+  channelName, uid: passedUid, type, onDisconnect, onSaveArtifact, onPeerJoined, onPeerLeft
+}: CallStageProps) {
   const [client, setClient] = useState<IAgoraRTCClient | null>(null);
   const [localTracks, setLocalTracks] = useState<any>(null);
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
@@ -108,12 +112,11 @@ export default function CallStage({ channelName, uid: passedUid, type, onDisconn
         // Update state to trigger re-render
         // We use a functional update to ensure we always have the freshest list
         setRemoteUsers(prev => {
-          const exists = prev.find(u => u.uid === user.uid);
-          if (exists) {
-            // Already in list, just force refresh to pick up new track
-            return [...prev.filter(u => u.uid !== user.uid), user];
+          if (!prev.find(u => u.uid === user.uid)) {
+            onPeerJoined?.();
+            return [...prev, user];
           }
-          return [...prev, user];
+          return [...prev.filter(u => u.uid !== user.uid), user];
         });
 
         if (mediaType === 'audio') {
@@ -132,8 +135,13 @@ export default function CallStage({ channelName, uid: passedUid, type, onDisconn
     };
 
     const handleUserLeft = (user: IAgoraRTCRemoteUser) => {
-      console.log(`[CALL] 👋 Remote user left: ${user.uid}`);
-      setRemoteUsers(prev => prev.filter(u => u.uid !== user.uid));
+      setRemoteUsers(prev => {
+        const next = prev.filter(u => u.uid !== user.uid);
+        if (prev.length > 0 && next.length === 0) {
+          onPeerLeft?.();
+        }
+        return next;
+      });
 
       if (!channelName.startsWith('room-')) {
         console.log('[CALL] 🛡️ Ending private session as peer has left');

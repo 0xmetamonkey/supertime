@@ -85,8 +85,9 @@ export default function CreatorClient({
   const [bookingTime, setBookingTime] = useState('');
   const [bookingTemplate, setBookingTemplate] = useState<any>(null);
   const [isBooking, setIsBooking] = useState(false);
+  const [isPeerConnected, setIsPeerConnected] = useState(false);
 
-  const lastDeductMinuteRef = useRef<number>(0);
+  const lastDeductMinuteRef = useRef<number>(-1);
   // Handle joining Theatre mode broadcast (watch stream)
   const handleJoinRoom = async () => {
     if (!isLoggedIn && !isRoomFree && !isSimulated) {
@@ -204,6 +205,19 @@ export default function CreatorClient({
 
   const [incomingCall, setIncomingCall] = useState<any>(null);
 
+  // Timer for active calls (billing)
+  useEffect(() => {
+    if (!isCalling || !isPeerConnected) return; // Only run timer if call is active and peer is connected
+    const interval = setInterval(() => {
+      setCallDuration(prev => {
+        const next = prev + 1;
+        handleTimeUpdate(next); // Deduct balance every minute
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isCalling, isPeerConnected, handleTimeUpdate]); // Add handleTimeUpdate to dependencies
+
   useEffect(() => {
     if (!isOwner || isCalling) return;
     const interval = setInterval(async () => {
@@ -239,6 +253,7 @@ export default function CreatorClient({
     setCallDuration(0);
     setActiveChannelName(null);
     lastDeductMinuteRef.current = 0;
+    setIsPeerConnected(false); // Reset peer connection status
     try {
       await fetch('/api/call/signal', {
         method: 'POST',
@@ -457,6 +472,8 @@ export default function CreatorClient({
             uid={uid}
             type={callType!}
             onDisconnect={handleEndCall}
+            onPeerJoined={() => setIsPeerConnected(true)}
+            onPeerLeft={() => setIsPeerConnected(false)}
           />
         </div>
       )}

@@ -49,6 +49,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [requests, setRequests] = useState<any[]>([]);
   const [callDuration, setCallDuration] = useState(0);
   const [tokensEarned, setTokensEarned] = useState(0);
+  const [isPeerConnected, setIsPeerConnected] = useState(false);
   const [activeChannelName, setActiveChannelName] = useState<string | null>(null);
   const [bookings, setBookings] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
@@ -262,12 +263,48 @@ export default function StudioClient({ username, session, initialSettings }: { u
   }, [effectiveUsername, isCalling, incomingCall]);
 
 
+  useEffect(() => {
+    if (!isCalling || !isPeerConnected) return;
+    const interval = setInterval(() => {
+      setCallDuration(prev => {
+        const next = prev + 1;
+        // Estimate tokens earned (approximate display)
+        const rate = callType === 'video' ? pendingVideoRate : pendingAudioRate;
+        if (next % 60 === 0) setTokensEarned(e => e + rate);
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isCalling, isPeerConnected, callType, pendingVideoRate, pendingAudioRate]);
+
   const handleAcceptCall = (type: 'audio' | 'video') => {
     setCallType(type);
     setIsCalling(true);
     setActiveChannelName(incomingCall.channelName);
     setIncomingCall(null);
+    // Stop ringer
+    if (ringerRef.current) {
+      ringerRef.current.pause();
+      ringerRef.current.currentTime = 0;
+    }
   };
+
+  const ringerRef = React.useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    if (incomingCall && !isCalling) {
+      if (!ringerRef.current) {
+        ringerRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
+        ringerRef.current.loop = true;
+      }
+      ringerRef.current.play().catch(e => console.log('Ringer blocked by browser', e));
+    } else {
+      if (ringerRef.current) {
+        ringerRef.current.pause();
+        ringerRef.current.currentTime = 0;
+      }
+    }
+    return () => ringerRef.current?.pause();
+  }, [incomingCall, isCalling]);
 
   const handleRejectCall = async () => {
     try {
@@ -413,6 +450,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
               setActiveChannelName(null);
             }}
             onSaveArtifact={handleSaveArtifact}
+            onPeerJoined={() => setIsPeerConnected(true)}
+            onPeerLeft={() => setIsPeerConnected(false)}
           />
         </div>
       )}
