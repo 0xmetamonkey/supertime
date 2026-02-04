@@ -84,6 +84,7 @@ export default async function CreatorPage({ params }: Props) {
   let audioRate = 50;
   let profileImage = "";
   let isLive = false;
+  let isAcceptingCalls = true;
   let templates: any[] = [];
   let artifacts: any[] = [];
 
@@ -96,6 +97,7 @@ export default async function CreatorPage({ params }: Props) {
     const aRate = await kv.get(`user:${ownerEmail}:rate:audio`);
     const pImage = await kv.get(`user:${ownerEmail}:profileImage`);
     const liveStatus = await kv.get(`user:${ownerEmail}:isLive`);
+    const acceptingCalls = await kv.get(`user:${ownerEmail}:isAcceptingCalls`);
     const roomType = await kv.get(`user:${ownerEmail}:roomType`);
     const isRoomFree = await kv.get(`user:${ownerEmail}:isRoomFree`);
     const studioMode = await kv.get(`user:${ownerEmail}:mode`) || 'solitude';
@@ -106,6 +108,8 @@ export default async function CreatorPage({ params }: Props) {
     if (pImage) profileImage = String(pImage);
     if (liveStatus === null) isLive = true; // Default to LIVE
     else isLive = !!liveStatus;
+    if (acceptingCalls === null) isAcceptingCalls = true; // Default to true
+    else isAcceptingCalls = !!acceptingCalls;
     if (tpls) templates = tpls;
     if (arts) artifacts = arts;
     (socials as any).roomType = roomType || 'audio';
@@ -130,6 +134,7 @@ export default async function CreatorPage({ params }: Props) {
       audioRate={audioRate}
       profileImage={profileImage}
       isLive={isLive}
+      isAcceptingCalls={isAcceptingCalls}
       templates={templates}
       artifacts={artifacts}
       roomType={(socials as any).roomType}

@@ -15,6 +15,7 @@ interface CreatorWrapperProps {
   audioRate?: number;
   profileImage?: string;
   isLive?: boolean;
+  isAcceptingCalls?: boolean;
   templates?: any[];
   availability?: any;
   artifacts?: any[];

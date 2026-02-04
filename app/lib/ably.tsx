@@ -131,7 +131,8 @@ export function useCallSignaling(userId: string) {
   useEffect(() => {
     if (!isConnected || !userId) return;
 
-    const unsubscribe = subscribe(`user:${userId}`, (message) => {
+    const normalizedUserId = userId.toLowerCase();
+    const unsubscribe = subscribe(`user:${normalizedUserId}`, (message) => {
       console.log('[Signal] Received:', message.name, message.data);
 
       if (message.name === 'call:incoming') {
@@ -161,7 +162,8 @@ export function useCallSignaling(userId: string) {
       channelName
     });
 
-    await publish(`user:${targetUserId}`, 'call:incoming', {
+    const normalizedTargetId = targetUserId.toLowerCase();
+    await publish(`user:${normalizedTargetId}`, 'call:incoming', {
       from: userId,
       type,
       channelName,

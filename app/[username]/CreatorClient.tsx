@@ -32,6 +32,7 @@ interface CreatorClientProps {
   audioRate?: number;
   profileImage?: string;
   isLive?: boolean;
+  isAcceptingCalls?: boolean;
   templates?: any[];
   availability?: any;
   artifacts?: any[];
@@ -536,23 +537,23 @@ export default function CreatorClient({
               </div>
             ) : (
               <div className="space-y-4">
-                {/* PRIMARY: Join Live Studio */}
+                {/* PRIMARY: Watch Stream (if Live) */}
                 {isLive && (
                   <button
                     onClick={handleJoinRoom}
-                    className="w-full bg-neo-green border-4 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all"
+                    className="w-full bg-neo-blue border-4 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all text-white"
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-white rounded-full border-2 border-black flex items-center justify-center">
-                        <Mic className="w-6 h-6 text-black" />
+                        <VideoIcon className="w-6 h-6 text-black" />
                       </div>
                       <div className="flex-1 text-left">
                         <div className="flex items-center gap-2">
-                          <span className="text-lg font-black uppercase">Join Studio</span>
+                          <span className="text-lg font-black uppercase">Watch Live Stream</span>
                           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                         </div>
-                        <p className="text-xs font-bold uppercase opacity-60">
-                          {isRoomFree ? 'Free' : `${roomType === 'video' ? videoRate : audioRate} TKN/min`}
+                        <p className="text-xs font-bold uppercase opacity-80">
+                          Room is Open
                         </p>
                       </div>
                       <ArrowRight className="w-6 h-6" />
@@ -560,25 +561,31 @@ export default function CreatorClient({
                   </button>
                 )}
 
-                {/* SECONDARY: Direct Call Options */}
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => handleStartCall('video')}
-                    className="bg-neo-pink text-white py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex flex-col items-center"
-                  >
-                    <Video className="w-6 h-6 mb-1" />
-                    <span className="text-sm font-black">VIDEO</span>
-                    <span className="text-[10px] opacity-80">{videoRate} TKN/min</span>
-                  </button>
-                  <button
-                    onClick={() => handleStartCall('audio')}
-                    className="bg-neo-blue text-white py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex flex-col items-center"
-                  >
-                    <Mic className="w-6 h-6 mb-1" />
-                    <span className="text-sm font-black">AUDIO</span>
-                    <span className="text-[10px] opacity-80">{audioRate} TKN/min</span>
-                  </button>
-                </div>
+                {/* SECONDARY: Direct Call Options (if Accepting Calls) */}
+                {isAcceptingCalls ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => handleStartCall('video')}
+                      className="bg-neo-pink text-white py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex flex-col items-center"
+                    >
+                      <Video className="w-6 h-6 mb-1" />
+                      <span className="text-sm font-black">VIDEO</span>
+                      <span className="text-[10px] opacity-80">{videoRate} TKN/min</span>
+                    </button>
+                    <button
+                      onClick={() => handleStartCall('audio')}
+                      className="bg-neo-blue text-white py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex flex-col items-center"
+                    >
+                      <Mic className="w-6 h-6 mb-1" />
+                      <span className="text-sm font-black">AUDIO</span>
+                      <span className="text-[10px] opacity-80">{audioRate} TKN/min</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-zinc-100 border-4 border-black border-dashed p-6 text-center">
+                    <p className="text-xs font-black uppercase text-zinc-400 tracking-widest">Calls currently offline</p>
+                  </div>
+                )}
 
                 {/* Schedule - Hidden for MVP simplicity */}
                 {/* 
