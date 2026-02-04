@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import StudioWrapper from "./StudioWrapper";
 import { resolveUsername } from "../actions";
 
+export const dynamic = 'force-dynamic';
+
 export default async function StudioPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const params = await searchParams;
   const isSimulated = params.sim === 'true';

@@ -25,12 +25,11 @@ export function AblyProvider({ children, clientId }: AblyProviderProps) {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    if (!clientId) return;
-
-    console.log('[Ably] Initializing client for:', clientId);
+    const normalizedClientId = clientId.toLowerCase();
+    console.log('[Ably] Initializing client for:', normalizedClientId);
 
     const ablyClient = new Ably.Realtime({
-      authUrl: `/api/ably/token?clientId=${encodeURIComponent(clientId)}`,
+      authUrl: `/api/ably/token?clientId=${encodeURIComponent(normalizedClientId)}`,
       authMethod: 'GET',
     });
 

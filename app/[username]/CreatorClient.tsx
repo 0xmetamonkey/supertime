@@ -170,22 +170,13 @@ export default function CreatorClient({
     setIsCalling(true);
     setCallDuration(0);
     setTokensSpent(0);
-    lastDeductMinuteRef.current = 0;
+    // Initialize to -1 so the first minute (0) is charged when handleTimeUpdate starts
+    lastDeductMinuteRef.current = -1;
 
-    if (!isSimulated) {
-      await deductBalance(currentRate);
-      setTokensSpent(currentRate);
-    }
-
-    // Track Call Start
+    // Track Call Initiation (Not start yet)
     fetch('/api/analytics/track', {
       method: 'POST',
-      body: JSON.stringify({ event: 'call_start', username })
-    });
-    // Track Earning
-    fetch('/api/analytics/track', {
-      method: 'POST',
-      body: JSON.stringify({ event: 'earning', username, metadata: { amount: currentRate } })
+      body: JSON.stringify({ event: 'call_initiate', username })
     });
   };
 

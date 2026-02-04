@@ -243,6 +243,24 @@ export default function StudioClient({ username, session, initialSettings }: { u
     }
   }, [ablySignaling?.incomingCall, ablySignaling?.isConnected, isCalling]);
 
+  // Polling Fallback: Check signal API every 3s as a safety net if Ably fails
+  useEffect(() => {
+    if (!effectiveUsername || isCalling || incomingCall) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/call/signal?username=${effectiveUsername}`);
+        const data = await res.json();
+        if (data.incoming) {
+          console.log('[Studio] Incoming call detected via Polling Fallback:', data.incoming);
+          setIncomingCall(data.incoming);
+        }
+      } catch (e) { }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [effectiveUsername, isCalling, incomingCall]);
+
 
   const handleAcceptCall = (type: 'audio' | 'video') => {
     setCallType(type);
