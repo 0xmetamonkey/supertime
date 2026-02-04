@@ -53,6 +53,7 @@ export default function CreatorClient({
   audioRate = 50,
   profileImage = "",
   isLive = true,
+  isAcceptingCalls = true,
   templates = [],
   availability = {},
   artifacts = [],
@@ -545,7 +546,7 @@ export default function CreatorClient({
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-white rounded-full border-2 border-black flex items-center justify-center">
-                        <VideoIcon className="w-6 h-6 text-black" />
+                        <Video className="w-6 h-6 text-black" />
                       </div>
                       <div className="flex-1 text-left">
                         <div className="flex items-center gap-2">
