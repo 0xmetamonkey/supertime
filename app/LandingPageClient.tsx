@@ -57,23 +57,23 @@ export default function LandingPageClient({ session, savedUsername }: { session:
           x: [0, 10, 0]
         }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-        className="relative w-full h-full border-8 border-black rounded-full overflow-hidden shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] bg-white flex items-center justify-center group cursor-pointer"
+        className="relative w-full h-full border-8 border-black rounded-full overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] md:shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] bg-white flex items-center justify-center group cursor-pointer"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--neo-yellow)_0%,_transparent_70%)] opacity-20 group-hover:opacity-40 transition-opacity" />
         <Zap className="w-24 h-24 text-black fill-neo-yellow animate-pulse" />
         <div className="absolute inset-0 border-[16px] border-black/5 rounded-full" />
       </motion.div>
 
-      {/* Small orbiting items */}
+      {/* Small orbiting items - hidden on mobile to prevent overflow */}
       <motion.div
         animate={{ rotate: 360 }}
         transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-        className="absolute inset-[-40px] border-2 border-dashed border-black/20 rounded-full"
+        className="absolute inset-[-40px] border-2 border-dashed border-black/20 rounded-full hidden md:block"
       />
       <motion.div
         animate={{ rotate: -360 }}
         transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-        className="absolute inset-[-80px] border border-black/10 rounded-full"
+        className="absolute inset-[-80px] border border-black/10 rounded-full hidden md:block"
       />
     </div>
   );
@@ -178,7 +178,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
               <span className="font-black uppercase text-xs tracking-[0.2em] text-black">The World's First Energy Exchange</span>
             </motion.div>
 
-            <motion.h1 variants={itemVariants} className="text-4xl sm:text-5xl md:text-7xl xl:text-8xl font-black uppercase leading-[0.85] tracking-tighter mb-4 text-black">
+            <motion.h1 variants={itemVariants} className="text-3xl sm:text-5xl md:text-7xl xl:text-8xl font-black uppercase leading-[0.85] tracking-tighter mb-4 text-black">
               Turn your <span className="text-neo-pink">time</span><br />
               into <span className="text-neo-blue italic">pure art.</span>
             </motion.h1>
@@ -190,8 +190,8 @@ export default function LandingPageClient({ session, savedUsername }: { session:
             <motion.div variants={itemVariants} className="max-w-xl w-full">
               <form onSubmit={handleSubmit} className="relative w-full">
                 <div className="flex flex-col sm:flex-row items-stretch bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] hover:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] transition-all overflow-hidden w-full">
-                  <div className="flex-1 flex items-center px-4 md:px-6 py-4 border-b-4 sm:border-b-0 sm:border-r-4 border-black bg-white min-w-0">
-                    <span className="text-zinc-400 font-black mr-1 text-sm md:text-lg shrink-0">supertime.wtf/</span>
+                  <div className="flex-1 flex items-center px-3 md:px-6 py-4 border-b-4 sm:border-b-0 sm:border-r-4 border-black bg-white min-w-0">
+                    <span className="text-zinc-400 font-black mr-1 text-xs md:text-lg shrink-0">supertime.wtf/</span>
                     <input
                       type="text"
                       value={username}
