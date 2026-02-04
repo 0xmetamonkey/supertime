@@ -40,6 +40,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
     const availability = await kv.get(`user:${email}:availability`);
     const artifacts = await kv.get(`user:${email}:artifacts`) as any[] || [];
     const mode = await kv.get(`user:${email}:mode`) || 'solitude';
+    const isAcceptingCalls = await kv.get(`user:${email}:isAcceptingCalls`);
 
     if (vRate !== null) settings.videoRate = Number(vRate);
     if (aRate !== null) settings.audioRate = Number(aRate);
@@ -58,6 +59,9 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
       // Still persist it for future use but start current session as offline
       // Or just ignore it for the initial state
     }
+    if (isAcceptingCalls === null) (settings as any).isAcceptingCalls = true;
+    else (settings as any).isAcceptingCalls = !!isAcceptingCalls;
+
     if (roomType) (settings as any).roomType = roomType;
     if (isRoomFree !== null) (settings as any).isRoomFree = !!isRoomFree;
     if (templates) settings.templates = templates;

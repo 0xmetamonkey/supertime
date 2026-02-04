@@ -13,12 +13,18 @@ interface StudioWrapperProps {
 function StudioWithSignaling({ username, session, initialSettings }: StudioWrapperProps) {
   const signaling = useCallSignaling(username || 'anonymous');
 
-  // Log incoming calls
+  // Log incoming calls and signaling status
   useEffect(() => {
+    console.log('[Studio] Signaling Initialization:', {
+      userId: username,
+      connected: signaling.isConnected,
+      subscribingTo: `user:${(username || 'anonymous').toLowerCase()}`
+    });
+
     if (signaling.incomingCall) {
       console.log('[Studio] Incoming call via Ably:', signaling.incomingCall);
     }
-  }, [signaling.incomingCall]);
+  }, [signaling.incomingCall, signaling.isConnected, username]);
 
   return (
     <StudioClient

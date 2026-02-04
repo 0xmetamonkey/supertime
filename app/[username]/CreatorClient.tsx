@@ -131,6 +131,11 @@ export default function CreatorClient({
       return;
     }
 
+    if (!isAcceptingCalls && !isSimulated) {
+      showError(`${username} is not accepting calls right now. Try again soon!`);
+      return;
+    }
+
     let callChannelName: string | null = null;
     try {
       // Use Ably for instant signaling if available
@@ -562,31 +567,25 @@ export default function CreatorClient({
                   </button>
                 )}
 
-                {/* SECONDARY: Direct Call Options (if Accepting Calls) */}
-                {isAcceptingCalls ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => handleStartCall('video')}
-                      className="bg-neo-pink text-white py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex flex-col items-center"
-                    >
-                      <Video className="w-6 h-6 mb-1" />
-                      <span className="text-sm font-black">VIDEO</span>
-                      <span className="text-[10px] opacity-80">{videoRate} TKN/min</span>
-                    </button>
-                    <button
-                      onClick={() => handleStartCall('audio')}
-                      className="bg-neo-blue text-white py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex flex-col items-center"
-                    >
-                      <Mic className="w-6 h-6 mb-1" />
-                      <span className="text-sm font-black">AUDIO</span>
-                      <span className="text-[10px] opacity-80">{audioRate} TKN/min</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="bg-zinc-100 border-4 border-black border-dashed p-6 text-center">
-                    <p className="text-xs font-black uppercase text-zinc-400 tracking-widest">Calls currently offline</p>
-                  </div>
-                )}
+                {/* SECONDARY: Direct Call Options */}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => handleStartCall('video')}
+                    className="bg-neo-pink text-white py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex flex-col items-center"
+                  >
+                    <Video className="w-6 h-6 mb-1" />
+                    <span className="text-sm font-black">VIDEO</span>
+                    <span className="text-[10px] opacity-80">{videoRate} TKN/min</span>
+                  </button>
+                  <button
+                    onClick={() => handleStartCall('audio')}
+                    className="bg-neo-blue text-white py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex flex-col items-center"
+                  >
+                    <Mic className="w-6 h-6 mb-1" />
+                    <span className="text-sm font-black">AUDIO</span>
+                    <span className="text-[10px] opacity-80">{audioRate} TKN/min</span>
+                  </button>
+                </div>
 
                 {/* Schedule - Hidden for MVP simplicity */}
                 {/* 
