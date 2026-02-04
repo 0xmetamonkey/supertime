@@ -153,12 +153,21 @@ export function useCallSignaling(userId: string) {
   const initiateCall = useCallback(async (targetUserId: string, type: 'audio' | 'video') => {
     const channelName = `call:${userId}-${targetUserId}-${Date.now()}`;
 
+    console.log('[Signal] Initiating call:', {
+      from: userId,
+      to: targetUserId,
+      targetChannel: `user:${targetUserId}`,
+      type,
+      channelName
+    });
+
     await publish(`user:${targetUserId}`, 'call:incoming', {
       from: userId,
       type,
       channelName,
     });
 
+    console.log('[Signal] Call published successfully');
     return channelName;
   }, [publish, userId]);
 
