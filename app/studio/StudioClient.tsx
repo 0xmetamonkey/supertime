@@ -228,11 +228,20 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
   // Listen for incoming calls via Ably
   useEffect(() => {
+    if (ablySignaling?.isConnected) {
+      console.log('[Studio] Ably Signaling: Connected and Listening');
+    } else {
+      console.log('[Studio] Ably Signaling: Disconnected or state check fails', {
+        exists: !!ablySignaling,
+        connected: ablySignaling?.isConnected
+      });
+    }
+
     if (ablySignaling?.incomingCall && !isCalling) {
-      console.log('[Studio] Ably incoming call:', ablySignaling.incomingCall);
+      console.log('[Studio] INCOMING CALL DETECTED via Ably:', ablySignaling.incomingCall);
       setIncomingCall(ablySignaling.incomingCall);
     }
-  }, [ablySignaling?.incomingCall, isCalling]);
+  }, [ablySignaling?.incomingCall, ablySignaling?.isConnected, isCalling]);
 
 
   const handleAcceptCall = (type: 'audio' | 'video') => {

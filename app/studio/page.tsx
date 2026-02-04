@@ -52,8 +52,12 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
       settings.socials = { ...settings.socials, ...socials };
     }
     if (profileImage) (settings as any).profileImage = profileImage;
-    if (isLive === null) settings.isLive = false; // Default to FALSE
-    else settings.isLive = !!isLive;
+    // We ALWAYS want to start as "not live" (not broadcasting) on refresh
+    settings.isLive = false;
+    if (isLive !== null) {
+      // Still persist it for future use but start current session as offline
+      // Or just ignore it for the initial state
+    }
     if (roomType) (settings as any).roomType = roomType;
     if (isRoomFree !== null) (settings as any).isRoomFree = !!isRoomFree;
     if (templates) settings.templates = templates;
