@@ -34,9 +34,6 @@ export const metadata: Metadata = {
   },
 };
 
-import InAppBrowserPrompt from "./components/InAppBrowserPrompt";
-import InstallPrompt from "./components/InstallPrompt";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -48,8 +45,6 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
-        <InAppBrowserPrompt />
-        <InstallPrompt />
       </body>
     </html>
   );

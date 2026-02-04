@@ -42,7 +42,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
   }, []);
 
   const EnergySphere = () => (
-    <div className="relative w-64 h-64 md:w-96 md:h-96">
+    <div className="relative w-48 h-48 md:w-96 md:h-96">
       <motion.div
         animate={{
           scale: [1, 1.1, 1],
@@ -162,7 +162,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
       </nav>
 
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center pt-20 md:pt-28 pb-20 px-6 overflow-hidden">
+      <section className="relative min-h-[80vh] md:min-h-screen flex items-center pt-24 md:pt-28 pb-10 md:pb-20 px-4 md:px-6 overflow-hidden">
         {/* Animated Background Elements */}
         <div className="absolute top-40 -left-20 w-80 h-80 bg-neo-blue/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-20 -right-20 w-[500px] h-[500px] bg-neo-pink/10 rounded-full blur-3xl animate-pulse delay-700" />
@@ -187,9 +187,9 @@ export default function LandingPageClient({ session, savedUsername }: { session:
               We believe our time is your most beautiful asset. A mission to make each moment an asset that evolves into blissful human connection.
             </motion.p>
 
-            <motion.div variants={itemVariants} className="max-w-xl w-full">
-              <form onSubmit={handleSubmit} className="relative w-full">
-                <div className="flex flex-col sm:flex-row items-stretch bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] hover:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] transition-all overflow-hidden w-full">
+            <motion.div variants={itemVariants} className="max-w-xl w-full mx-auto lg:mx-0">
+              <form onSubmit={handleSubmit} className="relative w-full px-1">
+                <div className="flex flex-col sm:flex-row items-stretch bg-white border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] hover:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] transition-all overflow-hidden w-full">
                   <div className="flex-1 flex items-center px-3 md:px-6 py-4 border-b-4 sm:border-b-0 sm:border-r-4 border-black bg-white min-w-0">
                     <span className="text-zinc-400 font-black mr-1 text-xs md:text-lg shrink-0">supertime.wtf/</span>
                     <input
@@ -239,11 +239,11 @@ export default function LandingPageClient({ session, savedUsername }: { session:
       <div className="bg-black py-8 overflow-hidden border-y-4 border-black">
         <div className="flex whitespace-nowrap animate-infinite-scroll">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <div key={i} className="flex items-center gap-4 px-12">
-              <span className="text-white font-black text-4xl uppercase tracking-tighter opacity-50">Moment is Art</span>
-              <Sparkles className="text-neo-yellow w-8 h-8" />
-              <span className="text-white font-black text-4xl uppercase tracking-tighter">Energy Exchange</span>
-              <Zap className="text-neo-blue w-8 h-8 fill-neo-blue" />
+            <div key={i} className="flex items-center gap-4 px-6 md:px-12">
+              <span className="text-white font-black text-2xl md:text-4xl uppercase tracking-tighter opacity-50">Moment is Art</span>
+              <Sparkles className="text-neo-yellow w-6 h-6 md:w-8 md:h-8" />
+              <span className="text-white font-black text-2xl md:text-4xl uppercase tracking-tighter">Energy Exchange</span>
+              <Zap className="text-neo-blue w-6 h-6 md:w-8 md:h-8 fill-neo-blue" />
             </div>
           ))}
         </div>
