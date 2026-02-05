@@ -31,6 +31,24 @@ export async function POST(req: NextRequest) {
       if (isNaN(amt)) return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
       const current = await kv.get<number>(`balance:${email}`) || 0;
       await kv.set(`balance:${email}`, current + amt);
+    } else if (action === 'delete') {
+      // 1. Resolve username to delete owner mapping
+      const username = await kv.get<string>(`user:${email}:username`);
+      if (username) {
+        await kv.del(`owner:${username.toLowerCase()}`);
+      }
+
+      // 2. Clear all user:* keys
+      const userKeys = await kv.keys(`user:${email}:*`);
+      for (const key of userKeys) {
+        await kv.del(key);
+      }
+
+      // 3. Clear balance and legacy keys
+      await kv.del(`balance:${email}`);
+      await kv.del(`email:${email}:username`);
+
+      console.log(`[Admin] Deleted user ${email} and all associated data.`);
     } else {
       return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
     }
