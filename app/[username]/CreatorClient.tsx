@@ -372,37 +372,6 @@ export default function CreatorClient({
         )}
       </AnimatePresence>
 
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b-4 border-black py-4">
-        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-          <a href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-black flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_theme(colors.neo-pink)] transition-transform group-hover:rotate-12">
-              <Zap className="text-neo-yellow w-5 h-5 fill-neo-yellow" />
-            </div>
-            <span className="text-xl font-black uppercase tracking-tighter">Supertime</span>
-          </a>
-
-          <div className="flex items-center gap-4">
-            {isOwner && (
-              <button
-                onClick={() => window.location.href = '/studio'}
-                className="neo-btn bg-neo-green text-black text-xs px-4 py-2 hidden md:block"
-              >
-                My Studio
-              </button>
-            )}
-            {isLoggedIn ? (
-              <WalletManager onBalanceChange={setBalance} />
-            ) : (
-              <button
-                onClick={() => loginWithGoogle(window.location.pathname)}
-                className="neo-btn bg-black text-white text-xs px-4 py-2"
-              >
-                Connect
-              </button>
-            )}
-          </div>
-        </div>
-      </nav>
 
       <AnimatePresence>
         {incomingCall && !isCalling && (
@@ -482,7 +451,7 @@ export default function CreatorClient({
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-20 md:pt-32">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-10 md:pt-16">
         <div className="grid lg:grid-cols-12 gap-8 md:gap-12">
           <div className="lg:col-span-5 space-y-8 flex flex-col items-center lg:items-start text-center lg:text-left">
             <div className="relative inline-block">
