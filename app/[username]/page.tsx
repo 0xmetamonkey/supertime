@@ -3,6 +3,7 @@ import CreatorWrapper from "./CreatorWrapper";
 import { kv } from "@vercel/kv";
 import { Metadata } from 'next';
 import { trackEvent } from "../lib/analytics";
+import { resolveUsername } from "../actions";
 
 type Props = {
   params: Promise<{ username: string }>
@@ -30,6 +31,13 @@ export default async function CreatorPage({ params }: Props) {
   const username = rawUsername.toLowerCase();
   const session = await auth();
   const email = session?.user?.email?.toLowerCase(); // normalize session email
+  const visitorUsername = email ? await resolveUsername(email) : null;
+
+  console.log('[CreatorPage] signaling data:', {
+    email,
+    visitorUsername,
+    hasSession: !!session
+  });
 
   let isOwner = false;
   let ownerEmail: string | null = null;
@@ -125,7 +133,7 @@ export default async function CreatorPage({ params }: Props) {
   return (
     <CreatorWrapper
       username={username}
-      user={session?.user}
+      user={{ ...session?.user, username: visitorUsername }}
       isOwner={isOwner}
       ownerEmail={ownerEmail || ""}
       isVerified={isVerified}

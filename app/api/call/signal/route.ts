@@ -13,7 +13,7 @@ const hasKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
 
 export async function POST(req: NextRequest) {
   try {
-    const { action, from, to, type } = await req.json();
+    const { action, from, fromName, to, type } = await req.json();
 
     if (action === 'call') {
       // Generate unique channel name
@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
 
       const signalData = {
         from,
+        fromName,
         type,
         timestamp: Date.now(),
         channelName
@@ -101,6 +102,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         incoming: {
           from: signal.from,
+          fromName: signal.fromName,
           type: signal.type,
           channelName: signal.channelName
         }

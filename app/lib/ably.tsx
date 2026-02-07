@@ -128,6 +128,7 @@ export function useCallSignaling(userId: string) {
   const { subscribe, publish, isConnected } = useAbly();
   const [incomingCall, setIncomingCall] = useState<{
     from: string;
+    fromName?: string;
     type: 'audio' | 'video';
     channelName: string;
   } | null>(null);
@@ -140,8 +141,10 @@ export function useCallSignaling(userId: string) {
       console.log('[Signal] Received:', message.name, message.data);
 
       if (message.name === 'call:incoming') {
+        console.log('[Signal] Incoming data details:', message.data);
         setIncomingCall({
           from: message.data.from,
+          fromName: message.data.fromName,
           type: message.data.type,
           channelName: message.data.channelName,
         });
@@ -155,7 +158,7 @@ export function useCallSignaling(userId: string) {
     return unsubscribe;
   }, [subscribe, isConnected, userId]);
 
-  const initiateCall = useCallback(async (targetUserId: string, type: 'audio' | 'video') => {
+  const initiateCall = useCallback(async (targetUserId: string, type: 'audio' | 'video', fromName?: string) => {
     const channelName = `call:${userId}-${targetUserId}-${Date.now()}`;
 
     console.log('[Signal] Initiating call:', {
@@ -169,6 +172,7 @@ export function useCallSignaling(userId: string) {
     const normalizedTargetId = targetUserId.toLowerCase();
     await publish(`user:${normalizedTargetId}`, 'call:incoming', {
       from: userId,
+      fromName: fromName,
       type,
       channelName,
     });

@@ -143,14 +143,32 @@ export default function CreatorClient({
       // Use Ably for instant signaling if available
       if (_ablySignaling?.isConnected && _ablySignaling?.initiateCall) {
         console.log('[Caller] Using Ably to initiate call to:', username);
-        callChannelName = await _ablySignaling.initiateCall(username, type);
+        const isUUID = (str: string) => /^[0-9a-f-]{36}$/i.test(str);
+        const fromName = [
+          user?.username,
+          user?.name,
+          user?.email?.split('@')[0],
+        ].find(n => n && typeof n === 'string' && n.trim() !== "" && !isUUID(n)) || (isSimulated ? 'Test User' : 'Guest');
+
+        console.log('[Caller] Debug Name Resolution:', {
+          userObject: user,
+          resolvedName: fromName,
+          isSimulated
+        });
+        callChannelName = await _ablySignaling.initiateCall(username, type, fromName);
         setActiveChannelName(callChannelName);
       } else {
         // Fallback to old API if Ably not connected
         console.log('[Caller] Fallback: Using signal API');
+        const isUUID = (str: string) => /^[0-9a-f-]{36}$/i.test(str);
+        const fromName = [
+          user?.username,
+          user?.name,
+          user?.email?.split('@')[0],
+        ].find(n => n && typeof n === 'string' && n.trim() !== "" && !isUUID(n)) || (isSimulated ? 'Test User' : 'Guest');
         const response = await fetch('/api/call/signal', {
           method: 'POST',
-          body: JSON.stringify({ action: 'call', from: uid, to: username, type })
+          body: JSON.stringify({ action: 'call', from: uid, fromName, to: username, type })
         });
         const data = await response.json();
 
@@ -379,23 +397,65 @@ export default function CreatorClient({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] bg-neo-yellow/40 backdrop-blur-md flex items-center justify-center p-6"
+            className="fixed inset-0 z-[1000] bg-zinc-950 flex flex-col items-center justify-center p-6"
           >
-            <motion.div
-              initial={{ scale: 0.9, rotate: -2 }}
-              animate={{ scale: 1, rotate: 0 }}
-              className="bg-white border-8 border-black shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] md:shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-6 md:p-12 max-w-sm w-full text-center"
-            >
-              <div className="w-16 h-16 md:w-24 md:h-24 bg-neo-pink border-4 border-black mx-auto mb-6 flex items-center justify-center text-3xl md:text-4xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            {/* Immersive Background Detail */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-neo-pink/20 blur-[120px] rounded-full animate-pulse" />
+              <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-neo-blue/20 blur-[120px] rounded-full" />
+            </div>
+
+            <div className="relative z-10 w-full max-w-lg text-center">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="w-32 h-32 md:w-48 md:h-48 bg-zinc-900 border-4 border-white/20 rounded-full flex items-center justify-center text-6xl mx-auto mb-12 shadow-2xl relative"
+              >
+                {/* Visual Ring Effect */}
+                <div className="absolute inset-[-12px] border-2 border-neo-pink/30 rounded-full animate-ping" />
                 👤
+              </motion.div>
+
+              <motion.h3
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="text-white text-5xl md:text-7xl font-black uppercase italic tracking-tighter mb-4"
+              >
+                {(() => {
+                  const isUUID = (str: string) => /^[0-9a-f-]{36}$/i.test(str);
+                  if (incomingCall.fromName && !isUUID(incomingCall.fromName)) return incomingCall.fromName;
+                  if (incomingCall.from && !isUUID(incomingCall.from)) return incomingCall.from;
+                  return 'Guest';
+                })()}
+              </motion.h3>
+
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="flex flex-col items-center gap-2 mb-16"
+              >
+                <span className="text-neo-pink text-xs font-black uppercase tracking-[0.4em]">
+                  Incoming {incomingCall.type} Call
+                </span>
+              </motion.div>
+
+              <div className="flex flex-col sm:flex-row gap-6">
+                <button
+                  onClick={handleRejectCall}
+                  className="flex-1 bg-zinc-900 hover:bg-zinc-800 text-white py-6 text-lg font-black uppercase tracking-widest border border-white/10 transition-all rounded-2xl"
+                >
+                  Decline
+                </button>
+                <button
+                  onClick={() => handleAcceptCall(incomingCall.type)}
+                  className="flex-1 bg-neo-green hover:bg-neo-green/90 text-black py-6 text-lg font-black uppercase tracking-widest transition-all rounded-2xl shadow-[0_0_40px_rgba(46,213,115,0.3)]"
+                >
+                  Accept
+                </button>
               </div>
-              <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter mb-2 break-words">{incomingCall.from || 'Guest'}</h2>
-              <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] mb-8 md:mb-12 text-zinc-400">Incoming {incomingCall.type} call</p>
-              <div className="flex gap-4">
-                <button onClick={handleRejectCall} className="flex-1 neo-btn bg-red-500 text-white py-4">REJECT</button>
-                <button onClick={() => handleAcceptCall(incomingCall.type)} className="flex-1 neo-btn bg-neo-green text-black py-4 animate-bounce">ACCEPT</button>
-              </div>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -427,7 +487,7 @@ export default function CreatorClient({
             <div className="flex items-center gap-4 bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-full">
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_theme(colors.red.500)]" />
               <span className="text-white text-[10px] font-black uppercase tracking-[0.3em]">
-                Secure 1:1 Session
+                Session
               </span>
             </div>
             <div className="flex items-center gap-2">
