@@ -33,12 +33,6 @@ export default async function CreatorPage({ params }: Props) {
   const email = session?.user?.email?.toLowerCase(); // normalize session email
   const visitorUsername = email ? await resolveUsername(email) : null;
 
-  console.log('[CreatorPage] signaling data:', {
-    email,
-    visitorUsername,
-    hasSession: !!session
-  });
-
   let isOwner = false;
   let ownerEmail: string | null = null;
 
@@ -106,6 +100,7 @@ export default async function CreatorPage({ params }: Props) {
     const pImage = await kv.get(`user:${ownerEmail}:profileImage`);
     const liveStatus = await kv.get(`user:${ownerEmail}:isLive`);
     const acceptingCalls = await kv.get(`user:${ownerEmail}:isAcceptingCalls`);
+    console.log('[CreatorPage] Debug:', { username, ownerEmail, acceptingCalls });
     const roomType = await kv.get(`user:${ownerEmail}:roomType`);
     const isRoomFree = await kv.get(`user:${ownerEmail}:isRoomFree`);
     const studioMode = await kv.get(`user:${ownerEmail}:mode`) || 'solitude';

@@ -141,7 +141,6 @@ export function useCallSignaling(userId: string) {
       console.log('[Signal] Received:', message.name, message.data);
 
       if (message.name === 'call:incoming') {
-        console.log('[Signal] Incoming data details:', message.data);
         setIncomingCall({
           from: message.data.from,
           fromName: message.data.fromName,

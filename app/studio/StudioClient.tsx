@@ -26,7 +26,9 @@ import {
   ChevronRight,
   Eye,
   Camera,
-  Play
+  Play,
+  Menu,
+  X
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
@@ -61,6 +63,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [tokensEarned, setTokensEarned] = useState(0);
   const [isPeerConnected, setIsPeerConnected] = useState(false);
   const [activeChannelName, setActiveChannelName] = useState<string | null>(null);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [bookings, setBookings] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -244,6 +247,28 @@ export default function StudioClient({ username, session, initialSettings }: { u
       setActiveChannelName(broadcastChannel);
     }
   }, [isLive, isCalling, effectiveUsername, activeChannelName]);
+
+  // FALLBACK POLLING: Check for incoming calls manually every 5 seconds (Safety Net)
+  useEffect(() => {
+    if (isCalling || !effectiveUsername) return;
+
+    const pollSignal = async () => {
+      try {
+        const res = await fetch(`/api/call/signal?username=${encodeURIComponent(effectiveUsername.toLowerCase())}`);
+        const data = await res.json();
+
+        if (data.incoming && !incomingCall) {
+          console.log('[Studio] Fallback Signal Received:', data.incoming);
+          setIncomingCall(data.incoming);
+        }
+      } catch (e) {
+        console.error('[Studio] Fallback poll failed:', e);
+      }
+    };
+
+    const interval = setInterval(pollSignal, 5000);
+    return () => clearInterval(interval);
+  }, [isCalling, effectiveUsername, incomingCall]);
 
   // Ably real-time signaling (injected from StudioWrapper)
   const ablySignaling = initialSettings?._ablySignaling;
@@ -521,8 +546,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
               >
                 {(() => {
                   const isUUID = (str: string) => /^[0-9a-f-]{36}$/i.test(str);
-                  if (incomingCall.fromName && !isUUID(incomingCall.fromName)) return incomingCall.fromName;
-                  if (incomingCall.from && !isUUID(incomingCall.from)) return incomingCall.from;
+                  const name = incomingCall.fromName || incomingCall.from;
+                  if (name && !isUUID(name)) return name;
                   return 'Guest';
                 })()}
               </motion.h3>
@@ -578,13 +603,15 @@ export default function StudioClient({ username, session, initialSettings }: { u
               </div>
               <span className="text-xl font-black uppercase tracking-tighter text-black">Studio</span>
             </a>
+
+            {/* Signaling Status Indicator */}
+            <div className="flex items-center gap-2 px-3 py-1 bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-[8px] font-black uppercase tracking-tighter">
+              <div className={`w-2 h-2 rounded-full ${initialSettings?._ablySignaling?.isConnected ? 'bg-neo-green' : 'bg-red-500 animate-pulse'}`} />
+              <span>{initialSettings?._ablySignaling?.isConnected ? 'Connected' : 'Offline'}</span>
+              <span className="opacity-40 ml-1 border-l border-black/10 pl-1">{username?.toLowerCase()}</span>
+            </div>
             <div className="hidden md:flex items-center gap-6">
-              <button
-                onClick={() => window.open(`/${username}?sim=true`, '_blank')}
-                className="bg-neo-yellow border-2 border-black px-3 py-1 text-[8px] font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
-              >
-                Launch Simulator
-              </button>
+
               <a href={`/${username}`} className="text-[10px] font-black uppercase tracking-widest text-black/60 hover:text-neo-pink transition-colors">Public Profile</a>
               <button onClick={() => setShowSettings(true)} className="text-[10px] font-black uppercase tracking-widest text-black/60 hover:text-neo-pink transition-colors">Settings</button>
             </div>
@@ -592,18 +619,89 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
           <div className="flex items-center gap-6">
             {!isCalling && <WalletManager onBalanceChange={setBalance} />}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase text-zinc-400">Status:</span>
-              <div className={`flex items-center gap-2 px-3 py-1 border-2 border-black font-black uppercase text-[10px] ${isLive ? 'bg-neo-green text-black' : 'bg-red-500 text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'}`}>
-                {isLive ? 'Live' : 'Offline'}
-              </div>
-            </div>
-            <button onClick={() => logout()} className="w-10 h-10 bg-black text-white border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none translate-x-[-2px] translate-y-[-2px] active:translate-x-0 active:translate-y-0 transition-all">
+
+            {/* Desktop Logout - now hidden on small screens */}
+            <button
+              onClick={() => logout()}
+              className="hidden md:flex w-10 h-10 bg-black text-white border-2 border-black items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none translate-x-[-2px] translate-y-[-2px] active:translate-x-0 active:translate-y-0 transition-all"
+            >
               <LogOut className="w-5 h-5" />
+            </button>
+
+            {/* Hamburger Button */}
+            <button
+              onClick={() => setShowMobileMenu(true)}
+              className="md:hidden w-10 h-10 bg-black text-white border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none translate-x-[-1px] translate-y-[-1px] active:translate-x-0 active:translate-y-0 transition-all"
+            >
+              <Menu className="w-6 h-6" />
             </button>
           </div>
         </div>
+
       </nav>
+
+      {/* Mobile Slide-over Menu - HIGH Z-INDEX & SOLID BG */}
+      <AnimatePresence>
+        {showMobileMenu && (
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-[10000] bg-zinc-950 flex flex-col p-8 md:hidden"
+          >
+            {/* Background Accents for Premium Feel */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-neo-pink/10 blur-[120px] rounded-full" />
+              <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-neo-blue/10 blur-[120px] rounded-full" />
+            </div>
+
+            <div className="relative z-10 flex justify-between items-center mb-16">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-neo-yellow flex items-center justify-center border-4 border-black shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)]">
+                  <Zap className="text-black w-6 h-6 fill-current" />
+                </div>
+                <span className="text-2xl font-black uppercase tracking-tighter text-white">Menu</span>
+              </div>
+              <button
+                onClick={() => setShowMobileMenu(false)}
+                className="w-12 h-12 bg-white text-black border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] active:shadow-none transition-all"
+              >
+                <X className="w-8 h-8" />
+              </button>
+            </div>
+
+            <div className="relative z-10 flex flex-col gap-8 flex-1">
+              <a
+                href={`/${username}`}
+                onClick={() => setShowMobileMenu(false)}
+                className="text-4xl font-black uppercase tracking-widest text-white hover:text-neo-pink border-b-4 border-white/10 pb-6 transition-colors"
+              >
+                Public Profile
+              </a>
+              <button
+                onClick={() => {
+                  setShowSettings(true);
+                  setShowMobileMenu(false);
+                }}
+                className="text-4xl font-black uppercase tracking-widest text-white hover:text-neo-blue text-left border-b-4 border-white/10 pb-6 transition-colors"
+              >
+                Settings
+              </button>
+            </div>
+
+            <div className="relative z-10 pt-8">
+              <button
+                onClick={() => logout()}
+                className="w-full bg-red-500 text-white py-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] font-black uppercase text-2xl tracking-widest flex items-center justify-center gap-4 active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
+              >
+                <LogOut className="w-8 h-8" />
+                Logout
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
 

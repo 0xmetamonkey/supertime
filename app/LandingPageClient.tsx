@@ -13,7 +13,9 @@ import {
   CircleDollarSign,
   Palette,
   Heart,
-  Globe
+  Globe,
+  Menu,
+  X
 } from 'lucide-react';
 
 export default function LandingPageClient({ session, savedUsername }: { session: any, savedUsername: string | null }) {
@@ -23,6 +25,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
   const [error, setError] = useState('');
   const [scrolled, setScrolled] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const isLoggedIn = !!session?.user;
 
@@ -152,14 +155,90 @@ export default function LandingPageClient({ session, savedUsername }: { session:
             </div>
 
             <button
-              onClick={() => loginWithGoogle('/')}
-              className="neo-btn bg-black text-white hover:bg-zinc-800"
+              onClick={() => {
+                if (isLoggedIn) window.location.href = '/studio';
+                else loginWithGoogle('/');
+              }}
+              className="hidden md:flex neo-btn bg-black text-white hover:bg-zinc-800"
             >
               {isLoggedIn ? 'Dashboard' : 'Log In'}
             </button>
+
+            {/* Hamburger Button */}
+            <button
+              onClick={() => setShowMobileMenu(true)}
+              className="md:hidden w-10 h-10 bg-black text-white border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none translate-x-[-1px] translate-y-[-1px] active:translate-x-0 active:translate-y-0 transition-all font-black"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
           </div>
         </div>
+
       </nav>
+
+      {/* Mobile Slide-over Menu - FULL SCREEN & SOLID BG */}
+      <AnimatePresence>
+        {showMobileMenu && (
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-[10000] bg-white flex flex-col p-8 md:hidden"
+          >
+            <div className="flex justify-between items-center mb-16 px-2">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-black flex items-center justify-center border-4 border-black shadow-[4px_4px_0px_0px_theme(colors.neo-pink)]">
+                  <Zap className="text-neo-yellow w-6 h-6 fill-current" />
+                </div>
+                <span className="text-2xl font-black uppercase tracking-tighter text-black">Menu</span>
+              </div>
+              <button
+                onClick={() => setShowMobileMenu(false)}
+                className="w-12 h-12 bg-black text-white border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none transition-all"
+              >
+                <X className="w-8 h-8" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-8 flex-1 px-4">
+              <a
+                href="#philosophy"
+                onClick={() => setShowMobileMenu(false)}
+                className="text-4xl font-black uppercase tracking-widest text-black hover:text-neo-blue border-b-4 border-black pb-6 transition-colors"
+              >
+                Philosophy
+              </a>
+              <a
+                href="#mission"
+                onClick={() => setShowMobileMenu(false)}
+                className="text-4xl font-black uppercase tracking-widest text-black hover:text-neo-pink border-b-4 border-black pb-6 transition-colors"
+              >
+                Mission
+              </a>
+              <a
+                href="#platform"
+                onClick={() => setShowMobileMenu(false)}
+                className="text-4xl font-black uppercase tracking-widest text-black hover:text-neo-green border-b-4 border-black pb-6 transition-colors"
+              >
+                Platform
+              </a>
+            </div>
+
+            <div className="pt-8">
+              <button
+                onClick={() => {
+                  if (isLoggedIn) window.location.href = '/studio';
+                  else loginWithGoogle('/');
+                }}
+                className="w-full bg-black text-white py-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(46,213,115,0.4)] font-black uppercase text-2xl tracking-widest flex items-center justify-center gap-4 active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
+              >
+                {isLoggedIn ? 'Dashboard' : 'Log In'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Hero Section */}
       <section className="relative min-h-[80vh] md:min-h-screen flex items-center pt-24 md:pt-28 pb-10 md:pb-20 px-4 md:px-6 overflow-hidden">

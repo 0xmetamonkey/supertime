@@ -15,16 +15,24 @@ function StudioWithSignaling({ username, session, initialSettings }: StudioWrapp
 
   // Log incoming calls and signaling status
   useEffect(() => {
-    console.log('[Studio] Signaling Initialization:', {
+    const channelName = `user:${(username || 'anonymous').toLowerCase()}`;
+    console.log('[Studio] Signaling Status Update:', {
       userId: username,
+      clientId: (username || session?.user?.email || 'anonymous').toLowerCase(),
       connected: signaling.isConnected,
-      subscribingTo: `user:${(username || 'anonymous').toLowerCase()}`
+      subscribingTo: channelName,
+      timestamp: new Date().toLocaleTimeString()
     });
 
     if (signaling.incomingCall) {
-      console.log('[Studio] Incoming call via Ably:', signaling.incomingCall);
+      console.log('[Studio] !!! INCOMING CALL DETECTED !!!', {
+        from: signaling.incomingCall.from,
+        fromName: signaling.incomingCall.fromName,
+        type: signaling.incomingCall.type,
+        channel: signaling.incomingCall.channelName
+      });
     }
-  }, [signaling.incomingCall, signaling.isConnected, username]);
+  }, [signaling.incomingCall, signaling.isConnected, username, session?.user?.email]);
 
   return (
     <StudioClient
@@ -41,7 +49,9 @@ function StudioWithSignaling({ username, session, initialSettings }: StudioWrapp
 
 export default function StudioWrapper(props: StudioWrapperProps) {
   const isSimulated = typeof window !== 'undefined' && window.location.search.includes('sim=true');
-  const clientId = props.username || props.session?.user?.email || (isSimulated ? 'test-creator' : 'anonymous');
+  // CRITICAL: Ensure clientId is strictly lowercased and consistent with what caller publishes to
+  const rawId = props.username || props.session?.user?.email || (isSimulated ? 'test-creator' : 'anonymous');
+  const clientId = rawId.toLowerCase();
 
   return (
     <AblyProvider clientId={clientId}>

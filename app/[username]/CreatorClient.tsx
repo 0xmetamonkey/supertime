@@ -13,7 +13,8 @@ import {
   Mic,
   Video,
   Instagram,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Send
 } from 'lucide-react';
 import WalletManager from '../components/WalletManager';
 import dynamic from 'next/dynamic';
@@ -69,6 +70,7 @@ export default function CreatorClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const isSimulated = searchParams.get('sim') === 'true';
+  const isTestMode = searchParams.get('test') === 'true';
 
   // State
   const [balance, setBalance] = useState<number>(5000); // TEST MODE: Backdoor Enabled
@@ -132,12 +134,18 @@ export default function CreatorClient({
       return;
     }
 
-    if (!isAcceptingCalls && !isSimulated) {
+    if (!isAcceptingCalls && !isSimulated && !isTestMode) {
       showError(`${username} is not accepting calls right now. Try again soon!`);
       return;
     }
 
-    console.log('[Caller] Starting call...', { type, providerConnected: _ablySignaling?.isConnected });
+    console.log('[Caller] Starting call...', {
+      type,
+      isSimulated,
+      isTestMode,
+      isAcceptingCalls,
+      providerConnected: _ablySignaling?.isConnected
+    });
     let callChannelName: string | null = null;
     try {
       // Use Ably for instant signaling if available
@@ -150,11 +158,6 @@ export default function CreatorClient({
           user?.email?.split('@')[0],
         ].find(n => n && typeof n === 'string' && n.trim() !== "" && !isUUID(n)) || (isSimulated ? 'Test User' : 'Guest');
 
-        console.log('[Caller] Debug Name Resolution:', {
-          userObject: user,
-          resolvedName: fromName,
-          isSimulated
-        });
         callChannelName = await _ablySignaling.initiateCall(username, type, fromName);
         setActiveChannelName(callChannelName);
       } else {
@@ -511,9 +514,23 @@ export default function CreatorClient({
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-10 md:pt-16">
-        <div className="grid lg:grid-cols-12 gap-8 md:gap-12">
-          <div className="lg:col-span-5 space-y-8 flex flex-col items-center lg:items-start text-center lg:text-left">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-6 md:pt-10 relative">
+        {/* Top Navigation / Actions */}
+        <div className="flex justify-end items-center mb-8">
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              showError("Link Copied!");
+            }}
+            className="group relative w-12 h-12 bg-white border-4 border-black rounded-full flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all"
+            title="Share Profile"
+          >
+            <Send className="w-6 h-6 -rotate-12 group-hover:rotate-0 transition-transform" />
+          </button>
+
+        </div>
+        <div className="grid lg:grid-cols-12 gap-6 md:gap-10">
+          <div className="lg:col-span-12 space-y-6 flex flex-col items-center text-center">
             <div className="relative inline-block">
               <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-48 md:h-48 bg-white border-4 md:border-8 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] md:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
                 {profileImage ? (
