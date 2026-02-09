@@ -19,7 +19,7 @@ import WalletManager from '../components/WalletManager';
 import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
 const BroadcastViewer = dynamic(() => import('../components/Broadcast/BroadcastViewer'), { ssr: false });
-import { loginWithGoogle, logout } from '../actions';
+import { loginWithGoogle, logout, checkCallStatus } from '../actions';
 
 interface CreatorClientProps {
   username: string,
@@ -137,6 +137,23 @@ export default function CreatorClient({
       return;
     }
 
+    // Real-time check: Ensure creator hasn't JUST stopped
+    if (!isSimulated) {
+      try {
+        const isStillAccepting = await checkCallStatus(username);
+        if (!isStillAccepting) {
+          showError(`${username} has stopped accepting calls.`);
+          return;
+        }
+      } catch (e) {
+        console.error("Failed to verify call status", e);
+        // Fail open or closed? Failing open might be annoying if creator is offline.
+        // But failing closed might block valid calls on network hiccup.
+        // Let's assume fail open for now, or just log. 
+        // Actually, if check fails, we might as well proceed and let the signal fail if strict.
+      }
+    }
+
     const callerName = user?.name || user?.email?.split('@')[0] || 'Guest';
 
     console.log('[Caller] Starting call...', { type, providerConnected: _ablySignaling?.isConnected, callerName });
@@ -160,7 +177,7 @@ export default function CreatorClient({
           callChannelName = data.channelName;
           setActiveChannelName(data.channelName);
         } else {
-          showError("Failed to connect. Please try again.");
+          showError(data.error || "Failed to connect. Please try again.");
           return;
         }
       }
@@ -260,6 +277,12 @@ export default function CreatorClient({
     setActiveChannelName(null);
     lastDeductMinuteRef.current = 0;
     setIsPeerConnected(false); // Reset peer connection status
+
+    // Notify via Ably if connected
+    if (_ablySignaling?.cancelCall) {
+      await _ablySignaling.cancelCall(username); // 'username' is the creator's ID
+    }
+
     try {
       await fetch('/api/call/signal', {
         method: 'POST',

@@ -30,6 +30,15 @@ export async function POST(req: NextRequest) {
       };
 
       if (hasKV) {
+        // 1. Resolve Creator Email to check settings
+        const email = await kv.get<string>(`owner:${to}`);
+        if (email) {
+          const isAccepting = await kv.get<boolean>(`user:${email}:isAcceptingCalls`);
+          if (isAccepting === false) {
+            return NextResponse.json({ error: 'Creator is not accepting calls at the moment.' }, { status: 403 });
+          }
+        }
+
         await kv.set(`call_signal:${to}`, JSON.stringify(signalData), { ex: 60 });
       } else {
         console.log(`[MockKV] Setting signal for ${to}:`, signalData);

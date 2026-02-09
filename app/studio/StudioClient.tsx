@@ -260,10 +260,19 @@ export default function StudioClient({ username, session, initialSettings }: { u
     }
 
     if (ablySignaling?.incomingCall && !isCalling) {
+      if (!isAcceptingCalls) {
+        console.log('[Studio] Ignored incoming call (Not accepting calls):', ablySignaling.incomingCall);
+        ablySignaling.rejectCall(); // Clear the signal so it doesn't persist
+        return;
+      }
       console.log('[Studio] INCOMING CALL DETECTED via Ably:', ablySignaling.incomingCall);
       setIncomingCall(ablySignaling.incomingCall);
+    } else if (!ablySignaling?.incomingCall && incomingCall && !isCalling) {
+      // Signal was cleared (cancelled/rejected elsewhere), so clear local notification
+      console.log('[Studio] Incoming call cancelled via Ably');
+      setIncomingCall(null);
     }
-  }, [ablySignaling?.incomingCall, ablySignaling?.isConnected, isCalling]);
+  }, [ablySignaling?.incomingCall, ablySignaling?.isConnected, isCalling, isAcceptingCalls]);
 
   // Polling Fallback: Check signal API every 3s as a safety net if Ably fails
   useEffect(() => {

@@ -61,6 +61,19 @@ export async function claimUsername(usernameRaw: string) {
   return { success: true };
 }
 
+export async function checkCallStatus(usernameRaw: string) {
+  if (!process.env.KV_URL) return true; // Fail open for dev
+
+  const username = usernameRaw.toLowerCase();
+  const email = await kv.get<string>(`owner:${username}`);
+
+  if (!email) return false; // User not found
+
+  const isAccepting = await kv.get<boolean>(`user:${email}:isAcceptingCalls`);
+  // Default to true if not set, matching initialSettings in StudioClient
+  return isAccepting !== false;
+}
+
 export async function loginWithGoogle(usernameOrRedirect?: string) {
   const session = await auth();
 
