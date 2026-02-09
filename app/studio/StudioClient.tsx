@@ -491,60 +491,53 @@ export default function StudioClient({ username, session, initialSettings }: { u
       <AnimatePresence>
         {incomingCall && !isCalling && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] bg-neo-pink/40 backdrop-blur-md flex items-center justify-center p-6"
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-md px-4"
           >
-            <motion.div
-              initial={{ scale: 0.9, y: 50, rotate: -2 }}
-              animate={{ scale: 1, y: 0, rotate: 0 }}
-              className="bg-neo-blue border-[12px] border-black p-12 shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] text-white max-w-2xl w-full relative overflow-hidden text-center"
-            >
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rotate-45 translate-x-32 translate-y-[-32px] animate-pulse" />
-
-              <div className="relative z-10">
-                <div className="w-32 h-32 bg-white border-8 border-black flex items-center justify-center text-5xl mx-auto mb-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">👤</div>
-
-                <p className="text-xs font-black uppercase tracking-[0.5em] text-[#CEFF1A] mb-4 animate-pulse">Incoming Video/Audio Signal</p>
-                <h3 className="text-6xl font-black uppercase italic tracking-tighter mb-4">{incomingCall.from || 'Guest'}</h3>
-
-                <div className="flex items-center justify-center gap-4 mb-12">
-                  <span className="px-4 py-1 bg-white text-black text-xs font-black uppercase border-4 border-black">{incomingCall.type} CALL</span>
-                  <span className="text-sm font-black uppercase opacity-60 italic">Connecting via Global Mesh...</span>
+            <div className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-5">
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-14 h-14 bg-neo-pink border-2 border-black flex items-center justify-center text-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] shrink-0">
+                  👤
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2 h-2 rounded-full bg-neo-green animate-pulse" />
+                    <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">Incoming {incomingCall.type} Call</p>
+                  </div>
+                  <h3 className="text-xl md:text-2xl font-black uppercase truncate leading-none" title={incomingCall.callerName || incomingCall.from}>
+                    {incomingCall.callerName || (incomingCall.from && incomingCall.from.length > 20 ? 'Unknown Caller' : incomingCall.from) || 'Guest'}
+                  </h3>
                   {ringerError && (
-                    <span className="flex items-center gap-1 px-2 py-1 bg-neo-yellow text-black text-[10px] font-black border-2 border-black animate-bounce">
-                      🔇 RINGER MUTED - CLICK ANSWER
-                    </span>
+                    <p className="text-[9px] font-bold text-red-500 mt-1 uppercase">🔇 Ringer blocked - Click Answer</p>
+                  )}
+                  {incomingCall.from && !incomingCall.callerName && (
+                    <p className="text-[8px] font-bold text-zinc-400 mt-1 uppercase">ID: {incomingCall.from.slice(0, 8)}...</p>
                   )}
                 </div>
-
-                <div className="flex flex-col md:flex-row gap-6">
-                  <button
-                    onClick={handleRejectCall}
-                    className="flex-1 neo-btn bg-red-500 text-white py-6 text-xl font-black"
-                  >
-                    REJECT
-                  </button>
-                  <button
-                    onClick={() => {
-                      // Satisfy autoplay policy if ringer was blocked
-                      if (ringerRef.current && ringerRef.current.paused) {
-                        ringerRef.current.play().catch(() => { });
-                      }
-                      handleAcceptCall(incomingCall.type);
-                    }}
-                    className="flex-1 neo-btn bg-neo-green text-black py-6 text-xl font-black animate-bounce shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
-                  >
-                    ANSWER NOW
-                  </button>
-                </div>
-
-                <p className="mt-8 text-[10px] font-black uppercase opacity-40">
-                  Tip: Keep this tab active to receive instant rings
-                </p>
               </div>
-            </motion.div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={handleRejectCall}
+                  className="bg-zinc-100 hover:bg-red-500 hover:text-white border-4 border-black py-3 text-sm font-black uppercase transition-colors"
+                >
+                  Decline
+                </button>
+                <button
+                  onClick={() => {
+                    if (ringerRef.current && ringerRef.current.paused) {
+                      ringerRef.current.play().catch(() => { });
+                    }
+                    handleAcceptCall(incomingCall.type);
+                  }}
+                  className="bg-neo-green text-black border-4 border-black py-3 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-[2px] active:translate-x-[2px] transition-all"
+                >
+                  Answer
+                </button>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

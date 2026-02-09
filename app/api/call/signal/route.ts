@@ -13,15 +13,17 @@ const hasKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
 
 export async function POST(req: NextRequest) {
   try {
-    const { action, from, to, type } = await req.json();
+    const { action, from, to, type, callerName } = await req.json();
 
     if (action === 'call') {
       // Generate unique channel name
       const channelName = `supertime-${to}-${Date.now()}`;
-      console.log('[Signal API] Creating call signal:', { from, to, type, channelName });
+      const safeCallerName = callerName || (from === 'guest' ? 'Guest' : 'Anonymous');
+      console.log('[Signal API] Creating call signal:', { from, callerName: safeCallerName, to, type, channelName });
 
       const signalData = {
         from,
+        callerName: safeCallerName,
         type,
         timestamp: Date.now(),
         channelName
@@ -96,11 +98,13 @@ export async function GET(req: NextRequest) {
         username,
         channelName: signal.channelName,
         from: signal.from,
+        callerName: signal.callerName,
         type: signal.type
       });
       return NextResponse.json({
         incoming: {
           from: signal.from,
+          callerName: signal.callerName,
           type: signal.type,
           channelName: signal.channelName
         }

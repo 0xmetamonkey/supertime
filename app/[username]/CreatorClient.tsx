@@ -137,20 +137,22 @@ export default function CreatorClient({
       return;
     }
 
-    console.log('[Caller] Starting call...', { type, providerConnected: _ablySignaling?.isConnected });
+    const callerName = user?.name || user?.email?.split('@')[0] || 'Guest';
+
+    console.log('[Caller] Starting call...', { type, providerConnected: _ablySignaling?.isConnected, callerName });
     let callChannelName: string | null = null;
     try {
       // Use Ably for instant signaling if available
       if (_ablySignaling?.isConnected && _ablySignaling?.initiateCall) {
         console.log('[Caller] Using Ably to initiate call to:', username);
-        callChannelName = await _ablySignaling.initiateCall(username, type);
+        callChannelName = await _ablySignaling.initiateCall(username, type, callerName);
         setActiveChannelName(callChannelName);
       } else {
         // Fallback to old API if Ably not connected
         console.log('[Caller] Fallback: Using signal API');
         const response = await fetch('/api/call/signal', {
           method: 'POST',
-          body: JSON.stringify({ action: 'call', from: uid, to: username, type })
+          body: JSON.stringify({ action: 'call', from: uid, callerName, to: username, type })
         });
         const data = await response.json();
 
