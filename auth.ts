@@ -21,5 +21,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return token;
     }
-  }
+  },
+  secret: process.env.AUTH_SECRET,
 })

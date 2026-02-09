@@ -550,7 +550,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
       </AnimatePresence>
 
       {/* HEADER */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b-4 border-black py-4 transition-colors">
+      <nav className="sticky top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b-4 border-black py-4 transition-colors">
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-8">
             <a href="/" className="flex items-center gap-2 group">
@@ -586,7 +586,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
+      <main className="max-w-7xl mx-auto px-6 pt-12 pb-20">
 
         {/* TWO INDEPENDENT CONTROLS: Broadcast & Calls */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
@@ -646,7 +646,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-12">
+        <div className="grid lg:grid-cols-12 gap-8">
 
           {/* LEFT COLUMN: CONTROL PANEL */}
           <div className="lg:col-span-4 space-y-8">
@@ -715,7 +715,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </div>
 
           {/* RIGHT COLUMN: QUEUE & CONTENT */}
-          <div className="lg:col-span-8 space-y-12">
+          <div className="lg:col-span-8 space-y-8">
 
             {/* Incoming call handled by top-level overlay below */}
 
@@ -867,7 +867,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
                     <span className="text-[10px] font-black bg-black text-white px-2 py-0.5">{requests.length}</span>
                   </div>
                   {requests.length === 0 ? (
-                    <div className="border-4 border-black border-dashed p-10 text-center text-black">
+                    <div className="border-4 border-black border-dashed p-8 text-center bg-zinc-50/50 flex flex-col items-center justify-center gap-4 min-h-[160px]">
+                      <Users className="w-8 h-8 text-zinc-300" />
                       <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">Queue Empty</p>
                     </div>
                   ) : (
@@ -898,7 +899,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
                     <span className="text-[10px] font-black bg-black text-white px-2 py-0.5">{bookings.length}</span>
                   </div>
                   {bookings.length === 0 ? (
-                    <div className="border-4 border-black border-dashed p-10 text-center text-black">
+                    <div className="border-4 border-black border-dashed p-8 text-center bg-zinc-50/50 flex flex-col items-center justify-center gap-4 min-h-[160px]">
+                      <Calendar className="w-8 h-8 text-zinc-300" />
                       <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">No bookings</p>
                     </div>
                   ) : (
@@ -946,8 +948,9 @@ export default function StudioClient({ username, session, initialSettings }: { u
                   </div>
                 ))}
                 {artifacts.length === 0 && (
-                  <div className="col-span-full border-4 border-black border-dashed p-12 text-center text-zinc-400 uppercase font-black tracking-widest text-xs">
-                    Highlights will appear here after calls
+                  <div className="col-span-full border-4 border-black border-dashed p-8 text-center bg-zinc-50/50 flex flex-col items-center justify-center gap-4 min-h-[200px]">
+                    <Video className="w-10 h-10 text-zinc-300" />
+                    <p className="text-zinc-400 uppercase font-black tracking-widest text-xs">Highlights will appear here after calls</p>
                   </div>
                 )}
               </div>

@@ -121,9 +121,9 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
     <>
       <button
         onClick={() => router.push('/wallet')}
-        className="flex items-center gap-2 bg-white dark:bg-black border-4 border-black dark:border-white px-4 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_theme(colors.neo-pink)] transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none translate-x-[-2px] translate-y-[-2px]"
+        className="flex items-center gap-2 bg-white border-4 border-black px-4 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none translate-x-[-2px] translate-y-[-2px]"
       >
-        <span className="text-black dark:text-white font-black text-sm tabular-nums">
+        <span className="text-black font-black text-sm tabular-nums">
           {balance === null ? '...' : balance} <span className="text-[10px]">TKN</span>
         </span>
         <div className="w-6 h-6 bg-neo-green border-2 border-black flex items-center justify-center text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] group-hover:bg-neo-yellow">
