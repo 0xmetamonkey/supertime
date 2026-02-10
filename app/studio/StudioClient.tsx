@@ -49,6 +49,12 @@ export default function StudioClient({ username, session, initialSettings }: { u
       hasSession: !!session,
       isSimulated
     });
+
+    // Load Razorpay Script
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
   }, []);
 
   const [isLive, setIsLive] = useState(initialSettings?.isLive ?? false);
@@ -89,6 +95,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [upiId, setUpiId] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'queue' | 'history' | 'analytics'>('queue');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // SEPARATE STATES: Broadcast and Calls are independent
   const [isAcceptingCalls, setIsAcceptingCalls] = useState(initialSettings?.isAcceptingCalls ?? true);
@@ -207,6 +215,52 @@ export default function StudioClient({ username, session, initialSettings }: { u
     } catch (e: any) {
       setClaimError(e.message || "Something went wrong.");
       setClaimLoading(false);
+    }
+  };
+
+  const handleRecharge = async (amount: number) => {
+    setIsProcessing(true);
+    try {
+      const orderRes = await fetch('/api/payment/create-order', {
+        method: 'POST',
+        body: JSON.stringify({ amount: amount }),
+      });
+      const orderData = await orderRes.json();
+      if (orderData.error) throw new Error(orderData.error);
+
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "Supertime",
+        description: `Recharge ${amount} Credits`,
+        order_id: orderData.orderId,
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await fetch('/api/payment/verify', {
+              method: 'POST',
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              fetchDetailedWallet();
+              alert("Energy Loaded!");
+            }
+          } catch (err) { }
+        },
+        theme: { color: "#D652FF" }
+      };
+
+      const rzp1 = new (window as any).Razorpay(options);
+      rzp1.open();
+    } catch (e: any) {
+      alert(`Failed: ${e.message}`);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -550,339 +604,170 @@ export default function StudioClient({ username, session, initialSettings }: { u
       </AnimatePresence>
 
       {/* HEADER */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b-4 border-black py-4 transition-colors">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b-2 border-black py-3 transition-colors">
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-6">
             <a href="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 bg-black flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_theme(colors.neo-pink)] transition-transform group-hover:rotate-12">
+              <div className="w-8 h-8 bg-black flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_theme(colors.neo-pink)] transition-transform group-hover:rotate-12 rounded-sm">
                 <Zap className="text-neo-yellow w-5 h-5 fill-current" />
               </div>
-              <span className="text-xl font-black uppercase tracking-tighter text-black">Studio</span>
+              <span className="text-lg font-black uppercase tracking-tighter text-black">Studio</span>
             </a>
-            <div className="hidden md:flex items-center gap-6">
-              <button
-                onClick={() => window.open(`/${username}?sim=true`, '_blank')}
-                className="bg-neo-yellow border-2 border-black px-3 py-1 text-[8px] font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
-              >
-                Launch Simulator
+            <div className="hidden md:flex items-center gap-4 border-l-2 border-black/10 pl-4">
+              <a href={`/${username}`} className="text-[9px] font-black uppercase tracking-widest text-black/40 hover:text-neo-pink transition-colors">Public Profile</a>
+              <button onClick={() => setShowSettings(true)} className="text-[9px] font-black uppercase tracking-widest text-black/40 hover:text-neo-pink transition-colors flex items-center gap-1">
+                <Settings className="w-3 h-3" /> Settings
               </button>
-              <a href={`/${username}`} className="text-[10px] font-black uppercase tracking-widest text-black/60 hover:text-neo-pink transition-colors">Public Profile</a>
-              <button onClick={() => setShowSettings(true)} className="text-[10px] font-black uppercase tracking-widest text-black/60 hover:text-neo-pink transition-colors">Settings</button>
             </div>
           </div>
 
           <div className="flex items-center gap-6">
-            {!isCalling && <WalletManager onBalanceChange={setBalance} />}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase text-zinc-400">Status:</span>
-              <div className={`flex items-center gap-2 px-3 py-1 border-2 border-black font-black uppercase text-[10px] ${isLive ? 'bg-neo-green text-black' : 'bg-red-500 text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'}`}>
-                {isLive ? 'Live' : 'Offline'}
-              </div>
+            {/* Redundant WalletManager removed - already available in sidebar */}
+            <div className={`flex items-center gap-2 px-3 py-1 border-2 border-black font-black uppercase text-[9px] ${isLive ? 'bg-neo-green text-black' : 'bg-red-500 text-white'}`}>
+              {isLive ? 'Live' : 'Offline'}
             </div>
-            <button onClick={() => logout()} className="w-10 h-10 bg-black text-white border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none translate-x-[-2px] translate-y-[-2px] active:translate-x-0 active:translate-y-0 transition-all">
-              <LogOut className="w-5 h-5" />
+            <button onClick={() => logout()} className="text-black/40 hover:text-red-500 transition-colors">
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
-
-        {/* TWO INDEPENDENT CONTROLS: Broadcast & Calls */}
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
-
-          {/* BROADCAST PANEL */}
-          <div className={`border-4 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-colors ${isLive ? 'bg-neo-blue' : 'bg-white'}`}>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-2xl">📺</span>
-              <h3 className={`text-xl font-black uppercase ${isLive ? 'text-white' : 'text-black'}`}>Broadcast</h3>
+        {/* COMPACT MODE SWITCHER */}
+        <div className="flex items-center gap-4 mb-12 bg-zinc-50 border-2 border-black p-2 rounded-xl">
+          <div className={`flex-1 flex items-center justify-between px-4 py-2 rounded-lg border-2 transition-all ${isLive ? 'bg-neo-blue border-black text-white' : 'bg-white border-black/5 text-black/40'}`}>
+            <div className="flex items-center gap-2">
+              <Video className="w-4 h-4" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Broadcast</span>
             </div>
-            <p className={`text-xs font-bold uppercase mb-4 ${isLive ? 'text-white/70' : 'text-black/50'}`}>
-              {isLive ? `Streaming on room-${effectiveUsername}` : 'Stream to your fans'}
-            </p>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {isLive && <div className="w-3 h-3 rounded-full bg-red-500 animate-ping" />}
-                <span className={`text-sm font-black uppercase ${isLive ? 'text-white' : 'text-black/60'}`}>
-                  {isLive ? 'LIVE' : 'Offline'}
-                </span>
-              </div>
-              <button
-                onClick={async () => {
-                  const next = !isLive;
-                  setIsLive(next);
-                  await fetch('/api/studio/update', { method: 'POST', body: JSON.stringify({ isLive: next }) });
-                }}
-                className={`px-6 py-3 border-4 border-black font-black uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all ${isLive ? 'bg-red-500 text-white' : 'bg-neo-green text-black'}`}
-              >
-                {isLive ? 'END' : 'GO LIVE'}
-              </button>
-            </div>
+            <button
+              onClick={async () => {
+                const next = !isLive;
+                setIsLive(next);
+                await fetch('/api/studio/update', { method: 'POST', body: JSON.stringify({ isLive: next }) });
+              }}
+              className={`text-[9px] font-black px-2 py-0.5 border border-black rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none transition-all ${isLive ? 'bg-red-500' : 'bg-neo-green text-black'}`}
+            >
+              {isLive ? 'END' : 'START'}
+            </button>
           </div>
 
-          {/* CALLS PANEL */}
-          <div className={`border-4 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-colors ${isAcceptingCalls ? 'bg-neo-pink' : 'bg-white'}`}>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-2xl">📞</span>
-              <h3 className={`text-xl font-black uppercase ${isAcceptingCalls ? 'text-white' : 'text-black'}`}>1:1 Calls</h3>
+          <div className={`flex-1 flex items-center justify-between px-4 py-2 rounded-lg border-2 transition-all ${isAcceptingCalls ? 'bg-neo-pink border-black text-white' : 'bg-white border-black/5 text-black/40'}`}>
+            <div className="flex items-center gap-2">
+              <Mic className="w-4 h-4" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Calls</span>
             </div>
-            <p className={`text-xs font-bold uppercase mb-4 ${isAcceptingCalls ? 'text-white/70' : 'text-black/50'}`}>
-              {isAcceptingCalls ? 'Fans can request calls' : 'Not taking calls'}
-            </p>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {isAcceptingCalls && <div className="w-3 h-3 rounded-full bg-white animate-pulse" />}
-                <span className={`text-sm font-black uppercase ${isAcceptingCalls ? 'text-white' : 'text-black/60'}`}>
-                  {isAcceptingCalls ? 'READY' : 'Off'}
-                </span>
-              </div>
-              <button
-                onClick={handleToggleCalls}
-                className={`px-6 py-3 border-4 border-black font-black uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all ${isAcceptingCalls ? 'bg-red-500 text-white' : 'bg-neo-green text-black'}`}
-              >
-                {isAcceptingCalls ? 'STOP' : 'ACCEPT'}
-              </button>
-            </div>
+            <button
+              onClick={handleToggleCalls}
+              className={`text-[9px] font-black px-2 py-0.5 border border-black rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none transition-all ${isAcceptingCalls ? 'bg-red-500' : 'bg-neo-green text-black'}`}
+            >
+              {isAcceptingCalls ? 'STOP' : 'ACCEPT'}
+            </button>
           </div>
         </div>
 
         <div className="grid lg:grid-cols-12 gap-12">
-
-          {/* LEFT COLUMN: CONTROL PANEL */}
-          <div className="lg:col-span-4 space-y-8">
-            <div className="neo-box bg-white p-8">
-              <div className="relative w-32 h-32 bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mx-auto mb-8 overflow-hidden">
+          {/* LEFT COLUMN: COMPACT PROFILE & WALLET */}
+          <div className="lg:col-span-3 space-y-6">
+            <div className="bg-white border-2 border-black p-6 rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all text-black">
+              <div className="relative w-20 h-20 bg-white border-2 border-black mx-auto mb-4 overflow-hidden rounded-full">
                 {pendingProfileImage ? (
                   <img src={pendingProfileImage} className="w-full h-full object-cover" />
                 ) : (
                   <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`} className="w-full h-full object-cover" />
                 )}
               </div>
-              <h2 className="text-3xl font-black uppercase text-center mb-4 tracking-tighter italic text-black">{username}</h2>
-              <a
-                href={`/${username}`}
-                target="_blank"
-                className="block w-full text-center bg-black text-white py-3 font-black uppercase text-xs border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-neo-pink transition-colors"
-              >
-                View Public Profile →
-              </a>
-            </div>
-
-            <div className="bg-neo-yellow border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
-              <h3 className="text-2xl font-black uppercase mb-2">Energy Wallet</h3>
-              <p className="font-black text-5xl mb-4 tabular-nums">{balance ?? '0'} <span className="text-xl">TKN</span></p>
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-black/60">
-                <Sparkles className="w-4 h-4" />
-                Ready to use
+              <h2 className="text-xl font-black uppercase text-center mb-4 tracking-tighter italic">{username}</h2>
+              <div className="space-y-3">
+                <div className="bg-neo-yellow border-2 border-black p-4 text-black rounded-lg">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="text-[8px] font-black uppercase opacity-60">Balance</p>
+                      <p className="font-black text-2xl tabular-nums">{balance ?? '0'} <span className="text-[10px]">TKN</span></p>
+                    </div>
+                    <Sparkles className="w-5 h-5 text-neo-pink fill-current" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[500, 1000].map(amount => (
+                      <button
+                        key={amount}
+                        onClick={() => handleRecharge(amount)}
+                        disabled={isProcessing}
+                        className="bg-black text-white text-[9px] font-bold py-1.5 rounded hover:bg-neo-pink transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        +{amount} TKN
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {withdrawable > 0 && (
+                  <div className="bg-neo-pink border-2 border-black p-3 text-white rounded-lg">
+                    <p className="text-[8px] font-black uppercase opacity-60">Withdrawable</p>
+                    <p className="font-black text-xl tabular-nums">₹{withdrawable}</p>
+                  </div>
+                )}
+                <button onClick={() => router.push('/wallet')} className="w-full text-center text-[8px] font-black uppercase underline text-black/40 hover:text-black">Manage Funds</button>
               </div>
             </div>
 
-
-            <div className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
-                  Session Log
-                </h3>
-                <span className="bg-black text-white text-[10px] font-black uppercase px-2 py-0.5 border-2 border-black">LIVE</span>
-              </div>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center border-b-2 border-black/10 pb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-black/40">Tokens Earned</span>
-                  <span className="font-black text-2xl tabular-nums">1.2k <span className="text-xs">TKN</span></span>
+            <div className="bg-white border-2 border-black p-6 text-black rounded-xl">
+              <h3 className="text-[9px] font-black uppercase tracking-tighter mb-4 opacity-30 flex items-center gap-2">
+                <Clock className="w-3 h-3" /> Day Session
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center border-b border-black/5 pb-1">
+                  <span className="text-[8px] font-black uppercase text-black/40">Tokens</span>
+                  <span className="font-black text-sm tabular-nums">1.2k</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-black/40">Total Minutes</span>
-                  <span className="font-black text-2xl tabular-nums">142 <span className="text-xs">MIN</span></span>
+                  <span className="text-[8px] font-black uppercase text-black/40">Minutes</span>
+                  <span className="font-black text-sm tabular-nums">142</span>
                 </div>
               </div>
             </div>
-
-            {withdrawable > 0 && (
-              <div className="bg-neo-pink border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-white">
-                <h3 className="text-lg font-black uppercase mb-1 flex items-center gap-2">
-                  <Zap className="w-4 h-4" /> Earnings
-                </h3>
-                <p className="font-black text-3xl mb-4 tabular-nums">₹{withdrawable}</p>
-                <button
-                  onClick={() => router.push('/wallet')}
-                  className="w-full bg-white text-black py-3 font-black uppercase text-[10px] hover:bg-neo-yellow transition-all border-2 border-black"
-                >
-                  SETTLE IN VAULT
-                </button>
-              </div>
-            )}
           </div>
 
-          {/* RIGHT COLUMN: QUEUE & CONTENT */}
-          <div className="lg:col-span-8 space-y-12">
+          {/* RIGHT COLUMN: TABBED NAVIGATION */}
+          <div className="lg:col-span-9 space-y-8">
+            <div className="flex items-center gap-1 border-b-2 border-black/5">
+              {(['queue', 'history', 'analytics'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-2 text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'border-b-2 border-black text-black' : 'text-black/30 hover:text-black'}`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
 
-            {/* Incoming call handled by top-level overlay below */}
-
-
-            {/* Call requests and stats - shown when accepting calls */}
-            {false ? (
-              <div className="space-y-12">
-                {/* REMOVED: Solitude content */}
-                <div className="neo-box bg-black p-8 border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] text-white">
-                  <div className="flex justify-between items-center mb-8">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                      <h3 className="text-3xl font-black uppercase italic tracking-tighter">Solitude Lab</h3>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-1 bg-zinc-800 text-[10px] font-black uppercase border-2 border-black">
-                      <Shield className="w-3 h-3 text-neo-green" /> Offline
-                    </div>
-                  </div>
-
-                  <div className="relative aspect-video bg-zinc-900 border-4 border-white/10 overflow-hidden mb-8 group">
-                    <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-40 transition-opacity">
-                      <Zap className="w-32 h-32" />
-                    </div>
-                    {/* Simulated Stage Feed */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-8">
-                      <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">Preview Active</p>
-                      <h4 className="text-2xl font-black uppercase tracking-tighter">System Baseline</h4>
-                    </div>
-
-                    <div className="absolute top-6 left-6 flex gap-2">
-                      <div className="bg-neo-pink text-[8px] font-black uppercase px-2 py-0.5 border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">DEV_ENV</div>
-                      <div className="bg-white text-black text-[8px] font-black uppercase px-2 py-0.5 border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">4K_READY</div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-zinc-800 border-4 border-black hover:bg-neo-pink hover:text-white transition-all group">
-                      <Camera className="w-6 h-6" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Snapshot</span>
-                    </button>
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-zinc-800 border-4 border-black hover:bg-neo-blue hover:text-white transition-all group">
-                      <Play className="w-6 h-6" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Record</span>
-                    </button>
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-zinc-800 border-4 border-black hover:bg-neo-green hover:text-black transition-all group">
-                      <Users className="w-6 h-6" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Training</span>
-                    </button>
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-zinc-800 border-4 border-black hover:bg-neo-yellow hover:text-black transition-all group">
-                      <Plus className="w-6 h-6" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Add App</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* DEVELOPER ECOSYSTEM TEASER */}
-                <div className="neo-box bg-neo-yellow/5 border-4 border-black border-dashed p-10 text-center relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-neo-yellow/10 rounded-full translate-x-8 translate-y-[-8px] blur-3xl" />
-                  <InfinityIcon className="w-12 h-12 text-zinc-300 mx-auto mb-4 group-hover:rotate-180 transition-transform duration-700" />
-                  <h3 className="text-xl font-black uppercase italic mb-2 text-black">Extensible Stage</h3>
-                  <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest max-w-md mx-auto leading-relaxed">
-                    Build custom apps and plug them directly into your Studio. Coming soon to Supertime SDK.
-                  </p>
-                </div>
-              </div>
-            ) : false ? (
-              <div className="space-y-12">
-                {/* REMOVED: Theatre content */}
-                <div className="neo-box bg-neo-pink p-8 border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] text-white">
-                  <div className="flex justify-between items-center mb-8">
-                    <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 bg-neo-green rounded-full animate-ping" />
-                      <h3 className="text-3xl font-black uppercase italic tracking-tighter">Live Stage</h3>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2 px-3 py-1 bg-black/20 text-[10px] font-black uppercase border-2 border-white/20">
-                        <Users className="w-3 h-3" /> 14 Admirers
-                      </div>
-                      <div className="flex items-center gap-2 px-3 py-1 bg-neo-yellow text-black text-[10px] font-black uppercase border-2 border-black">
-                        TICKET: 20 TKN
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-6">
-                      <div className="relative aspect-video bg-black border-4 border-black shadow-[8px_8px_0px_0px_rgba(255,255,255,0.1)] overflow-hidden">
-                        {/* Live Stream Preview */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Globe className="w-24 h-24 text-white/5 animate-spin-slow" />
-                        </div>
-                        <div className="absolute top-4 left-4 bg-red-600 px-3 py-1 font-black uppercase text-[10px] tracking-widest">LIVE BROADCAST</div>
-                      </div>
-
-                      <div className="flex gap-4">
-                        <button className="flex-1 neo-btn bg-white text-black py-4 font-black uppercase flex items-center justify-center gap-2">
-                          <Mic className="w-5 h-5" /> Mic On
-                        </button>
-                        <button className="flex-1 neo-btn bg-black text-white py-4 font-black uppercase flex items-center justify-center gap-2 border-white">
-                          <Video className="w-5 h-5" /> Cam Off
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-6">
-                      <div className="bg-black/20 border-4 border-black p-4 h-[300px] flex flex-col">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest mb-4 border-b border-white/10 pb-2">Audience Chat</h4>
-                        <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar">
-                          <p className="text-[10px] font-bold text-white/40 italic">Waiting for connection...</p>
-                        </div>
-                        <div className="mt-4 flex gap-2">
-                          <input type="text" placeholder="Say something..." className="flex-1 bg-black/40 border-2 border-black p-2 text-[10px] font-bold outline-none" />
-                          <button className="bg-white text-black px-3 font-black">SEND</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* THEATRE CONTROLS */}
-                <div className="grid md:grid-cols-3 gap-6">
-                  <div className="neo-box bg-white p-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-40">Entry Fee</h4>
-                    <div className="flex items-end gap-2">
-                      <span className="text-3xl font-black">20</span>
-                      <span className="text-xs font-bold mb-1">TKN</span>
-                    </div>
-                  </div>
-                  <div className="neo-box bg-white p-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-40">Revenue Share</h4>
-                    <div className="flex items-end gap-2">
-                      <span className="text-3xl font-black">₹4.2k</span>
-                      <span className="text-xs font-bold mb-1 italic">TONIGHT</span>
-                    </div>
-                  </div>
-                  <button className="neo-box bg-neo-green p-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black flex flex-col items-center justify-center hover:bg-neo-yellow transition-all">
-                    <Globe className="w-6 h-6 mb-1" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Share Stage</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-8">
+            {activeTab === 'queue' && (
+              <div className="grid md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-2">
                 {/* WAITLIST */}
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
-                    <h3 className="text-2xl font-black uppercase tracking-tighter italic text-black">Waitlist</h3>
-                    <div className="h-1 flex-1 bg-black" />
-                    <span className="text-[10px] font-black bg-black text-white px-2 py-0.5">{requests.length}</span>
+                    <h3 className="text-xl font-black uppercase tracking-tighter italic text-black">Waitlist</h3>
+                    <div className="h-px flex-1 bg-black/10" />
+                    <span className="text-[10px] font-black bg-black text-white px-2 py-0.5 rounded">{requests.length}</span>
                   </div>
                   {requests.length === 0 ? (
-                    <div className="border-4 border-black border-dashed p-10 text-center text-black">
-                      <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">Queue Empty</p>
+                    <div className="border-2 border-black border-dashed p-10 text-center text-black rounded-xl bg-zinc-50/50">
+                      <p className="text-[9px] font-black uppercase text-zinc-300 tracking-[0.2em]">Queue Empty</p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {requests.map((req, i) => (
-                        <div key={i} className="neo-box bg-white p-4 flex justify-between items-center group">
+                        <div key={i} className="bg-white border-2 border-black p-3 flex justify-between items-center group rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-neo-yellow border-2 border-black text-sm font-black italic text-black flex items-center justify-center">#{i + 1}</div>
+                            <div className="w-8 h-8 bg-neo-yellow border border-black text-xs font-black italic text-black flex items-center justify-center rounded">#{i + 1}</div>
                             <div>
-                              <p className="font-black uppercase text-sm text-black">{req.from || 'Guest'}</p>
-                              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{new Date(req.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                              <p className="font-black uppercase text-xs text-black">{req.from || 'Guest'}</p>
+                              <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">{new Date(req.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                             </div>
                           </div>
-                          <button className="w-8 h-8 border-2 border-black flex items-center justify-center hover:bg-black hover:text-white transition-all text-black">
-                            <ArrowRight className="w-4 h-4" />
+                          <button className="w-6 h-6 border border-black flex items-center justify-center hover:bg-black hover:text-white transition-all text-black rounded">
+                            <ArrowRight className="w-3 h-3" />
                           </button>
                         </div>
                       ))}
@@ -893,26 +778,26 @@ export default function StudioClient({ username, session, initialSettings }: { u
                 {/* SCHEDULE */}
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
-                    <h3 className="text-2xl font-black uppercase tracking-tighter italic text-black">Schedule</h3>
-                    <div className="h-1 flex-1 bg-black" />
-                    <span className="text-[10px] font-black bg-black text-white px-2 py-0.5">{bookings.length}</span>
+                    <h3 className="text-xl font-black uppercase tracking-tighter italic text-black">Schedule</h3>
+                    <div className="h-px flex-1 bg-black/10" />
+                    <span className="text-[10px] font-black bg-black text-white px-2 py-0.5 rounded">{bookings.length}</span>
                   </div>
                   {bookings.length === 0 ? (
-                    <div className="border-4 border-black border-dashed p-10 text-center text-black">
-                      <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">No bookings</p>
+                    <div className="border-2 border-black border-dashed p-10 text-center text-black rounded-xl bg-zinc-50/50">
+                      <p className="text-[9px] font-black uppercase text-zinc-300 tracking-[0.2em]">No bookings</p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {bookings.map((booking, i) => (
-                        <div key={i} className="neo-box bg-white p-4 group">
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-[#D652FF]">{booking.date} @ {booking.time}</span>
-                            <div className="w-2 h-2 rounded-full bg-neo-pink animate-pulse" />
+                        <div key={i} className="bg-white border-2 border-black p-3 group rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black">
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-neo-pink">{booking.date} @ {booking.time}</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-neo-pink animate-pulse" />
                           </div>
-                          <p className="font-black uppercase text-lg italic tracking-tight mb-1 text-black">{booking.visitorEmail.split('@')[0]}</p>
-                          <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{booking.duration} Min {booking.type}</span>
-                            <button onClick={() => window.open(`mailto:${booking.visitorEmail}`)} className="text-[10px] font-black uppercase underline decoration-2 decoration-neo-blue underline-offset-4 text-black">Notify Client</button>
+                          <p className="font-black uppercase text-sm italic tracking-tight mb-1 text-black">{booking.visitorEmail.split('@')[0]}</p>
+                          <div className="flex justify-between items-center text-black">
+                            <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">{booking.duration} Min {booking.type}</span>
+                            <button onClick={() => window.open(`mailto:${booking.visitorEmail}`)} className="text-[8px] font-black uppercase underline decoration-1 decoration-neo-blue underline-offset-2 text-black">Notify</button>
                           </div>
                         </div>
                       ))}
@@ -922,93 +807,83 @@ export default function StudioClient({ username, session, initialSettings }: { u
               </div>
             )}
 
-            {/* ARTIFACTS GRID */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <h3 className="text-3xl font-black uppercase tracking-tighter italic text-black">Recorded Highlights</h3>
-                <div className="h-2 flex-1 bg-black" />
-              </div>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {artifacts.map((art: any) => (
-                  <div key={art.id} className="neo-box bg-white overflow-hidden group">
-                    <div className="relative aspect-video bg-zinc-100 border-b-2 border-black">
-                      <video src={art.url} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300" />
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                        <button onClick={() => window.open(art.url, '_blank')} className="neo-btn bg-white text-black px-4 py-1 text-xs font-black">WATCH</button>
+            {activeTab === 'history' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                <div className="grid md:grid-cols-3 gap-6">
+                  {artifacts.map((art: any) => (
+                    <div key={art.id} className="bg-white border-2 border-black overflow-hidden group rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                      <div className="relative aspect-video bg-zinc-100 border-b border-black">
+                        <video src={art.url} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300" />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-t-lg">
+                          <button onClick={() => window.open(art.url, '_blank')} className="bg-white text-black px-4 py-1 text-[10px] font-black rounded-lg">WATCH</button>
+                        </div>
+                      </div>
+                      <div className="p-3 flex justify-between items-center text-black">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-zinc-400">{new Date(art.timestamp).toLocaleDateString()}</span>
+                        <button className="text-red-500 hover:scale-110 transition-transform">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
                       </div>
                     </div>
-                    <div className="p-3 flex justify-between items-center text-black">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{new Date(art.timestamp).toLocaleDateString()}</span>
-                      <button className="text-red-500 hover:scale-110 transition-transform">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                  ))}
+                  {artifacts.length === 0 && (
+                    <div className="col-span-full border-2 border-black border-dashed p-12 text-center text-zinc-300 uppercase font-black tracking-widest text-[9px] rounded-xl bg-zinc-50/50">
+                      Highlights will appear here after calls
                     </div>
-                  </div>
-                ))}
-                {artifacts.length === 0 && (
-                  <div className="col-span-full border-4 border-black border-dashed p-12 text-center text-zinc-400 uppercase font-black tracking-widest text-xs">
-                    Highlights will appear here after calls
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'analytics' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                {!loadingStats && stats && (
+                  <div className="grid md:grid-cols-3 gap-6">
+                    <div className="bg-white border-2 border-black p-4 rounded-xl shadow-[4px_4px_0px_0px_rgba(44,97,255,0.1)] text-black">
+                      <p className="text-[8px] font-black uppercase text-zinc-400 mb-1">Views</p>
+                      <p className="text-2xl font-black italic">{stats.total.view || 0}</p>
+                    </div>
+                    <div className="bg-white border-2 border-black p-4 rounded-xl shadow-[4px_4px_0_0_rgba(255,0,245,0.1)] text-black">
+                      <p className="text-[8px] font-black uppercase text-zinc-400 mb-1">Calls</p>
+                      <p className="text-2xl font-black italic">{stats.total.call_start || 0}</p>
+                    </div>
+                    <div className="bg-white border-2 border-black p-4 rounded-xl shadow-[4px_4px_0_0_rgba(0,255,31,0.1)] text-black">
+                      <p className="text-[8px] font-black uppercase text-zinc-400 mb-1">Total TKN</p>
+                      <p className="text-2xl font-black italic">{stats.total.earnings_amount || 0}</p>
+                    </div>
+
+                    <div className="md:col-span-3 bg-white border-2 border-black p-6 rounded-xl text-black">
+                      <h4 className="text-[10px] font-black uppercase mb-6 opacity-30 flex items-center justify-between">
+                        7-Day Engagement
+                        <div className="flex gap-4">
+                          <div className="flex items-center gap-2"><div className="w-2 h-2 bg-neo-blue/10 rounded-sm" /> Views</div>
+                          <div className="flex items-center gap-2"><div className="w-2 h-2 bg-neo-green rounded-sm" /> Earnings</div>
+                        </div>
+                      </h4>
+                      <div className="flex items-end justify-between h-32 gap-1">
+                        {stats.history.map((day: any, i: number) => (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+                            <div className="w-full bg-zinc-50 relative h-full flex flex-col justify-end rounded-t overflow-hidden">
+                              <motion.div
+                                initial={{ height: 0 }}
+                                animate={{ height: `${Math.min(100, (day.views / (Math.max(...stats.history.map((d: any) => d.views)) || 1)) * 100)}%` }}
+                                className="bg-neo-blue/10 w-full"
+                              />
+                              <motion.div
+                                initial={{ height: 0 }}
+                                animate={{ height: `${Math.min(100, (day.earnings / (Math.max(...stats.history.map((d: any) => d.earnings)) || 1)) * 100)}%` }}
+                                className="bg-neo-green w-full absolute bottom-0 left-0"
+                              />
+                            </div>
+                            <span className="text-[6px] font-black uppercase text-zinc-400 rotate-45 mt-2">{day.date.split('-').slice(2).join('/')}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* PERFORMANCE ANALYTICS */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <h3 className="text-3xl font-black uppercase tracking-tighter italic text-black">Performance Analytics</h3>
-                <div className="h-2 flex-1 bg-black" />
-              </div>
-
-              {!loadingStats && stats && (
-                <div className="grid md:grid-cols-3 gap-8">
-                  <div className="neo-box bg-white p-6">
-                    <p className="text-[10px] font-black uppercase text-zinc-400 mb-2">Total Profile Views</p>
-                    <p className="text-4xl font-black italic">{stats.total.view || 0}</p>
-                  </div>
-                  <div className="neo-box bg-white p-6">
-                    <p className="text-[10px] font-black uppercase text-zinc-400 mb-2">Total Calls</p>
-                    <p className="text-4xl font-black italic">{stats.total.call_start || 0}</p>
-                  </div>
-                  <div className="neo-box bg-white p-6">
-                    <p className="text-[10px] font-black uppercase text-zinc-400 mb-2">Total Earnings</p>
-                    <p className="text-4xl font-black italic">{stats.total.earnings_amount || 0} <span className="text-xs italic">TKN</span></p>
-                  </div>
-
-                  <div className="md:col-span-3 neo-box bg-white p-8">
-                    <h4 className="text-xl font-black uppercase mb-8">Earning & Engagement History (7 Days)</h4>
-                    <div className="flex items-end justify-between h-48 gap-2">
-                      {stats.history.map((day: any, i: number) => (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative">
-                          <div className="w-full bg-zinc-100 relative h-full flex flex-col justify-end">
-                            <motion.div
-                              initial={{ height: 0 }}
-                              animate={{ height: `${Math.min(100, (day.views / (Math.max(...stats.history.map((d: any) => d.views)) || 1)) * 100)}%` }}
-                              className="bg-neo-blue/20 w-full"
-                            />
-                            <motion.div
-                              initial={{ height: 0 }}
-                              animate={{ height: `${Math.min(100, (day.earnings / (Math.max(...stats.history.map((d: any) => d.earnings)) || 1)) * 100)}%` }}
-                              className="bg-neo-green w-full absolute bottom-0 left-0"
-                            />
-                          </div>
-                          <span className="text-[8px] font-black uppercase text-zinc-400 rotate-45 mt-4">{day.date.split('-').slice(1).join('/')}</span>
-
-                          {/* Tooltip */}
-                          <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity bg-black text-white p-2 text-[8px] font-black uppercase z-10 pointer-events-none whitespace-nowrap">
-                            Views: {day.views} | Earned: {day.earnings} TKN
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-12 flex gap-6 text-[10px] font-black uppercase tracking-widest">
-                      <div className="flex items-center gap-2"><div className="w-3 h-3 bg-neo-blue/20" /> Profile Views</div>
-                      <div className="flex items-center gap-2"><div className="w-3 h-3 bg-neo-green" /> TKN Earnings</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </main>

@@ -8,6 +8,13 @@
   --neo-pink: #FF00F5;
   --neo-green: #00FF1F;
   --neo-yellow: #CEFF1A;
+  
+  /* Cosmic Energy Tokens */
+  --cosmic-black: #050505;
+  --cosmic-void: #0a0a0a;
+  --cosmic-nebula: linear-gradient(135deg, #4461FF 0%, #FF00F5 50%, #00FF1F 100%);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.03);
 }
 
 @theme inline {
@@ -115,4 +122,36 @@ nextjs-portal {
   border-width: 2px;
   border-color: black;
   box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+}
+
+/* Cosmic Energy Utilities */
+.cosmic-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.cosmic-blob {
+  filter: blur(80px);
+  opacity: 0.6;
+  mix-blend-mode: screen;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(2deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.cosmic-text-gradient {
+  background: var(--cosmic-nebula);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
