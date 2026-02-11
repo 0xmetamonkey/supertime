@@ -291,6 +291,16 @@ export default function CreatorClient({
     } catch (e) { }
   };
 
+  // Handle call ended by remote (creator or peer)
+  useEffect(() => {
+    if (_ablySignaling?.callEndedSignal && isCalling) {
+      console.log('[Caller] Received END signal:', _ablySignaling.callEndedSignal);
+      handleEndCall();
+      showError("Call ended by " + username);
+      _ablySignaling.resetCallSignal?.();
+    }
+  }, [_ablySignaling?.callEndedSignal, isCalling, username]);
+
   const deductBalance = async (amount: number): Promise<boolean> => {
     try {
       const res = await fetch('/api/wallet', {

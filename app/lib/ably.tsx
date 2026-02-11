@@ -133,6 +133,11 @@ export function useCallSignaling(userId: string) {
     channelName: string;
   } | null>(null);
 
+  const [callEndedSignal, setCallEndedSignal] = useState<{
+    from: string;
+    reason: 'ended' | 'rejected' | 'cancelled';
+  } | null>(null);
+
   useEffect(() => {
     if (!isConnected || !userId) return;
 
@@ -149,7 +154,9 @@ export function useCallSignaling(userId: string) {
         });
       }
 
-      if (message.name === 'call:cancelled' || message.name === 'call:rejected') {
+      if (message.name === 'call:cancelled' || message.name === 'call:rejected' || message.name === 'call:ended') {
+        const reason = message.name.split(':')[1] as 'ended' | 'rejected' | 'cancelled';
+        setCallEndedSignal({ from: message.data.from, reason });
         setIncomingCall(null);
       }
     });
@@ -205,7 +212,12 @@ export function useCallSignaling(userId: string) {
     incomingCall,
     initiateCall,
     cancelCall,
-    rejectCall,
     acceptCall,
+    endCall: async (targetUserId: string) => {
+      const normalizedTargetId = targetUserId.toLowerCase();
+      await publish(`user:${normalizedTargetId}`, 'call:ended', { from: userId });
+    },
+    callEndedSignal: callEndedSignal,
+    resetCallSignal: () => setCallEndedSignal(null),
   };
 }

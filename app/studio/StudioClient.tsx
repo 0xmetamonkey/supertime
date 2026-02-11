@@ -307,11 +307,14 @@ export default function StudioClient({ username, session, initialSettings }: { u
     return () => clearInterval(interval);
   }, [isCalling, isPeerConnected, callType, pendingVideoRate, pendingAudioRate]);
 
+  const [peerId, setPeerId] = useState<string | null>(null);
+
   const handleAcceptCall = (type: 'audio' | 'video') => {
     console.log(`[Studio] 📞 ACCEPTING CALL: ${type}`, incomingCall);
     setCallType(type);
     setIsCalling(true);
     setActiveChannelName(incomingCall.channelName);
+    setPeerId(incomingCall.from); // Store peer ID
     setIncomingCall(null);
     // Stop ringer
     if (ringerRef.current) {
@@ -354,11 +357,19 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
   const handleEndCall = () => {
     console.log('[Studio] 👋 Ending 1:1 Call Session');
+
+    // Notify the caller that the session has ended
+    if (peerId && ablySignaling?.endCall) {
+      console.log('[Studio] Sending end signal to:', peerId);
+      ablySignaling.endCall(peerId).catch((e: any) => console.error("Failed to send end signal", e));
+    }
+
     setIsCalling(false);
     setActiveChannelName(null);
     setIsPeerConnected(false);
     setCallDuration(0);
     setTokensEarned(0);
+    setPeerId(null);
   };
 
   const handleSaveArtifact = async (url: string) => {
