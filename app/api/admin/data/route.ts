@@ -71,5 +71,11 @@ export async function GET(req: NextRequest) {
       `${process.env.AGORA_APP_CERTIFICATE.substring(0, 5)}...${process.env.AGORA_APP_CERTIFICATE.slice(-4)}` : 'MISSING (Check Vercel)'
   };
 
-  return NextResponse.json({ users: Array.from(users.values()), config });
+  const withdrawals = await kv.get('withdrawals:list') || [];
+
+  return NextResponse.json({
+    users: Array.from(users.values()),
+    withdrawals,
+    config
+  });
 }

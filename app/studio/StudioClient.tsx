@@ -33,6 +33,9 @@ const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false 
 const BroadcastHost = dynamic(() => import('../components/Broadcast/BroadcastHost'), { ssr: false });
 import { logout, checkAvailability, claimUsername } from '../actions';
 import WalletManager from '../components/WalletManager';
+import BottomNav from '../components/BottomNav';
+import InAppBrowserPrompt from '../components/InAppBrowserPrompt';
+import InstallPrompt from '../components/InstallPrompt';
 
 export default function StudioClient({ username, session, initialSettings }: { username: string | null, session: any, initialSettings?: any }) {
   const router = useRouter();
@@ -542,6 +545,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
       )}
 
       {/* TOP-LEVEL INCOMING CALL OVERLAY (IMPOSSIBLE TO MISS) */}
+      <InAppBrowserPrompt />
+      <InstallPrompt />
       <AnimatePresence>
         {incomingCall && !isCalling && (
           <motion.div
@@ -553,22 +558,22 @@ export default function StudioClient({ username, session, initialSettings }: { u
             <motion.div
               initial={{ scale: 0.9, y: 50, rotate: -2 }}
               animate={{ scale: 1, y: 0, rotate: 0 }}
-              className="bg-neo-blue border-[12px] border-black p-12 shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] text-white max-w-2xl w-full relative overflow-hidden text-center"
+              className="bg-neo-blue border-8 md:border-[12px] border-black p-6 md:p-12 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] md:shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] text-white max-w-2xl w-full relative overflow-hidden text-center"
             >
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rotate-45 translate-x-32 translate-y-[-32px] animate-pulse" />
+              <div className="absolute top-0 right-0 w-32 md:w-64 h-32 md:h-64 bg-white/10 rotate-45 translate-x-16 md:translate-x-32 translate-y-[-16px] md:translate-y-[-32px] animate-pulse" />
 
               <div className="relative z-10">
-                <div className="w-32 h-32 bg-white border-8 border-black flex items-center justify-center text-5xl mx-auto mb-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">👤</div>
+                <div className="w-20 h-20 md:w-32 md:h-32 bg-white border-4 md:border-8 border-black flex items-center justify-center text-3xl md:text-5xl mx-auto mb-6 md:mb-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">👤</div>
 
-                <p className="text-xs font-black uppercase tracking-[0.5em] text-[#CEFF1A] mb-4 animate-pulse">Incoming Video/Audio Signal</p>
-                <h3 className="text-6xl font-black uppercase italic tracking-tighter mb-4">{incomingCall.from || 'Guest'}</h3>
+                <p className="text-[8px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.5em] text-[#CEFF1A] mb-2 md:mb-4 animate-pulse">Incoming Signal</p>
+                <h3 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter mb-4 break-words">{incomingCall.from || 'Guest'}</h3>
 
-                <div className="flex items-center justify-center gap-4 mb-12">
-                  <span className="px-4 py-1 bg-white text-black text-xs font-black uppercase border-4 border-black">{incomingCall.type} CALL</span>
-                  <span className="text-sm font-black uppercase opacity-60 italic">Connecting via Global Mesh...</span>
+                <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4 mb-8 md:mb-12">
+                  <span className="px-3 py-0.5 bg-white text-black text-[10px] md:text-xs font-black uppercase border-2 md:border-4 border-black">{incomingCall.type} CALL</span>
+                  <span className="text-[10px] md:text-sm font-black uppercase opacity-60 italic shrink-0">Connecting...</span>
                   {ringerError && (
-                    <span className="flex items-center gap-1 px-2 py-1 bg-neo-yellow text-black text-[10px] font-black border-2 border-black animate-bounce">
-                      🔇 RINGER MUTED - CLICK ANSWER
+                    <span className="flex items-center gap-1 px-2 py-1 bg-neo-yellow text-black text-[8px] md:text-[10px] font-black border-2 border-black animate-bounce">
+                      🔇 RINGER MUTED
                     </span>
                   )}
                 </div>
@@ -633,7 +638,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 md:pt-32 pb-20">
         {/* COMPACT MODE SWITCHER */}
         <div className="flex items-center gap-4 mb-12 bg-zinc-50 border-2 border-black p-2 rounded-xl">
           <div className={`flex-1 flex items-center justify-between px-4 py-2 rounded-lg border-2 transition-all ${isLive ? 'bg-neo-blue border-black text-white' : 'bg-white border-black/5 text-black/40'}`}>
@@ -1045,6 +1050,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </motion.div>
         )}
       </AnimatePresence>
+      <BottomNav username={username} />
     </div >
   );
 }

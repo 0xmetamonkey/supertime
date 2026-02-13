@@ -20,6 +20,7 @@ import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
 const BroadcastViewer = dynamic(() => import('../components/Broadcast/BroadcastViewer'), { ssr: false });
 import { loginWithGoogle, logout } from '../actions';
+import InAppBrowserPrompt from '../components/InAppBrowserPrompt';
 
 interface CreatorClientProps {
   username: string,
@@ -71,7 +72,7 @@ export default function CreatorClient({
   const isSimulated = searchParams.get('sim') === 'true';
 
   // State
-  const [balance, setBalance] = useState<number>(5000); // TEST MODE: Backdoor Enabled
+  const [balance, setBalance] = useState<number>(0);
   const [isCalling, setIsCalling] = useState(false);
   const [isWatching, setIsWatching] = useState(false); // Watching broadcast (Theatre mode)
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null);
@@ -81,6 +82,8 @@ export default function CreatorClient({
   const [isCreatorOnline, setIsCreatorOnline] = useState(isLive);
   const [activeChannelName, setActiveChannelName] = useState<string | null>(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showTopUpModal, setShowTopUpModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
   const [bookingTemplate, setBookingTemplate] = useState<any>(null);
@@ -88,10 +91,79 @@ export default function CreatorClient({
   const [isPeerConnected, setIsPeerConnected] = useState(false);
 
   const lastDeductMinuteRef = useRef<number>(-1);
+
+  // Auto-resume call after login
+  useEffect(() => {
+    const autostart = searchParams.get('autostart');
+    if (autostart && isLoggedIn && !isCalling && balance > 0) {
+      // Clean URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('autostart');
+      window.history.replaceState({}, '', url.pathname + url.search);
+
+      handleStartCall(autostart as 'audio' | 'video');
+    }
+  }, [searchParams, isLoggedIn, balance, isCalling]);
+
+  const handleRecharge = async (amount: number) => {
+    setIsProcessing(true);
+    try {
+      const orderRes = await fetch('/api/payment/create-order', {
+        method: 'POST',
+        body: JSON.stringify({ amount: amount }), // Amount in INR
+      });
+      const orderData = await orderRes.json();
+      if (orderData.error) throw new Error(orderData.error);
+
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "Supertime",
+        description: `Add ${amount} Credits`,
+        order_id: orderData.orderId,
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await fetch('/api/payment/verify', {
+              method: 'POST',
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              // We'll let the WalletManager fetch the new balance via its interval or just wait
+              // But for better UX, we can trigger a refresh if we had a ref to it
+              // For now, reload or wait for next tick
+              setShowTopUpModal(false);
+              alert("Energy Loaded!");
+              // Force local update if possible or hope the interval catches it
+              setBalance(prev => prev + amount);
+            } else {
+              alert("Payment Verification Failed.");
+            }
+          } catch (err) {
+            alert("Payment failed during verification.");
+          }
+        },
+        theme: { color: "#D652FF" }
+      };
+
+      const rzp1 = new (window as any).Razorpay(options);
+      rzp1.open();
+    } catch (e: any) {
+      alert(`Could not initiate payment: ${e.message}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Handle joining Theatre mode broadcast (watch stream)
   const handleJoinRoom = async () => {
     if (!isLoggedIn && !isRoomFree && !isSimulated) {
-      loginWithGoogle(window.location.pathname);
+      loginWithGoogle(window.location.pathname + '?autostart=stream');
       return;
     }
 
@@ -116,7 +188,7 @@ export default function CreatorClient({
 
   const handleStartCall = async (type: 'audio' | 'video') => {
     if (!isLoggedIn && !isSimulated) {
-      loginWithGoogle(window.location.pathname);
+      loginWithGoogle(window.location.pathname + '?autostart=' + type);
       return;
     }
 
@@ -128,7 +200,7 @@ export default function CreatorClient({
     const currentRate = type === 'video' ? videoRate : audioRate;
 
     if (balance < currentRate && !isSimulated) {
-      showError(`Add ${currentRate} TKN to start a ${type} call.`);
+      setShowTopUpModal(true);
       return;
     }
 
@@ -359,6 +431,7 @@ export default function CreatorClient({
 
   return (
     <div className="min-h-screen bg-white text-black font-sans selection:bg-neo-pink selection:text-white pb-20">
+      <InAppBrowserPrompt />
       <AnimatePresence>
         {errorMsg && (
           <motion.div
@@ -620,7 +693,65 @@ export default function CreatorClient({
         </div>
       </main>
 
+      <div className="fixed top-4 right-4 z-[100] md:top-8 md:right-8">
+        <WalletManager onBalanceChange={setBalance} />
+      </div>
+
       <AnimatePresence>
+        {showTopUpModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[600] bg-black/80 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 30 }}
+              className="bg-white border-8 border-black shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] p-8 md:p-12 max-w-md w-full"
+            >
+              <div className="flex justify-between items-start mb-8 text-black">
+                <h2 className="text-4xl font-black uppercase italic tracking-tighter leading-none">High Energy Required</h2>
+                <button
+                  onClick={() => setShowTopUpModal(false)}
+                  className="w-8 h-8 border-2 border-black flex items-center justify-center font-black"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest mb-8 leading-relaxed">
+                Tokens fuel the connection. Recharge to start your session with <span className="text-neo-pink">@{username}</span>.
+              </p>
+
+              <div className="space-y-4 text-black">
+                {[100, 500, 1000].map((amt) => (
+                  <button
+                    key={amt}
+                    onClick={() => handleRecharge(amt)}
+                    disabled={isProcessing}
+                    className="w-full group neo-box bg-white p-6 border-4 border-black text-black hover:bg-neo-yellow transition-all flex items-center justify-between"
+                  >
+                    <div className="text-left">
+                      <p className="text-[10px] font-black uppercase text-zinc-400 group-hover:text-black tracking-widest">Load Pack</p>
+                      <p className="text-3xl font-black tabular-nums">{amt} <span className="text-xs">TKN</span></p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-black uppercase text-neo-pink group-hover:text-black tracking-widest">Price</p>
+                      <p className="text-xl font-black tabular-nums">₹{amt}</p>
+                    </div>
+                  </button>
+                ))}
+
+                <p className="text-[8px] font-bold text-zinc-400 text-center uppercase tracking-[0.3em] mt-8">
+                  Instant Load via UPI or Card • 1 TKN = ₹1
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {showBookingModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[400] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6">
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white border-8 border-black shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-8 max-w-md w-full">

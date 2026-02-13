@@ -485,7 +485,7 @@ export default function CallStage({
       )}
 
       {/* CONTROLS */}
-      <div className="absolute bottom-10 inset-x-0 flex justify-center gap-6 z-20">
+      <div className="absolute bottom-6 md:bottom-10 inset-x-0 flex justify-center gap-6 z-20 pb-safe-area">
         <div className="flex bg-zinc-900/80 backdrop-blur-xl p-2 rounded-full border border-white/10 shadow-2xl gap-3">
           <button onClick={toggleMic} className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${localTracks?.[0]?.enabled ? 'bg-white/10 text-white' : 'bg-red-500 text-white'}`}>
             <span className="text-xl">{localTracks?.[0]?.enabled ? '🎙️' : '🔇'}</span>

@@ -11,8 +11,11 @@ import {
   ArrowDownLeft,
   CreditCard,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  User
 } from 'lucide-react';
+import BottomNav from '../components/BottomNav';
+import { resolveUsername } from '../actions';
 
 export default function WalletPage() {
   const router = useRouter();
@@ -24,6 +27,7 @@ export default function WalletPage() {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [upiId, setUpiId] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
+  const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
     // Load Razorpay Script
@@ -34,6 +38,10 @@ export default function WalletPage() {
 
     fetchWalletData();
     const interval = setInterval(fetchWalletData, 15000);
+
+    // Fetch username for BottomNav
+    fetch('/api/user/username').then(res => res.json()).then(data => setUsername(data.username)).catch(() => { });
+
     return () => clearInterval(interval);
   }, []);
 
@@ -247,8 +255,8 @@ export default function WalletPage() {
             <div className="sticky top-12 space-y-8">
               <div className="neo-box bg-neo-blue p-8 border-8 border-black shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] text-white">
                 <div className="flex items-center gap-3 mb-8">
-                  <TrendingUp className="w-6 h-6 text-[#CEFF1A]" />
-                  <h3 className="text-3xl font-black uppercase tracking-tighter italic">Top Up</h3>
+                  <CreditCard className="w-8 h-8 text-neo-pink" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#CEFF1A]">Secure Gateway</p>
                 </div>
 
                 <div className="grid gap-4">
@@ -347,6 +355,7 @@ export default function WalletPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      <BottomNav username={username} />
     </main>
   );
 }

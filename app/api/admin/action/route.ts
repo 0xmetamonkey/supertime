@@ -49,6 +49,28 @@ export async function POST(req: NextRequest) {
       await kv.del(`email:${email}:username`);
 
       console.log(`[Admin] Deleted user ${email} and all associated data.`);
+    } else if (action === 'approve_withdrawal' || action === 'reject_withdrawal') {
+      const withdrawalId = email; // In this case 'email' param is reused for withdrawal sequence ID
+      const withdrawals = (await kv.get<any[]>('withdrawals:list')) || [];
+      const index = withdrawals.findIndex(w => w.id === withdrawalId);
+
+      if (index === -1) {
+        return NextResponse.json({ error: 'Withdrawal not found' }, { status: 404 });
+      }
+
+      const withdrawal = withdrawals[index];
+
+      if (action === 'approve_withdrawal') {
+        withdrawal.status = 'COMPLETED';
+      } else {
+        withdrawal.status = 'REJECTED';
+        // Refund the amount to withdrawable balance
+        const userWithdrawable = (await kv.get<number>(`withdrawable:${withdrawal.email}`)) || 0;
+        await kv.set(`withdrawable:${withdrawal.email}`, userWithdrawable + withdrawal.amount);
+      }
+
+      withdrawals[index] = withdrawal;
+      await kv.set('withdrawals:list', withdrawals);
     } else {
       return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
     }

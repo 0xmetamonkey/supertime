@@ -15,6 +15,9 @@ import {
   Heart,
   Globe
 } from 'lucide-react';
+import InAppBrowserPrompt from './components/InAppBrowserPrompt';
+import InstallPrompt from './components/InstallPrompt';
+import CreatorEarningsCalculator from './components/CreatorEarningsCalculator';
 
 export default function LandingPageClient({ session, savedUsername }: { session: any, savedUsername: string | null }) {
   const router = useRouter();
@@ -122,6 +125,8 @@ export default function LandingPageClient({ session, savedUsername }: { session:
 
   return (
     <div className="min-h-screen bg-white text-black font-sans selection:bg-neo-pink selection:text-white transition-colors duration-300">
+      <InAppBrowserPrompt />
+      <InstallPrompt />
 
       {/* Subtle Mouse Follower */}
       <div
@@ -224,6 +229,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
             </motion.div>
           </motion.div>
 
+
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -233,10 +239,15 @@ export default function LandingPageClient({ session, savedUsername }: { session:
             <EnergySphere />
           </motion.div>
         </div>
-      </section>
+
+        {/* Added the calculator right in the hero for maximum conversion */}
+        <div className="max-w-7xl mx-auto px-4 mt-20">
+          <CreatorEarningsCalculator />
+        </div>
+      </section >
 
       {/* Logo/Asset Tape */}
-      <div className="bg-black py-8 overflow-hidden border-y-4 border-black">
+      < div className="bg-black py-8 overflow-hidden border-y-4 border-black" >
         <div className="flex whitespace-nowrap animate-infinite-scroll">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <div key={i} className="flex items-center gap-4 px-6 md:px-12">
@@ -247,10 +258,10 @@ export default function LandingPageClient({ session, savedUsername }: { session:
             </div>
           ))}
         </div>
-      </div>
+      </div >
 
       {/* Philosophy Section */}
-      <section id="philosophy" className="py-24 px-6 bg-zinc-50">
+      < section id="philosophy" className="py-24 px-6 bg-zinc-50" >
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
           <div className="relative">
             <div className="aspect-square bg-neo-pink border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden group">
@@ -289,10 +300,10 @@ export default function LandingPageClient({ session, savedUsername }: { session:
             </div>
           </div>
         </div>
-      </section>
+      </section >
 
       {/* The Platform (Cards) */}
-      <section id="platform" className="py-24 px-6 bg-black text-white">
+      < section id="platform" className="py-24 px-6 bg-black text-white" >
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-5xl md:text-8xl font-black uppercase mb-6">How it <span className="text-neo-yellow">works.</span></h2>
@@ -333,10 +344,10 @@ export default function LandingPageClient({ session, savedUsername }: { session:
             ))}
           </div>
         </div>
-      </section>
+      </section >
 
       {/* Mission Section */}
-      <section id="mission" className="py-24 px-6 relative overflow-hidden bg-white">
+      < section id="mission" className="py-24 px-6 relative overflow-hidden bg-white" >
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-1 bg-black" />
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-6xl md:text-8xl font-black uppercase mb-12 leading-none">
@@ -354,10 +365,10 @@ export default function LandingPageClient({ session, savedUsername }: { session:
             </button>
           </div>
         </div>
-      </section>
+      </section >
 
       {/* Footer */}
-      <footer className="bg-black text-white py-20 px-6 border-t-8 border-neo-pink">
+      < footer className="bg-black text-white py-20 px-6 border-t-8 border-neo-pink" >
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12">
           <div>
             <div className="flex items-center gap-2 mb-8">
@@ -402,8 +413,8 @@ export default function LandingPageClient({ session, savedUsername }: { session:
           <span>© 2026 Energy Exchange Corp</span>
           <span>Designed for Bliss</span>
         </div>
-      </footer>
+      </footer >
 
-    </div>
+    </div >
   );
 }
