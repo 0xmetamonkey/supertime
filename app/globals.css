@@ -21,7 +21,8 @@
   --font-mono: var(--font-geist-mono);
 }
 
-html, body {
+html,
+body {
   background: var(--background);
   color: var(--foreground);
   font-family: 'Outfit', sans-serif;
@@ -115,4 +116,115 @@ nextjs-portal {
   border-width: 2px;
   border-color: black;
   box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+}
+
+/* Hard Clerk Overrides for Supertime Premium Feel */
+.cl-footer,
+.cl-internal-footer,
+.cl-internal-ph6z3v,
+[data-clerk-theme="light"] .cl-internal-ph6z3v {
+  display: none !important;
+}
+
+.cl-card {
+  border: 4px solid black !important;
+  box-shadow: 12px 12px 0px 0px rgba(0, 0, 0, 1) !important;
+  border-radius: 0px !important;
+}
+
+.cl-formButtonPrimary {
+  background-color: black !important;
+  border: 4px solid black !important;
+  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1) !important;
+  border-radius: 0px !important;
+  text-transform: uppercase !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.1em !important;
+}
+
+.cl-headerTitle {
+  text-transform: uppercase !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.05em !important;
+  font-size: 1.875rem !important;
+}
+
+.cl-socialButtonsBlockButton {
+  border: 4px solid black !important;
+  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1) !important;
+  border-radius: 0px !important;
+  transition: all 0.2s ease !important;
+}
+
+.cl-socialButtonsBlockButton:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: none !important;
+}
+
+/* Organized Profile Redesign */
+.tiny-call-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  border: 2px solid black;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 2px 2px 0px 0px black;
+}
+
+.tiny-call-btn:hover {
+  background-color: #f9f9f9;
+}
+
+.tiny-call-btn:active {
+  transform: translateY(1px);
+  box-shadow: 1px 1px 0px 0px black;
+}
+
+.monochrome-social {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  border: 2px solid black;
+  background-color: black;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.monochrome-social:hover {
+  background-color: #333;
+  transform: scale(1.05);
+}
+
+.store-tab-btn {
+  padding: 0.5rem 1rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 0.625rem;
+  /* 10px */
+  letter-spacing: 0.1em;
+  border-bottom-width: 4px;
+  transition: all 0.2s ease;
+}
+
+.store-tab-active {
+  border-color: black;
+  color: black;
+}
+
+.store-tab-inactive {
+  border-color: transparent;
+  color: #9ca3af;
+  /* zinc-400 */
+}
+
+.store-tab-inactive:hover {
+  color: #4b5563;
+  /* zinc-600 */
 }

@@ -26,8 +26,9 @@ export async function GET(req: NextRequest) {
         [`user:${clientId}`]: ['subscribe', 'presence'],
         // User can publish to any user's channel to initiate calls
         ['user:*']: ['publish'],
-        // User can join room channels
+        // User can join room/broadcast channels
         ['room:*']: ['subscribe', 'publish', 'presence'],
+        ['broadcast:*']: ['subscribe', 'publish'],
       }
     });
 

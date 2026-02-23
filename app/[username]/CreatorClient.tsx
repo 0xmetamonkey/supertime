@@ -14,13 +14,15 @@ import {
   Video,
   Instagram,
   Link as LinkIcon,
-  Send
+  Send,
+  HelpCircle,
+  ChevronDown
 } from 'lucide-react';
 import WalletManager from '../components/WalletManager';
 import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
 const BroadcastViewer = dynamic(() => import('../components/Broadcast/BroadcastViewer'), { ssr: false });
-import { loginWithGoogle, logout } from '../actions';
+import { useUser, useClerk } from "@clerk/nextjs";
 
 interface CreatorClientProps {
   username: string,
@@ -37,15 +39,58 @@ interface CreatorClientProps {
   templates?: any[];
   availability?: any;
   artifacts?: any[];
+  faqs?: any[];
   roomType?: 'audio' | 'video';
   isRoomFree?: boolean;
   studioMode?: 'solitude' | 'theatre' | 'private';
   _ablySignaling?: any; // Injected from CreatorWrapper for real-time signaling
 }
 
+// FAQ Accordion component for public profile
+function FAQSection({ faqs }: { faqs: { id: string; question: string; answer: string }[] }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <HelpCircle className="w-7 h-7" />
+        <h3 className="text-3xl font-black uppercase tracking-tighter text-black">FAQ</h3>
+        <div className="h-2 flex-1 bg-black" />
+      </div>
+      <div className="space-y-3">
+        {faqs.map((faq) => (
+          <div key={faq.id} className="bg-white border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+            <button
+              onClick={() => setOpenId(openId === faq.id ? null : faq.id)}
+              className="w-full flex items-center justify-between p-5 text-left hover:bg-zinc-50 transition-colors"
+            >
+              <span className="font-black text-sm uppercase tracking-tight pr-4">{faq.question}</span>
+              <ChevronDown className={`w-5 h-5 shrink-0 transition-transform duration-300 ${openId === faq.id ? 'rotate-180' : ''}`} />
+            </button>
+            <AnimatePresence>
+              {openId === faq.id && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-5 pb-5 pt-0 border-t-4 border-black">
+                    <p className="text-sm font-bold text-zinc-600 leading-relaxed pt-4">{faq.answer}</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function CreatorClient({
   username,
-  user,
+  user: initialUser,
   isOwner,
   ownerEmail,
   isVerified,
@@ -58,15 +103,18 @@ export default function CreatorClient({
   templates = [],
   availability = {},
   artifacts = [],
+  faqs = [],
   roomType = 'audio',
   isRoomFree = true,
   studioMode = 'solitude',
   _ablySignaling
 }: CreatorClientProps) {
+  const { user: clerkUser, isLoaded } = useUser();
+  const { openSignIn } = useClerk();
 
   const [guestId] = useState(() => Math.random().toString(36).slice(2, 7));
-  const uid = user?.id || `guest-${guestId}`;
-  const isLoggedIn = !!user;
+  const uid = clerkUser?.id || `guest-${guestId}`;
+  const isLoggedIn = !!clerkUser;
   const router = useRouter();
   const searchParams = useSearchParams();
   const isSimulated = searchParams.get('sim') === 'true';
@@ -89,16 +137,52 @@ export default function CreatorClient({
   const [isBooking, setIsBooking] = useState(false);
   const [isPeerConnected, setIsPeerConnected] = useState(false);
 
+  const [admirerList, setAdmirerList] = useState<{ email: string; username: string | null }[]>([]);
+  const [showAdmirersModal, setShowAdmirersModal] = useState(false);
+  const [isLoadingAdmirers, setIsLoadingAdmirers] = useState(false);
+
+  const [profileTab, setProfileTab] = useState<'store' | 'courses' | 'about'>('store');
+
+  // Reactive sync with unified signaling
+  useEffect(() => {
+    if (_ablySignaling?.activeCall) {
+      console.log('[CreatorClient] 📞 Active call detected via signaling:', _ablySignaling.activeCall);
+      setIsCalling(true);
+      setCallType(_ablySignaling.activeCall.type);
+      setActiveChannelName(_ablySignaling.activeCall.channelName);
+    } else if (isCalling && !_ablySignaling?.activeCall && !activeChannelName?.startsWith('room-')) {
+      // If the hook says there's no active call but we were in one, reset
+      // UNLESS we are in a watch room (indicated by room- prefix)
+      setIsCalling(false);
+      setActiveChannelName(null);
+    }
+  }, [_ablySignaling?.activeCall, isCalling, activeChannelName]);
+
+  const handleFetchAdmirers = async () => {
+    setShowAdmirersModal(true);
+    if (admirerList.length > 0) return; // Optimization: only fetch once per page load
+    setIsLoadingAdmirers(true);
+    try {
+      const res = await fetch(`/api/user/admire?username=${username}&list=true`);
+      const data = await res.json();
+      setAdmirerList(data.admirers || []);
+    } catch (e) {
+      console.error('Failed to fetch admirers:', e);
+    } finally {
+      setIsLoadingAdmirers(false);
+    }
+  };
+
   const lastDeductMinuteRef = useRef<number>(-1);
   // Handle joining Theatre mode broadcast (watch stream)
   const handleJoinRoom = async () => {
     if (!isLoggedIn && !isRoomFree && !isSimulated) {
-      loginWithGoogle(window.location.pathname);
+      openSignIn({ forceRedirectUrl: window.location.pathname });
       return;
     }
 
     if (isOwner) {
-      window.location.href = '/studio';
+      window.location.href = '/dashboard';
       return;
     }
 
@@ -118,7 +202,7 @@ export default function CreatorClient({
 
   const handleStartCall = async (type: 'audio' | 'video') => {
     if (!isLoggedIn && !isSimulated) {
-      loginWithGoogle(window.location.pathname);
+      openSignIn({ forceRedirectUrl: window.location.pathname });
       return;
     }
 
@@ -153,9 +237,9 @@ export default function CreatorClient({
         console.log('[Caller] Using Ably to initiate call to:', username);
         const isUUID = (str: string) => /^[0-9a-f-]{36}$/i.test(str);
         const fromName = [
-          user?.username,
-          user?.name,
-          user?.email?.split('@')[0],
+          clerkUser?.username,
+          clerkUser?.firstName,
+          clerkUser?.emailAddresses?.[0]?.emailAddress?.split('@')[0],
         ].find(n => n && typeof n === 'string' && n.trim() !== "" && !isUUID(n)) || (isSimulated ? 'Test User' : 'Guest');
 
         callChannelName = await _ablySignaling.initiateCall(username, type, fromName);
@@ -165,9 +249,9 @@ export default function CreatorClient({
         console.log('[Caller] Fallback: Using signal API');
         const isUUID = (str: string) => /^[0-9a-f-]{36}$/i.test(str);
         const fromName = [
-          user?.username,
-          user?.name,
-          user?.email?.split('@')[0],
+          clerkUser?.username,
+          clerkUser?.firstName,
+          clerkUser?.emailAddresses?.[0]?.emailAddress?.split('@')[0],
         ].find(n => n && typeof n === 'string' && n.trim() !== "" && !isUUID(n)) || (isSimulated ? 'Test User' : 'Guest');
         const response = await fetch('/api/call/signal', {
           method: 'POST',
@@ -243,6 +327,42 @@ export default function CreatorClient({
     return () => clearInterval(interval);
   }, [isCalling, isPeerConnected, handleTimeUpdate]); // Add handleTimeUpdate to dependencies
 
+  // Handle call rejection from creator
+  useEffect(() => {
+    if (_ablySignaling?.hasBeenRejected && isCalling) {
+      console.log('[Caller] ❌ Call was rejected by creator');
+      showError(`${username} declined the call.`);
+      handleEndCall();
+      _ablySignaling.setHasBeenRejected(false);
+    }
+  }, [_ablySignaling?.hasBeenRejected, isCalling, username, _ablySignaling]);
+
+  // Caller Ringer Logic
+  const callerRingerRef = useRef<HTMLAudioElement | null>(null); // Ringer Logic (Caller Side)
+  useEffect(() => {
+    // Stop ringer if peer connected OR if signaling says call was accepted
+    const shouldRing = isCalling && !isPeerConnected && !_ablySignaling?.isAccepted;
+
+    if (shouldRing) {
+      if (!callerRingerRef.current) {
+        callerRingerRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1350/1350-preview.mp3');
+        callerRingerRef.current.loop = true;
+      }
+      callerRingerRef.current.play().catch(e => console.log('[Caller] Ringer blocked:', e));
+    } else {
+      if (callerRingerRef.current) {
+        callerRingerRef.current.pause();
+        callerRingerRef.current.currentTime = 0;
+      }
+    }
+
+    return () => {
+      if (callerRingerRef.current) {
+        callerRingerRef.current.pause();
+      }
+    };
+  }, [isCalling, isPeerConnected, _ablySignaling?.isAccepted]);
+
   useEffect(() => {
     if (!isOwner || isCalling) return;
     const interval = setInterval(async () => {
@@ -274,17 +394,30 @@ export default function CreatorClient({
   };
 
   const handleEndCall = async () => {
+    console.log('[Caller] 👋 Ending Call Session');
+
+    // 1. Immediately clear local UI state
     setIsCalling(false);
-    setCallDuration(0);
     setActiveChannelName(null);
-    lastDeductMinuteRef.current = 0;
-    setIsPeerConnected(false); // Reset peer connection status
+    setIsPeerConnected(false);
+
+    // 2. Immediately tell the signaling hook to clear its state
+    // This prevents the useEffect from re-triggering setIsCalling(true)
+    _ablySignaling?.endActiveCall();
+
     try {
-      await fetch('/api/call/signal', {
+      // 3. Notify backend and peer
+      fetch('/api/call/signal', {
         method: 'POST',
         body: JSON.stringify({ action: 'end', from: uid, to: username })
       });
-    } catch (e) { }
+
+      if (_ablySignaling?.cancelCall) {
+        await _ablySignaling.cancelCall(username);
+      }
+    } catch (e) {
+      console.error('[Caller] Error during end call cleanup:', e);
+    }
   };
 
   const deductBalance = async (amount: number): Promise<boolean> => {
@@ -360,7 +493,7 @@ export default function CreatorClient({
 
   const toggleAdmire = async () => {
     if (!isLoggedIn) {
-      loginWithGoogle(window.location.pathname);
+      openSignIn({ forceRedirectUrl: window.location.pathname });
       return;
     }
     const newStatus = !isAdmiring;
@@ -395,72 +528,7 @@ export default function CreatorClient({
 
 
       <AnimatePresence>
-        {incomingCall && !isCalling && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] bg-zinc-950 flex flex-col items-center justify-center p-6"
-          >
-            {/* Immersive Background Detail */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-neo-pink/20 blur-[120px] rounded-full animate-pulse" />
-              <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-neo-blue/20 blur-[120px] rounded-full" />
-            </div>
-
-            <div className="relative z-10 w-full max-w-lg text-center">
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="w-32 h-32 md:w-48 md:h-48 bg-zinc-900 border-4 border-white/20 rounded-full flex items-center justify-center text-6xl mx-auto mb-12 shadow-2xl relative"
-              >
-                {/* Visual Ring Effect */}
-                <div className="absolute inset-[-12px] border-2 border-neo-pink/30 rounded-full animate-ping" />
-                👤
-              </motion.div>
-
-              <motion.h3
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
-                className="text-white text-5xl md:text-7xl font-black uppercase italic tracking-tighter mb-4"
-              >
-                {(() => {
-                  const isUUID = (str: string) => /^[0-9a-f-]{36}$/i.test(str);
-                  if (incomingCall.fromName && !isUUID(incomingCall.fromName)) return incomingCall.fromName;
-                  if (incomingCall.from && !isUUID(incomingCall.from)) return incomingCall.from;
-                  return 'Guest';
-                })()}
-              </motion.h3>
-
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="flex flex-col items-center gap-2 mb-16"
-              >
-                <span className="text-neo-pink text-xs font-black uppercase tracking-[0.4em]">
-                  Incoming {incomingCall.type} Call
-                </span>
-              </motion.div>
-
-              <div className="flex flex-col sm:flex-row gap-6">
-                <button
-                  onClick={handleRejectCall}
-                  className="flex-1 bg-zinc-900 hover:bg-zinc-800 text-white py-6 text-lg font-black uppercase tracking-widest border border-white/10 transition-all rounded-2xl"
-                >
-                  Decline
-                </button>
-                <button
-                  onClick={() => handleAcceptCall(incomingCall.type)}
-                  className="flex-1 bg-neo-green hover:bg-neo-green/90 text-black py-6 text-lg font-black uppercase tracking-widest transition-all rounded-2xl shadow-[0_0_40px_rgba(46,213,115,0.3)]"
-                >
-                  Accept
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
+        {/* The IncomingCallRing is now handled globally in CreatorWrapper/StudioWrapper */}
       </AnimatePresence>
 
       {/* Watching Stream (Theatre mode) → BroadcastViewer */}
@@ -479,6 +547,11 @@ export default function CreatorClient({
             setIsWatching(false);
             handleStartCall(type);
           }}
+          userDisplayName={[
+            clerkUser?.username,
+            clerkUser?.firstName,
+            clerkUser?.emailAddresses?.[0]?.emailAddress?.split('@')[0],
+          ].find(n => n && typeof n === 'string' && n.trim() !== "") || (isSimulated ? 'Test User' : undefined)}
         />
       )}
 
@@ -486,27 +559,23 @@ export default function CreatorClient({
       {isCalling && activeChannelName && (
         <div className="fixed inset-0 z-[500] bg-zinc-950">
           {/* Status Bar for 1:1 calls - Standardized Premium Style */}
-          <div className="absolute top-6 left-6 right-6 z-[510] flex items-center justify-between">
-            <div className="flex items-center gap-4 bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-full">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_theme(colors.red.500)]" />
-              <span className="text-white text-[10px] font-black uppercase tracking-[0.3em]">
-                Session
-              </span>
-            </div>
+          <div className="absolute top-6 left-6 right-6 z-[510] flex items-center justify-start">
             <div className="flex items-center gap-2">
-              <div className="bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-xl">
-                <span className="text-white text-sm font-black tabular-nums">{formatTime(callDuration)}</span>
-              </div>
               <div className="bg-neo-pink/10 border border-neo-pink/20 px-4 py-2 rounded-xl">
                 <span className="text-neo-pink text-sm font-black tabular-nums">-{tokensSpent} TKN</span>
+              </div>
+              <div className="bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-xl">
+                <span className="text-white text-sm font-black tabular-nums">{formatTime(callDuration)}</span>
               </div>
             </div>
           </div>
           <SuperCall
             key={activeChannelName}
             channelName={activeChannelName}
-            uid={uid}
+            uid={`caller-${uid}`}
             type={callType!}
+            creatorEmail={ownerEmail}
+            isCreator={isOwner}
             onDisconnect={handleEndCall}
             onPeerJoined={() => setIsPeerConnected(true)}
             onPeerLeft={() => setIsPeerConnected(false)}
@@ -514,188 +583,183 @@ export default function CreatorClient({
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-6 md:pt-10 relative">
-        {/* Top Navigation / Actions */}
-        <div className="flex justify-end items-center mb-8">
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(window.location.href);
-              showError("Link Copied!");
-            }}
-            className="group relative w-12 h-12 bg-white border-4 border-black rounded-full flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all"
-            title="Share Profile"
-          >
-            <Send className="w-6 h-6 -rotate-12 group-hover:rotate-0 transition-transform" />
-          </button>
-
-        </div>
-        <div className="grid lg:grid-cols-12 gap-6 md:gap-10">
-          <div className="lg:col-span-12 space-y-6 flex flex-col items-center text-center">
-            <div className="relative inline-block">
-              <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-48 md:h-48 bg-white border-4 md:border-8 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] md:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-                {profileImage ? (
-                  <img src={profileImage} alt={username} className="w-full h-full object-cover" />
-                ) : (
-                  <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`} alt={username} className="w-full h-full object-cover" />
-                )}
-              </div>
-              {isCreatorOnline && (
-                <div className="absolute -top-4 -right-4 bg-neo-green border-4 border-black px-4 py-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-black uppercase text-xs animate-bounce">Live Now</div>
-              )}
-            </div>
-            <div className="space-y-4">
-              <h1 className="text-2xl sm:text-4xl md:text-7xl font-black uppercase leading-[0.9] md:leading-[0.8] tracking-tighter flex items-center justify-center lg:justify-start gap-2 md:gap-4 flex-wrap break-words">
-                {username}
-                {isVerified && <Zap className="w-8 h-8 md:w-12 md:h-12 text-neo-blue fill-neo-blue" />}
-              </h1>
-              <div className="flex gap-4 flex-wrap justify-center lg:justify-start">
-                <button
-                  onClick={toggleAdmire}
-                  disabled={isOwner}
-                  className={`flex items-center gap-2 border-4 border-black px-4 py-2 font-black uppercase transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none ${isAdmiring ? 'bg-neo-pink text-white' : 'bg-white text-black'}`}
-                >
-                  <Heart className={`w-5 h-5 ${isAdmiring ? 'fill-white' : ''}`} />
-                  {admirerCount} Admirers
-                </button>
-                {/* Social Links - Restored for MVP */}
-                {socials?.instagram && (
-                  <a
-                    href={`https://instagram.com/${socials.instagram}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 border-4 border-black px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all"
-                  >
-                    <Instagram className="w-5 h-5" />
-                  </a>
-                )}
-                {socials?.x && (
-                  <a
-                    href={`https://x.com/${socials.x}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 border-4 border-black px-4 py-2 bg-black text-white font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all"
-                  >
-                    𝕏
-                  </a>
-                )}
-                {socials?.website && (
-                  <a
-                    href={socials.website.startsWith('http') ? socials.website : `https://${socials.website}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 border-4 border-black px-4 py-2 bg-neo-blue text-white font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all"
-                  >
-                    <LinkIcon className="w-5 h-5" />
-                  </a>
-                )}
-              </div>
-            </div>
-            {isOwner ? (
-              <div className="bg-neo-blue/10 border-4 border-black border-dashed p-8 space-y-4">
-                <h3 className="text-xl font-black uppercase">Your Creator Profile</h3>
-                <p className="font-bold text-zinc-600 uppercase text-xs tracking-widest leading-relaxed">This is how your audience sees you.</p>
-                <div className="flex flex-col gap-3">
-                  <button onClick={() => { navigator.clipboard.writeText(window.location.href); showError("URL Copied!"); }} className="neo-btn bg-black text-white px-6 py-3">Copy Link</button>
-                  <button onClick={() => window.location.href = '/studio'} className="neo-btn bg-neo-green text-black px-6 py-3">Go to Studio</button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* PRIMARY: Watch Stream (if Live) */}
-                {isLive && (
-                  <button
-                    onClick={handleJoinRoom}
-                    className="w-full bg-neo-blue border-4 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all text-white"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-white rounded-full border-2 border-black flex items-center justify-center">
-                        <Video className="w-6 h-6 text-black" />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-black uppercase">Watch Live Stream</span>
-                          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                        </div>
-                        <p className="text-xs font-bold uppercase opacity-80">
-                          Room is Open
-                        </p>
-                      </div>
-                      <ArrowRight className="w-6 h-6" />
-                    </div>
-                  </button>
-                )}
-
-                {/* SECONDARY: Direct Call Options */}
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => handleStartCall('video')}
-                    className="bg-neo-pink text-white py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex flex-col items-center"
-                  >
-                    <Video className="w-6 h-6 mb-1" />
-                    <span className="text-sm font-black">VIDEO</span>
-                    <span className="text-[10px] opacity-80">{videoRate} TKN/min</span>
-                  </button>
-                  <button
-                    onClick={() => handleStartCall('audio')}
-                    className="bg-neo-blue text-white py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex flex-col items-center"
-                  >
-                    <Mic className="w-6 h-6 mb-1" />
-                    <span className="text-sm font-black">AUDIO</span>
-                    <span className="text-[10px] opacity-80">{audioRate} TKN/min</span>
-                  </button>
-                </div>
-
-                {/* Schedule - Hidden for MVP simplicity */}
-                {/* 
-                <div className="bg-neo-yellow border-4 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                  <div className="flex justify-between items-center text-black">
-                    <span className="text-sm font-black uppercase">Book Later</span>
-                    <button className="bg-black text-white text-xs px-3 py-1">Schedule</button>
-                  </div>
-                </div>
-                */}
+      <main className="max-w-4xl mx-auto px-4 md:px-6 pt-6 md:pt-10 relative">
+        {/* ORGANIZED HEADER: TINY CALL ACTIONS AT TOP */}
+        <div className="flex justify-between items-center mb-10">
+          <div className="flex items-center gap-3">
+            <button onClick={() => handleStartCall('video')} className="tiny-call-btn" title="Video Call">
+              <Video className="w-5 h-5" />
+            </button>
+            <button onClick={() => handleStartCall('audio')} className="tiny-call-btn" title="Audio Call">
+              <Mic className="w-5 h-5" />
+            </button>
+            {isLive && (
+              <div className="flex items-center gap-2 px-3 py-1 bg-neo-green/10 border-2 border-neo-green rounded-full">
+                <div className="w-2 h-2 rounded-full bg-neo-green animate-pulse" />
+                <span className="text-[10px] font-black uppercase text-neo-green">Live</span>
               </div>
             )}
           </div>
-          <div className="lg:col-span-7 space-y-12">
-            {templates && templates.length > 0 && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-4"><h3 className="text-3xl font-black uppercase tracking-tighter">Packages</h3><div className="h-2 flex-1 bg-black" /></div>
-                <div className="grid md:grid-cols-2 gap-6">
-                  {templates.map((tpl: any) => (
-                    <button key={tpl.id} onClick={() => handleStartCall(tpl.type)} className="group neo-box bg-white p-6 text-left hover:scale-[1.02] transition-transform flex flex-col min-h-[180px]">
-                      <div className="flex justify-between items-start mb-4">
-                        <span className={`px-3 py-1 border-2 border-black font-black uppercase text-[10px] ${tpl.type === 'video' ? 'bg-neo-pink text-white' : 'bg-neo-blue text-white'}`}>{tpl.type}</span>
-                        <span className="font-black text-lg underline decoration-neo-green decoration-4 underline-offset-4">{tpl.price} TKN</span>
-                      </div>
-                      <h4 className="text-2xl font-black uppercase mb-2 group-hover:text-neo-pink transition-colors">{tpl.duration} Min Session</h4>
-                      <p className="text-sm font-bold text-zinc-500 uppercase leading-relaxed">{tpl.description}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
+
+          <div className="flex items-center gap-2">
+            {socials?.instagram && (
+              <a href={`https://instagram.com/${socials.instagram}`} target="_blank" className="monochrome-social">
+                <Instagram className="w-4 h-4" />
+              </a>
             )}
-            {artifacts && artifacts.length > 0 && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-4"><h3 className="text-3xl font-black uppercase tracking-tighter text-black">Highlights</h3><div className="h-2 flex-1 bg-black" /></div>
-                <div className="grid md:grid-cols-2 gap-8">
-                  {artifacts.map((art: any) => (
-                    <div key={art.id} className="neo-box bg-white overflow-hidden group">
-                      <div className="relative aspect-video bg-zinc-100 border-b-4 border-black">
-                        <video src={art.url} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" onMouseEnter={(e) => (e.target as HTMLVideoElement).play()} onMouseLeave={(e) => (e.target as HTMLVideoElement).pause()} muted loop />
-                        <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 to-transparent flex justify-between items-end">
-                          <span className="font-black uppercase text-[10px] text-white tracking-widest">{new Date(art.timestamp).toLocaleDateString()}</span>
-                          <button onClick={() => window.open(art.url, '_blank')} className="w-10 h-10 bg-white border-2 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px]"><Zap className="w-5 h-5 text-neo-pink fill-neo-pink" /></button>
-                        </div>
+            {socials?.x && (
+              <a href={`https://x.com/${socials.x}`} target="_blank" className="monochrome-social font-black text-xs">
+                𝕏
+              </a>
+            )}
+            {socials?.website && (
+              <a href={socials.website} target="_blank" className="monochrome-social">
+                <Globe className="w-4 h-4" />
+              </a>
+            )}
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                showError("Link Copied!");
+              }}
+              className="monochrome-social"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* PROFILE HERO */}
+        <div className="flex flex-col items-center text-center mb-12">
+          <div className="relative mb-6">
+            <div className="w-32 h-32 md:w-40 md:h-40 bg-white border-4 border-black shadow-[8px_8px_0px_0px_black] overflow-hidden">
+              {profileImage ? (
+                <img src={profileImage} alt={username} className="w-full h-full object-cover" />
+              ) : (
+                <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`} alt={username} className="w-full h-full object-cover" />
+              )}
+            </div>
+          </div>
+          <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none mb-4">
+            {username}
+            {isVerified && <Zap className="w-8 h-8 md:w-10 md:h-10 text-neo-blue fill-neo-blue inline-block ml-2" />}
+          </h1>
+          <div className="flex items-center gap-2 mb-6">
+            <button onClick={toggleAdmire} className={`flex items-center gap-2 border-2 border-black px-3 py-1 font-black uppercase text-xs shadow-[2px_2px_0px_0px_black] ${isAdmiring ? 'bg-neo-pink text-white' : 'bg-white text-black'}`}>
+              <Heart className={`w-4 h-4 ${isAdmiring ? 'fill-white' : ''}`} /> {admirerCount}
+            </button>
+          </div>
+          <p className="max-w-xl text-sm font-bold text-zinc-500 uppercase tracking-widest leading-relaxed">
+            Scaling human connection through time-based digital assets and elite calls.
+          </p>
+        </div>
+
+        {/* TAB SYSTEM */}
+        <div className="border-4 border-black bg-white shadow-[8px_8px_0px_0px_black] overflow-hidden flex flex-col min-h-[500px]">
+          <div className="flex border-b-4 border-black">
+            <button onClick={() => setProfileTab('store')} className={`flex-1 store-tab-btn ${profileTab === 'store' ? 'store-tab-active' : 'store-tab-inactive'}`}>Store</button>
+            <button onClick={() => setProfileTab('courses')} className={`flex-1 store-tab-btn ${profileTab === 'courses' ? 'store-tab-active' : 'store-tab-inactive'}`}>Courses</button>
+            <button onClick={() => setProfileTab('about')} className={`flex-1 store-tab-btn ${profileTab === 'about' ? 'store-tab-active' : 'store-tab-inactive'}`}>About</button>
+          </div>
+
+          <div className="p-6 md:p-10 flex-1">
+            {profileTab === 'store' && (
+              <div className="grid md:grid-cols-2 gap-6">
+                {templates && templates.length > 0 ? (
+                  templates.map((tpl: any) => (
+                    <div key={tpl.id} onClick={() => handleStartCall(tpl.type)} className="neo-box bg-white p-6 border-4 border-black shadow-[6px_6px_0px_0px_black] group hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all cursor-pointer">
+                      <div className="flex justify-between items-start mb-4">
+                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 border-2 border-black ${tpl.type === 'video' ? 'bg-neo-pink text-white' : 'bg-neo-blue text-white'}`}>{tpl.duration} Min {tpl.type}</span>
+                        <Zap className="w-4 h-4 text-zinc-300 group-hover:text-neo-pink transition-colors" />
+                      </div>
+                      <h4 className="font-black uppercase tracking-tight text-lg mb-1">{tpl.duration} Min Session</h4>
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase line-clamp-2">{tpl.description || 'Instant 1:1 access for high-value consulting.'}</p>
+                      <div className="mt-6 pt-4 border-t-2 border-zinc-50 flex justify-between items-center">
+                        <span className="font-black text-neo-green">{tpl.price} TKN</span>
+                        <span className="text-[8px] font-black uppercase text-neo-pink">Call Now</span>
                       </div>
                     </div>
-                  ))}
+                  ))
+                ) : (
+                  <div className="col-span-2 py-20 bg-zinc-50 border-4 border-black border-dashed flex flex-col items-center justify-center opacity-50">
+                    <Clock className="w-10 h-10 mb-4" />
+                    <p className="text-[10px] font-black uppercase">Store Items arriving soon...</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {profileTab === 'courses' && (
+              <div className="flex flex-col items-center justify-center h-64 border-4 border-black border-dashed bg-zinc-50 opacity-50">
+                <Sparkles className="w-12 h-12 mb-4 text-neo-blue" />
+                <h3 className="text-xl font-black uppercase italic">Workshops & Training</h3>
+                <p className="text-[10px] font-bold uppercase mt-2">Curating high-performance curriculum...</p>
+              </div>
+            )}
+
+            {profileTab === 'about' && (
+              <div className="space-y-10">
+                {faqs && faqs.length > 0 && <FAQSection faqs={faqs} />}
+                <div className="p-8 bg-zinc-50 border-4 border-black shadow-[4px_4px_0px_0px_black]">
+                  <h4 className="text-2xl font-black uppercase italic mb-4">The Vision</h4>
+                  <p className="text-sm font-bold text-zinc-600 uppercase leading-relaxed">
+                    Maximizing human potential through synchronized time. Every minute spent here is an investment in your evolution.
+                  </p>
                 </div>
               </div>
             )}
           </div>
         </div>
       </main>
+
+      <AnimatePresence>
+        {showAdmirersModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[400] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white border-8 border-black shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-8 max-w-md w-full max-h-[80vh] flex flex-col">
+              <div className="flex justify-between items-start mb-8 text-black">
+                <h2 className="text-4xl font-black uppercase italic tracking-tighter">Admirers</h2>
+                <button onClick={() => setShowAdmirersModal(false)} className="w-8 h-8 border-2 border-black flex items-center justify-center font-black">✕</button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                {isLoadingAdmirers ? (
+                  <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                    <div className="w-12 h-12 border-8 border-black border-t-neo-pink rounded-full animate-spin" />
+                    <p className="font-black uppercase text-xs tracking-widest">Finding Admirers...</p>
+                  </div>
+                ) : admirerList.length > 0 ? (
+                  admirerList.map((admirer, idx) => (
+                    <div key={idx} className="flex items-center gap-4 p-4 border-4 border-black bg-zinc-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                      <div className="w-12 h-12 border-2 border-black bg-white overflow-hidden shrink-0">
+                        <img
+                          src={`https://api.dicebear.com/7.x/initials/svg?seed=${admirer.username || admirer.email}`}
+                          alt="avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black uppercase truncate text-sm">{admirer.username || 'Anonymous Fan'}</p>
+                      </div>
+                      {admirer.username && (
+                        <button
+                          onClick={() => window.location.href = `/${admirer.username}`}
+                          className="w-8 h-8 bg-black text-white flex items-center justify-center hover:bg-neo-pink transition-colors"
+                        >
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-20">
+                    <p className="font-black uppercase text-zinc-400">No admirers yet.</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showBookingModal && (

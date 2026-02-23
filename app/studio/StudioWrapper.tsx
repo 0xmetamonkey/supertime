@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AblyProvider, useCallSignaling } from '@/app/lib/ably';
 import StudioClient from './StudioClient';
+import { IncomingCallRing } from '@/app/components/IncomingCallRing';
+import { PushNotificationManager } from '@/app/components/PushNotificationManager';
 
 interface StudioWrapperProps {
   username: string | null;
@@ -35,23 +37,45 @@ function StudioWithSignaling({ username, session, initialSettings }: StudioWrapp
   }, [signaling.incomingCall, signaling.isConnected, username, session?.user?.email]);
 
   return (
-    <StudioClient
-      username={username}
-      session={session}
-      initialSettings={{
-        ...initialSettings,
-        // Inject Ably signaling functions
-        _ablySignaling: signaling,
-      }}
-    />
+    <>
+      <IncomingCallRing
+        incomingCall={signaling.incomingCall}
+        onAccept={async () => {
+          signaling.acceptCall();
+        }}
+        onReject={async () => {
+          await signaling.rejectCall();
+        }}
+      />
+      <PushNotificationManager userId={username} />
+      <StudioClient
+        username={username}
+        session={session}
+        initialSettings={{
+          ...initialSettings,
+          // Inject Ably signaling functions
+          _ablySignaling: signaling,
+        }}
+      />
+    </>
   );
 }
 
 export default function StudioWrapper(props: StudioWrapperProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const isSimulated = typeof window !== 'undefined' && window.location.search.includes('sim=true');
   // CRITICAL: Ensure clientId is strictly lowercased and consistent with what caller publishes to
   const rawId = props.username || props.session?.user?.email || (isSimulated ? 'test-creator' : 'anonymous');
   const clientId = rawId.toLowerCase();
+
+  if (!mounted) {
+    return <StudioClient {...props} />;
+  }
 
   return (
     <AblyProvider clientId={clientId}>

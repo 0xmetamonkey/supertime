@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useRef } from 'react';
 import Ably from 'ably';
 
 interface AblyContextType {
@@ -132,6 +132,37 @@ export function useCallSignaling(userId: string) {
     type: 'audio' | 'video';
     channelName: string;
   } | null>(null);
+  const [hasBeenRejected, setHasBeenRejected] = useState(false);
+  const [isAccepted, setIsAccepted] = useState(false);
+  const [activeCall, setActiveCall] = useState<{
+    from: string;
+    fromName?: string;
+    type: 'audio' | 'video';
+    channelName: string;
+  } | null>(null);
+
+  // Pick up call from URL params if present (e.g. from background notification)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const callChannel = params.get('call_channel');
+    const callType = params.get('call_type') as 'audio' | 'video' | null;
+    if (callChannel && callType) {
+      console.log('[Signal] 🔗 Found active call in URL:', callChannel);
+      setActiveCall({
+        from: 'System',
+        fromName: 'Remote',
+        type: callType,
+        channelName: callChannel
+      });
+
+      // Clean up URL to prevent re-triggering on refresh
+      const url = new URL(window.location.href);
+      url.searchParams.delete('call_channel');
+      url.searchParams.delete('call_type');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
 
   useEffect(() => {
     if (!isConnected || !userId) return;
@@ -141,6 +172,8 @@ export function useCallSignaling(userId: string) {
       console.log('[Signal] Received:', message.name, message.data);
 
       if (message.name === 'call:incoming') {
+        setHasBeenRejected(false);
+        setIsAccepted(false);
         setIncomingCall({
           from: message.data.from,
           fromName: message.data.fromName,
@@ -149,8 +182,20 @@ export function useCallSignaling(userId: string) {
         });
       }
 
-      if (message.name === 'call:cancelled' || message.name === 'call:rejected') {
+      if (message.name === 'call:cancelled') {
         setIncomingCall(null);
+        setActiveCall(null);
+      }
+
+      if (message.name === 'call:rejected') {
+        setIncomingCall(null);
+        setHasBeenRejected(true);
+        setActiveCall(null);
+      }
+
+      if (message.name === 'call:accepted') {
+        console.log('[Signal] Peer accepted call!');
+        setIsAccepted(true);
       }
     });
 
@@ -159,6 +204,8 @@ export function useCallSignaling(userId: string) {
 
   const initiateCall = useCallback(async (targetUserId: string, type: 'audio' | 'video', fromName?: string) => {
     const channelName = `call:${userId}-${targetUserId}-${Date.now()}`;
+    setHasBeenRejected(false);
+    setIsAccepted(false);
 
     console.log('[Signal] Initiating call:', {
       from: userId,
@@ -177,12 +224,22 @@ export function useCallSignaling(userId: string) {
     });
 
     console.log('[Signal] Call published successfully');
+
+    // Set as active call for caller too if we want unified management
+    setActiveCall({
+      from: userId,
+      fromName: fromName,
+      type,
+      channelName
+    });
+
     return channelName;
   }, [publish, userId]);
 
   const cancelCall = useCallback(async (targetUserId: string) => {
     const normalizedTargetId = targetUserId.toLowerCase();
     await publish(`user:${normalizedTargetId}`, 'call:cancelled', { from: userId });
+    setActiveCall(null);
   }, [publish, userId]);
 
   const rejectCall = useCallback(async () => {
@@ -190,21 +247,173 @@ export function useCallSignaling(userId: string) {
       const normalizedFromId = incomingCall.from.toLowerCase();
       await publish(`user:${normalizedFromId}`, 'call:rejected', { from: userId });
       setIncomingCall(null);
+      setActiveCall(null);
     }
   }, [publish, userId, incomingCall]);
 
-  const acceptCall = useCallback(() => {
-    const call = incomingCall;
-    setIncomingCall(null);
-    return call;
-  }, [incomingCall]);
+  const acceptCall = useCallback(async () => {
+    if (incomingCall) {
+      const call = incomingCall;
+      const normalizedFromId = call.from.toLowerCase();
+
+      // Notify caller that we accepted
+      await publish(`user:${normalizedFromId}`, 'call:accepted', { from: userId });
+
+      setActiveCall(call);
+      setIncomingCall(null);
+      return call;
+    }
+    return null;
+  }, [publish, userId, incomingCall]);
+
+  const endActiveCall = useCallback(() => {
+    setActiveCall(null);
+    setIsAccepted(false);
+    if (callSafetyTimerRef.current) {
+      clearTimeout(callSafetyTimerRef.current);
+      callSafetyTimerRef.current = null;
+    }
+  }, []);
+
+  const callSafetyTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (activeCall && !isAccepted) {
+      // Safety Timer: If call isn't accepted in 45s, auto-cancel
+      if (!callSafetyTimerRef.current) {
+        callSafetyTimerRef.current = setTimeout(() => {
+          console.log('[Signal] ⏳ Call connection timed out. Auto-terminating.');
+          // Auto-cancel if we were the initiator
+          if (activeCall.from === userId) {
+            cancelCall(activeCall.channelName.split('-')[1]); // Extract target from channelName if possible, or just clear locally
+          }
+          endActiveCall();
+        }, 45000);
+      }
+    } else {
+      if (callSafetyTimerRef.current) {
+        clearTimeout(callSafetyTimerRef.current);
+        callSafetyTimerRef.current = null;
+      }
+    }
+    return () => {
+      if (callSafetyTimerRef.current) clearTimeout(callSafetyTimerRef.current);
+    };
+  }, [activeCall, isAccepted, userId, cancelCall, endActiveCall]);
 
   return {
     isConnected,
     incomingCall,
+    activeCall,
+    isAccepted,
+    hasBeenRejected,
+    setHasBeenRejected,
     initiateCall,
     cancelCall,
     rejectCall,
     acceptCall,
+    endActiveCall,
+  };
+}
+
+// Hook for broadcast chat
+// Hook for broadcast chat with Polling Fallback
+export function useBroadcastChat(channelName: string, username: string) {
+  const { subscribe, publish, isConnected } = useAbly();
+  const [messages, setMessages] = useState<any[]>([]);
+  const [useFallback, setUseFallback] = useState(false);
+
+  // Centralized Message Merger
+  const addMessage = useCallback((newMsg: any) => {
+    setMessages(prev => {
+      if (prev.some(m => m.id === newMsg.id)) return prev;
+      return [...prev, {
+        id: newMsg.id || Math.random().toString(36).slice(2),
+        from: newMsg.from,
+        text: newMsg.text,
+        isTip: newMsg.isTip,
+        tipAmount: newMsg.tipAmount,
+        timestamp: newMsg.timestamp || Date.now()
+      }].sort((a, b) => a.timestamp - b.timestamp);
+    });
+  }, []);
+
+  // 1. Ably Subscription (Primary)
+  useEffect(() => {
+    if (!channelName) return;
+
+    if (!isConnected) {
+      // If Ably disconnects (or never connects), switch to fallback after 5s
+      const timer = setTimeout(() => setUseFallback(true), 5000);
+      return () => clearTimeout(timer);
+    }
+
+    // If connected, turn off fallback (unless we want hybrid)
+    setUseFallback(false);
+
+    const unsubscribe = subscribe(`broadcast:${channelName}`, (message) => {
+      if (message.name === 'message') {
+        addMessage(message.data);
+      }
+    });
+
+    return unsubscribe;
+  }, [subscribe, isConnected, channelName, addMessage]);
+
+  // 2. Polling Fallback (Secondary - Active if Ably fails)
+  useEffect(() => {
+    if (!useFallback || !channelName) return;
+
+    console.log('[Chat] ⚠️ Using Polling Fallback');
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/broadcast/chat?channelName=${encodeURIComponent(channelName)}&since=${Date.now() - 10000}`);
+        const data = await res.json();
+        if (data.messages && Array.isArray(data.messages)) {
+          data.messages.forEach(addMessage);
+        }
+      } catch (e) {
+        console.error('[Chat] Polling failed', e);
+      }
+    };
+
+    // Poll every 3 seconds
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, [useFallback, channelName, addMessage]);
+
+  const sendMessage = useCallback(async (text: string, isTip?: boolean, tipAmount?: number) => {
+    const messageId = Math.random().toString(36).slice(2);
+    const msg = {
+      id: messageId,
+      from: username,
+      text,
+      isTip,
+      tipAmount,
+      timestamp: Date.now()
+    };
+
+    // Optimistic Update
+    addMessage(msg);
+
+    try {
+      if (isConnected && !useFallback) {
+        await publish(`broadcast:${channelName}`, 'message', msg);
+      } else {
+        throw new Error("Ably down");
+      }
+    } catch (e) {
+      console.log('[Chat] Ably failed, relying on API fallback');
+      // API persist handled by component, which is good.
+    }
+
+    return msg;
+  }, [publish, channelName, username, isConnected, useFallback, addMessage]);
+
+  return {
+    messages,
+    setMessages,
+    sendMessage,
+    isConnected: isConnected || useFallback // Report "connected" if fallback works
   };
 }

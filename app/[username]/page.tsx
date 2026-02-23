@@ -1,4 +1,4 @@
-import { auth } from "../../auth";
+import { currentUser } from "@clerk/nextjs/server";
 import CreatorWrapper from "./CreatorWrapper";
 import { kv } from "@vercel/kv";
 import { Metadata } from 'next';
@@ -9,7 +9,7 @@ type Props = {
   params: Promise<{ username: string }>
 }
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 5; // Revalidate every 5 seconds for testing
 
 export async function generateMetadata(
   { params }: Props
@@ -29,8 +29,8 @@ export async function generateMetadata(
 export default async function CreatorPage({ params }: Props) {
   const { username: rawUsername } = await params;
   const username = rawUsername.toLowerCase();
-  const session = await auth();
-  const email = session?.user?.email?.toLowerCase(); // normalize session email
+  const user = await currentUser();
+  const email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase(); // normalize session email
   const visitorUsername = email ? await resolveUsername(email) : null;
 
   let isOwner = false;
@@ -89,6 +89,7 @@ export default async function CreatorPage({ params }: Props) {
   let isAcceptingCalls = true;
   let templates: any[] = [];
   let artifacts: any[] = [];
+  let faqs: any[] = [];
 
   if (ownerEmail && process.env.KV_URL) {
     isVerified = !!(await kv.get(`user:${ownerEmail}:verified`));
@@ -106,6 +107,7 @@ export default async function CreatorPage({ params }: Props) {
     const studioMode = await kv.get(`user:${ownerEmail}:mode`) || 'solitude';
     const tpls = await kv.get(`user:${ownerEmail}:templates`) as any[];
     const arts = await kv.get(`user:${ownerEmail}:artifacts`) as any[];
+    const fqs = await kv.get(`user:${ownerEmail}:faqs`) as any[];
     if (vRate !== null) videoRate = Number(vRate);
     if (aRate !== null) audioRate = Number(aRate);
     if (pImage) profileImage = String(pImage);
@@ -115,6 +117,7 @@ export default async function CreatorPage({ params }: Props) {
     else isAcceptingCalls = !!acceptingCalls;
     if (tpls) templates = tpls;
     if (arts) artifacts = arts;
+    if (fqs) faqs = fqs;
     (socials as any).roomType = roomType || 'audio';
     (socials as any).isRoomFree = isRoomFree === null ? true : !!isRoomFree;
     (socials as any).studioMode = studioMode;
@@ -128,7 +131,7 @@ export default async function CreatorPage({ params }: Props) {
   return (
     <CreatorWrapper
       username={username}
-      user={{ ...session?.user, username: visitorUsername }}
+      user={user ? { id: user.id, email: email, username: visitorUsername, imageUrl: user.imageUrl } : null}
       isOwner={isOwner}
       ownerEmail={ownerEmail || ""}
       isVerified={isVerified}
@@ -140,6 +143,7 @@ export default async function CreatorPage({ params }: Props) {
       isAcceptingCalls={isAcceptingCalls}
       templates={templates}
       artifacts={artifacts}
+      faqs={faqs}
       roomType={(socials as any).roomType}
       isRoomFree={(socials as any).isRoomFree}
     />

@@ -12,10 +12,12 @@ interface SuperCallProps {
   onSaveArtifact?: (url: string) => void;
   onPeerJoined?: () => void;
   onPeerLeft?: () => void;
+  creatorEmail?: string;
+  isCreator?: boolean;
 }
 
 export default function SuperCall({
-  channelName, uid, type, onDisconnect, onSaveArtifact, onPeerJoined, onPeerLeft
+  channelName, uid, type, onDisconnect, onSaveArtifact, onPeerJoined, onPeerLeft, creatorEmail, isCreator
 }: SuperCallProps) {
   return (
     <div className="fixed inset-0 z-50 bg-black text-white overflow-hidden">
@@ -24,6 +26,8 @@ export default function SuperCall({
           channelName={channelName}
           uid={uid}
           type={type === 'video' ? 'video' : 'audio'}
+          creatorEmail={creatorEmail}
+          isCreator={isCreator}
           onDisconnect={onDisconnect}
           onSaveArtifact={onSaveArtifact}
           onPeerJoined={onPeerJoined}

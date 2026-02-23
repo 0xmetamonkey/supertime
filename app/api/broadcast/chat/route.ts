@@ -6,7 +6,7 @@ import { kv } from '@vercel/kv';
 
 export async function POST(req: NextRequest) {
   try {
-    const { channelName, message, from, isTip, tipAmount } = await req.json();
+    const { id, channelName, message, from, isTip, tipAmount } = await req.json();
 
     if (!channelName || !message) {
       return NextResponse.json({ error: 'Missing channelName or message' }, { status: 400 });
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     // Create message object
     const newMessage = {
-      id: Math.random().toString(36).slice(2),
+      id: id || Math.random().toString(36).slice(2),
       from: from || 'Anonymous',
       text: message,
       isTip: isTip || false,
@@ -30,6 +30,18 @@ export async function POST(req: NextRequest) {
 
     // Store with 1 hour TTL
     await kv.set(chatKey, updated, { ex: 3600 });
+
+    // Server-side publish to Ably to ensure everyone sees it instantly
+    try {
+      const apiKey = process.env.ABLY_API_KEY;
+      if (apiKey) {
+        const ably = new (await import('ably')).Rest(apiKey);
+        const channel = ably.channels.get(`broadcast:${channelName}`);
+        await channel.publish('message', newMessage);
+      }
+    } catch (e) {
+      console.error('[Chat API] Ably publish failed:', e);
+    }
 
     return NextResponse.json({ success: true, messageId: newMessage.id });
   } catch (error) {
@@ -53,7 +65,12 @@ export async function GET(req: NextRequest) {
     // Filter messages newer than 'since' timestamp
     const newMessages = since ? messages.filter(m => m.timestamp > since) : messages;
 
-    return NextResponse.json({ messages: newMessages });
+    const response = NextResponse.json({ messages: newMessages });
+
+    // Add 1-second cache to prevent massive surges from hitting KV for the same history
+    response.headers.set('Cache-Control', 'public, s-maxage=1, stale-while-revalidate=5');
+
+    return response;
   } catch (error) {
     console.error('[Chat API] Error:', error);
     return NextResponse.json({ error: 'Failed to get messages' }, { status: 500 });

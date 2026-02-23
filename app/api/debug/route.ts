@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '../../../auth';
+import { currentUser } from "@clerk/nextjs/server";
 import { kv } from '@vercel/kv';
 import { resolveUsername } from '../../actions';
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  const email = session?.user?.email;
+  const user = await currentUser();
+  const email = user?.emailAddresses?.[0]?.emailAddress;
 
   const diagnostic = {
     timestamp: new Date().toISOString(),
-    sessionExists: !!session,
+    sessionExists: !!user,
     sessionEmail: email || null,
     normalizedEmail: email ? email.toLowerCase().trim() : null,
     resolvedUsername: null as string | null,

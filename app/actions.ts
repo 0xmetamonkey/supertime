@@ -1,7 +1,8 @@
 'use server';
 
 import { kv } from "@vercel/kv";
-import { signIn, signOut, auth } from "../auth";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
 // Helper to handle key migration (New vs Old)
 export async function resolveUsername(emailRaw: string): Promise<string | null> {
@@ -34,10 +35,10 @@ export async function checkAvailability(usernameRaw: string) {
 }
 
 export async function claimUsername(usernameRaw: string) {
-  const session = await auth();
-  if (!session?.user?.email) throw new Error("Not logged in");
+  const user = await currentUser();
+  if (!user?.emailAddresses?.[0]?.emailAddress) throw new Error("Not logged in");
 
-  const email = session.user.email.toLowerCase().trim();
+  const email = user.emailAddresses[0].emailAddress.toLowerCase().trim();
   const username = usernameRaw.toLowerCase();
 
   if (!process.env.KV_URL) throw new Error("Database not connected");
@@ -61,35 +62,4 @@ export async function claimUsername(usernameRaw: string) {
   return { success: true };
 }
 
-export async function loginWithGoogle(usernameOrRedirect?: string) {
-  const session = await auth();
-
-  // If user is trying to claim a username (not redirecting where param starts with /)
-  if (usernameOrRedirect && !usernameOrRedirect.startsWith('/') && usernameOrRedirect !== 'dashboard') {
-    // Check if they already have one
-    if (session?.user?.email && process.env.KV_URL) {
-      const email = session.user.email.toLowerCase().trim();
-      const existing = await kv.get(`user:${email}:username`);
-      if (existing && existing !== usernameOrRedirect) {
-        // They have 'aman' but trying to claim 'funny' -> STOP THEM
-        throw new Error(`You already have a username: ${existing}`);
-      }
-    }
-  }
-
-  let redirectTo = "/dashboard";
-
-  if (usernameOrRedirect) {
-    if (usernameOrRedirect.startsWith("/")) {
-      redirectTo = usernameOrRedirect;
-    } else if (usernameOrRedirect !== 'dashboard') {
-      redirectTo = `/${usernameOrRedirect}`;
-    }
-  }
-
-  await signIn("google", { redirectTo });
-}
-
-export async function logout() {
-  await signOut({ redirectTo: "/" });
-}
+// Auth actions (loginWithGoogle, logout) have been migrated to Clerk client-side components.

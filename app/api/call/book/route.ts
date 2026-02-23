@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
-import { auth } from "../../../../auth";
+import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session || !session.user?.email) {
+  const user = await currentUser();
+  const email = user?.emailAddresses?.[0]?.emailAddress;
+  if (!user || !email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const visitorEmail = session.user.email.toLowerCase();
+  const visitorEmail = email.toLowerCase();
   const { creatorUsername, date, time, templateId, type, duration, price } = await req.json();
 
   if (!creatorUsername || !date || !time) {
@@ -47,12 +48,13 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session || !session.user?.email) {
+  const user = await currentUser();
+  const emailAddr = user?.emailAddresses?.[0]?.emailAddress;
+  if (!user || !emailAddr) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const email = session.user.email.toLowerCase();
+  const email = emailAddr.toLowerCase();
   const { searchParams } = new URL(req.url);
   const mode = searchParams.get('mode') || 'received'; // 'received' or 'sent'
 

@@ -1,10 +1,11 @@
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
-import { auth } from "../../../auth";
+import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const session = await auth();
-  if (!session || !session.user?.email) {
+  const user = await currentUser();
+  const email = user?.emailAddresses?.[0]?.emailAddress;
+  if (!user || !email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

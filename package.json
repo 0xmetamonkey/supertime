@@ -9,12 +9,15 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.38.1",
     "@vercel/blob": "^2.0.1",
     "@vercel/kv": "^3.0.0",
     "ably": "^2.17.1",
     "agora-rtc-react": "^2.5.1",
     "agora-rtc-sdk-ng": "^4.24.2",
     "agora-token": "^2.0.5",
+    "firebase": "^12.9.0",
+    "firebase-admin": "^13.6.1",
     "framer-motion": "^12.30.0",
     "lucide-react": "^0.563.0",
     "next": "16.1.4",

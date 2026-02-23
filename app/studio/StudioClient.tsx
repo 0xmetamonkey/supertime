@@ -33,16 +33,21 @@ import {
 import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
 const BroadcastHost = dynamic(() => import('../components/Broadcast/BroadcastHost'), { ssr: false });
-import { logout, checkAvailability, claimUsername } from '../actions';
+import { checkAvailability, claimUsername } from '../actions';
+import { useClerk } from "@clerk/nextjs";
 import WalletManager from '../components/WalletManager';
 
 export default function StudioClient({ username, session, initialSettings }: { username: string | null, session: any, initialSettings?: any }) {
   const router = useRouter();
+  const { signOut } = useClerk();
   const searchParams = useSearchParams();
   const isSimulated = typeof window !== 'undefined' && window.location.search.includes('sim=true');
 
   // Use a mock username if in simulator mode
   const effectiveUsername = isSimulated ? (username || 'test-creator') : username;
+
+  // Ably real-time signaling (injected from StudioWrapper)
+  const ablySignaling = initialSettings?._ablySignaling;
 
   useEffect(() => {
     console.log('[Studio] Component Mounted:', {
@@ -54,9 +59,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
   }, []);
 
   const [isLive, setIsLive] = useState(initialSettings?.isLive ?? false);
-  const [incomingCall, setIncomingCall] = useState<any>(null);
   const [isCalling, setIsCalling] = useState(false);
-  const [ringerError, setRingerError] = useState(false);
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null);
   const [requests, setRequests] = useState<any[]>([]);
   const [callDuration, setCallDuration] = useState(0);
@@ -69,7 +72,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [loadingStats, setLoadingStats] = useState(true);
 
   // Settings
-  const [showSettings, setShowSettings] = useState(false);
+
   const [pendingVideoRate, setPendingVideoRate] = useState(initialSettings?.videoRate ?? 100);
   const [pendingAudioRate, setPendingAudioRate] = useState(initialSettings?.audioRate ?? 50);
   const [pendingSocials, setPendingSocials] = useState(initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' });
@@ -89,13 +92,27 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [balance, setBalance] = useState<number | null>(null);
   const [withdrawable, setWithdrawable] = useState<number>(0);
   const [showWithdraw, setShowWithdraw] = useState(false);
-  const [upiId, setUpiId] = useState('');
+  const [upiId, setUpiId] = useState(initialSettings?.upiId || '');
   const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   // SEPARATE STATES: Broadcast and Calls are independent
   const [isAcceptingCalls, setIsAcceptingCalls] = useState(initialSettings?.isAcceptingCalls ?? true);
   // isLive = broadcasting, isAcceptingCalls = taking 1:1 calls
+  const [showDashboard, setShowDashboard] = useState(false);
+
+  // Reactive sync with unified signaling
+  useEffect(() => {
+    if (ablySignaling?.activeCall) {
+      console.log('[StudioClient] 📞 Active call detected via signaling:', ablySignaling.activeCall);
+      setIsCalling(true);
+      setCallType(ablySignaling.activeCall.type);
+      setActiveChannelName(ablySignaling.activeCall.channelName);
+    } else if (isCalling && !ablySignaling?.activeCall) {
+      setIsCalling(false);
+      setActiveChannelName(null);
+    }
+  }, [ablySignaling?.activeCall, isCalling]);
 
   const handleToggleCalls = async () => {
     const next = !isAcceptingCalls;
@@ -138,6 +155,13 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
     setIsWithdrawing(true);
     try {
+      // Save UPI ID for future use
+      fetch('/api/studio/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ upiId })
+      });
+
       const res = await fetch('/api/wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -158,25 +182,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
     }
   };
 
-  const saveSettings = async () => {
-    try {
-      await fetch('/api/studio/update', {
-        method: 'POST',
-        body: JSON.stringify({
-          socials: pendingSocials,
-          videoRate: pendingVideoRate,
-          audioRate: pendingAudioRate,
-          profileImage: pendingProfileImage,
-          templates: pendingTemplates,
-          roomType,
-          isRoomFree,
-        })
-      });
-      setShowSettings(false);
-    } catch (e) {
-      alert("Failed to save settings");
-    }
-  };
+
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) return;
@@ -248,65 +254,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
     }
   }, [isLive, isCalling, effectiveUsername, activeChannelName]);
 
-  // FALLBACK POLLING: Check for incoming calls manually every 5 seconds (Safety Net)
-  useEffect(() => {
-    if (isCalling || !effectiveUsername) return;
-
-    const pollSignal = async () => {
-      try {
-        const res = await fetch(`/api/call/signal?username=${encodeURIComponent(effectiveUsername.toLowerCase())}`);
-        const data = await res.json();
-
-        if (data.incoming && !incomingCall) {
-          console.log('[Studio] Fallback Signal Received:', data.incoming);
-          setIncomingCall(data.incoming);
-        }
-      } catch (e) {
-        console.error('[Studio] Fallback poll failed:', e);
-      }
-    };
-
-    const interval = setInterval(pollSignal, 5000);
-    return () => clearInterval(interval);
-  }, [isCalling, effectiveUsername, incomingCall]);
-
-  // Ably real-time signaling (injected from StudioWrapper)
-  const ablySignaling = initialSettings?._ablySignaling;
-
-  // Listen for incoming calls via Ably
-  useEffect(() => {
-    if (ablySignaling?.isConnected) {
-      console.log('[Studio] Ably Signaling: Connected and Listening');
-    } else {
-      console.log('[Studio] Ably Signaling: Disconnected or state check fails', {
-        exists: !!ablySignaling,
-        connected: ablySignaling?.isConnected
-      });
-    }
-
-    if (ablySignaling?.incomingCall && !isCalling) {
-      console.log('[Studio] INCOMING CALL DETECTED via Ably:', ablySignaling.incomingCall);
-      setIncomingCall(ablySignaling.incomingCall);
-    }
-  }, [ablySignaling?.incomingCall, ablySignaling?.isConnected, isCalling]);
-
-  // Polling Fallback: Check signal API every 3s as a safety net if Ably fails
-  useEffect(() => {
-    if (!effectiveUsername || isCalling || incomingCall) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/call/signal?username=${effectiveUsername}`);
-        const data = await res.json();
-        if (data.incoming) {
-          console.log('[Studio] Incoming call detected via Polling Fallback:', data.incoming);
-          setIncomingCall(data.incoming);
-        }
-      } catch (e) { }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [effectiveUsername, isCalling, incomingCall]);
+  // Economics
 
 
   useEffect(() => {
@@ -323,50 +271,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
     return () => clearInterval(interval);
   }, [isCalling, isPeerConnected, callType, pendingVideoRate, pendingAudioRate]);
 
-  const handleAcceptCall = (type: 'audio' | 'video') => {
-    console.log(`[Studio] 📞 ACCEPTING CALL: ${type}`, incomingCall);
-    setCallType(type);
-    setIsCalling(true);
-    setActiveChannelName(incomingCall.channelName);
-    setIncomingCall(null);
-    // Stop ringer
-    if (ringerRef.current) {
-      ringerRef.current.pause();
-      ringerRef.current.currentTime = 0;
-    }
-  };
-
-  const ringerRef = React.useRef<HTMLAudioElement | null>(null);
-  useEffect(() => {
-    if (incomingCall && !isCalling) {
-      if (!ringerRef.current) {
-        ringerRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
-        ringerRef.current.loop = true;
-      }
-      setRingerError(false);
-      ringerRef.current.play().catch(e => {
-        console.log('Ringer blocked by browser', e);
-        setRingerError(true);
-      });
-    } else {
-      setRingerError(false);
-      if (ringerRef.current) {
-        ringerRef.current.pause();
-        ringerRef.current.currentTime = 0;
-      }
-    }
-    return () => ringerRef.current?.pause();
-  }, [incomingCall, isCalling]);
-
-  const handleRejectCall = async () => {
-    try {
-      await fetch('/api/call/signal', {
-        method: 'POST',
-        body: JSON.stringify({ action: 'reject', from: username })
-      });
-    } catch (e) { }
-    setIncomingCall(null);
-  };
+  // Call end handler
 
   const handleEndCall = () => {
     console.log('[Studio] 👋 Ending 1:1 Call Session');
@@ -375,17 +280,34 @@ export default function StudioClient({ username, session, initialSettings }: { u
     setIsPeerConnected(false);
     setCallDuration(0);
     setTokensEarned(0);
+    ablySignaling?.endActiveCall();
   };
 
   const handleSaveArtifact = async (url: string) => {
     try {
       await fetch('/api/studio/update', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ artifact: url })
       });
       const newArtifact = { id: Math.random().toString(36).slice(2, 9), url, timestamp: Date.now(), type: 'video' };
       setArtifacts(prev => [newArtifact, ...prev]);
     } catch (e) { }
+  };
+
+  const handleDeleteArtifact = async (artifactId: string) => {
+    try {
+      const updatedArtifacts = artifacts.filter(a => a.id !== artifactId);
+      setArtifacts(updatedArtifacts);
+
+      await fetch('/api/studio/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artifacts: updatedArtifacts })
+      });
+    } catch (e) {
+      console.error("Failed to delete artifact", e);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -406,7 +328,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </div>
           <div className="flex items-center gap-6">
             <WalletManager onBalanceChange={setBalance} />
-            <button onClick={() => logout()} className="font-black uppercase text-xs hover:text-red-500 transition-colors">Logout</button>
+            <button onClick={() => signOut(() => { window.location.href = "/"; })} className="font-black uppercase text-xs hover:text-red-500 transition-colors">Logout</button>
           </div>
         </nav>
 
@@ -461,17 +383,14 @@ export default function StudioClient({ username, session, initialSettings }: { u
   return (
     <div className="min-h-screen bg-white text-black font-sans selection:bg-neo-pink selection:text-white">
       {/* ACTIVE SESSION OVERLAY */}
-      {/* Broadcasting → BroadcastHost */}
       {isLive && activeChannelName && !isCalling && (
         <BroadcastHost
           channelName={activeChannelName}
           uid={session?.user?.id || 'studio-host'}
+          username={effectiveUsername!}
           onEnd={() => {
             setIsLive(false);
             setActiveChannelName(null);
-          }}
-          onCallRequest={(req: any) => {
-            setIncomingCall(req);
           }}
         />
       )}
@@ -480,26 +399,20 @@ export default function StudioClient({ username, session, initialSettings }: { u
       {isCalling && activeChannelName && (
         <div className="fixed inset-0 z-[500] bg-zinc-950">
           {/* Status Bar for 1:1 calls - Standardized Premium Style */}
-          <div className="absolute top-6 left-6 right-6 z-[510] flex items-center justify-between">
-            <div className="flex items-center gap-4 bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-full">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_theme(colors.red.500)]" />
-              <span className="text-white text-[10px] font-black uppercase tracking-[0.3em]">
-                Session
-              </span>
-            </div>
+          <div className="absolute top-6 left-6 right-6 z-[510] flex items-center justify-start">
             <div className="flex items-center gap-2">
-              <div className="bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-xl">
-                <span className="text-white text-sm font-black tabular-nums">{formatTime(callDuration)}</span>
-              </div>
               <div className="bg-neo-green/10 border border-neo-green/20 px-4 py-2 rounded-xl">
                 <span className="text-neo-green text-sm font-black tabular-nums">+{tokensEarned.toFixed(0)} TKN</span>
+              </div>
+              <div className="bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-xl">
+                <span className="text-white text-sm font-black tabular-nums">{formatTime(callDuration)}</span>
               </div>
             </div>
           </div>
           <SuperCall
             key={activeChannelName}
             channelName={activeChannelName}
-            uid={session?.user?.id || 'studio-host'}
+            uid={`studio-${session?.user?.id || 'host'}`}
             type={callType || roomType}
             onDisconnect={() => {
               handleEndCall();
@@ -512,86 +425,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
         </div>
       )}
 
-      {/* TOP-LEVEL INCOMING CALL OVERLAY (IMPOSSIBLE TO MISS) */}
-      <AnimatePresence>
-        {incomingCall && !isCalling && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] bg-zinc-950 flex flex-col items-center justify-center p-6"
-          >
-            {/* Immersive Background Detail */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-neo-pink/20 blur-[120px] rounded-full animate-pulse" />
-              <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-neo-blue/20 blur-[120px] rounded-full" />
-            </div>
-
-            <div className="relative z-10 w-full max-w-lg text-center">
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="w-32 h-32 md:w-48 md:h-48 bg-zinc-900 border-4 border-white/20 rounded-full flex items-center justify-center text-6xl mx-auto mb-12 shadow-2xl relative"
-              >
-                {/* Visual Ring Effect */}
-                <div className="absolute inset-[-12px] border-2 border-neo-pink/30 rounded-full animate-ping" />
-                👤
-              </motion.div>
-
-              <motion.h3
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
-                className="text-white text-5xl md:text-7xl font-black uppercase italic tracking-tighter mb-4"
-              >
-                {(() => {
-                  const isUUID = (str: string) => /^[0-9a-f-]{36}$/i.test(str);
-                  const name = incomingCall.fromName || incomingCall.from;
-                  if (name && !isUUID(name)) return name;
-                  return 'Guest';
-                })()}
-              </motion.h3>
-
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="flex flex-col items-center gap-2 mb-16"
-              >
-                <span className="text-neo-pink text-xs font-black uppercase tracking-[0.4em]">
-                  Incoming {incomingCall.type} Call
-                </span>
-                {ringerError && (
-                  <span className="flex items-center gap-2 px-3 py-1 bg-neo-yellow text-black text-[10px] font-black rounded-full animate-bounce mt-4">
-                    <span className="w-2 h-2 bg-black rounded-full animate-pulse" />
-                    CLICK ANSWER TO HEAR RINGER
-                  </span>
-                )}
-              </motion.div>
-
-              <div className="flex flex-col sm:flex-row gap-6">
-                <button
-                  onClick={handleRejectCall}
-                  className="flex-1 bg-zinc-900 hover:bg-zinc-800 text-white py-6 text-lg font-black uppercase tracking-widest border border-white/10 transition-all rounded-2xl"
-                >
-                  Decline
-                </button>
-                <button
-                  onClick={() => {
-                    if (ringerRef.current && ringerRef.current.paused) {
-                      ringerRef.current.play().catch(() => { });
-                    }
-                    handleAcceptCall(incomingCall.type);
-                  }}
-                  className="flex-1 bg-neo-green hover:bg-neo-green/90 text-black py-6 text-lg font-black uppercase tracking-widest transition-all rounded-2xl shadow-[0_0_40px_rgba(46,213,115,0.3)]"
-                >
-                  Accept
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* The IncomingCallRing is now handled globally in StudioWrapper */}
 
       {/* HEADER */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b-4 border-black py-4 transition-colors">
@@ -602,18 +436,26 @@ export default function StudioClient({ username, session, initialSettings }: { u
                 <Zap className="text-neo-yellow w-5 h-5 fill-current" />
               </div>
               <span className="text-xl font-black uppercase tracking-tighter text-black">Studio</span>
+              {isLive && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 rounded-full border border-red-500/20">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_theme(colors.red.500)]" />
+                  <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">Live</span>
+                </div>
+              )}
             </a>
 
-            {/* Signaling Status Indicator */}
-            <div className="flex items-center gap-2 px-3 py-1 bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-[8px] font-black uppercase tracking-tighter">
-              <div className={`w-2 h-2 rounded-full ${initialSettings?._ablySignaling?.isConnected ? 'bg-neo-green' : 'bg-red-500 animate-pulse'}`} />
-              <span>{initialSettings?._ablySignaling?.isConnected ? 'Connected' : 'Offline'}</span>
-              <span className="opacity-40 ml-1 border-l border-black/10 pl-1">{username?.toLowerCase()}</span>
-            </div>
             <div className="hidden md:flex items-center gap-6">
-
               <a href={`/${username}`} className="text-[10px] font-black uppercase tracking-widest text-black/60 hover:text-neo-pink transition-colors">Public Profile</a>
-              <button onClick={() => setShowSettings(true)} className="text-[10px] font-black uppercase tracking-widest text-black/60 hover:text-neo-pink transition-colors">Settings</button>
+              <button
+                onClick={() => {
+                  const el = document.getElementById('highlights-vault');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-[10px] font-black uppercase tracking-widest text-black/60 hover:text-neo-pink transition-colors"
+              >
+                My Recordings
+              </button>
+              <button onClick={() => router.push('/studio/settings')} className="text-[10px] font-black uppercase tracking-widest text-black/60 hover:text-neo-pink transition-colors">Settings</button>
             </div>
           </div>
 
@@ -622,7 +464,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
             {/* Desktop Logout - now hidden on small screens */}
             <button
-              onClick={() => logout()}
+              onClick={() => signOut(() => { window.location.href = "/"; })}
               className="hidden md:flex w-10 h-10 bg-black text-white border-2 border-black items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none translate-x-[-2px] translate-y-[-2px] active:translate-x-0 active:translate-y-0 transition-all"
             >
               <LogOut className="w-5 h-5" />
@@ -681,10 +523,28 @@ export default function StudioClient({ username, session, initialSettings }: { u
               </a>
               <button
                 onClick={() => {
-                  setShowSettings(true);
                   setShowMobileMenu(false);
+                  router.push('/dashboard?tab=tools');
                 }}
                 className="text-4xl font-black uppercase tracking-widest text-white hover:text-neo-blue text-left border-b-4 border-white/10 pb-6 transition-colors"
+              >
+                Tools
+              </button>
+              <button
+                onClick={() => {
+                  setShowMobileMenu(false);
+                  router.push('/wallet');
+                }}
+                className="text-4xl font-black uppercase tracking-widest text-neo-green hover:text-neo-yellow text-left border-b-4 border-white/10 pb-6 transition-colors"
+              >
+                Power Vault
+              </button>
+              <button
+                onClick={() => {
+                  setShowMobileMenu(false);
+                  router.push('/studio/settings');
+                }}
+                className="text-4xl font-black uppercase tracking-widest text-white hover:text-neo-pink text-left border-b-4 border-white/10 pb-6 transition-colors"
               >
                 Settings
               </button>
@@ -692,7 +552,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
             <div className="relative z-10 pt-8">
               <button
-                onClick={() => logout()}
+                onClick={() => signOut(() => { window.location.href = "/"; })}
                 className="w-full bg-red-500 text-white py-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] font-black uppercase text-2xl tracking-widest flex items-center justify-center gap-4 active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
               >
                 <LogOut className="w-8 h-8" />
@@ -702,591 +562,246 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </motion.div>
         )}
       </AnimatePresence>
-
       <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
-
-        {/* TWO INDEPENDENT CONTROLS: Broadcast & Calls */}
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
-
-          {/* BROADCAST PANEL */}
-          <div className={`border-4 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-colors ${isLive ? 'bg-neo-blue' : 'bg-white'}`}>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-2xl">📺</span>
-              <h3 className={`text-xl font-black uppercase ${isLive ? 'text-white' : 'text-black'}`}>Broadcast</h3>
-            </div>
-            <p className={`text-xs font-bold uppercase mb-4 ${isLive ? 'text-white/70' : 'text-black/50'}`}>
-              {isLive ? `Streaming on room-${effectiveUsername}` : 'Stream to your fans'}
-            </p>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {isLive && <div className="w-3 h-3 rounded-full bg-red-500 animate-ping" />}
-                <span className={`text-sm font-black uppercase ${isLive ? 'text-white' : 'text-black/60'}`}>
-                  {isLive ? 'LIVE' : 'Offline'}
-                </span>
-              </div>
-              <button
-                onClick={async () => {
-                  const next = !isLive;
-                  setIsLive(next);
-                  await fetch('/api/studio/update', { method: 'POST', body: JSON.stringify({ isLive: next }) });
-                }}
-                className={`px-6 py-3 border-4 border-black font-black uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all ${isLive ? 'bg-red-500 text-white' : 'bg-neo-green text-black'}`}
-              >
-                {isLive ? 'END' : 'GO LIVE'}
-              </button>
-            </div>
-          </div>
-
-          {/* CALLS PANEL */}
-          <div className={`border-4 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-colors ${isAcceptingCalls ? 'bg-neo-pink' : 'bg-white'}`}>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-2xl">📞</span>
-              <h3 className={`text-xl font-black uppercase ${isAcceptingCalls ? 'text-white' : 'text-black'}`}>1:1 Calls</h3>
-            </div>
-            <p className={`text-xs font-bold uppercase mb-4 ${isAcceptingCalls ? 'text-white/70' : 'text-black/50'}`}>
-              {isAcceptingCalls ? 'Fans can request calls' : 'Not taking calls'}
-            </p>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {isAcceptingCalls && <div className="w-3 h-3 rounded-full bg-white animate-pulse" />}
-                <span className={`text-sm font-black uppercase ${isAcceptingCalls ? 'text-white' : 'text-black/60'}`}>
-                  {isAcceptingCalls ? 'READY' : 'Off'}
-                </span>
-              </div>
-              <button
-                onClick={handleToggleCalls}
-                className={`px-6 py-3 border-4 border-black font-black uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all ${isAcceptingCalls ? 'bg-red-500 text-white' : 'bg-neo-green text-black'}`}
-              >
-                {isAcceptingCalls ? 'STOP' : 'ACCEPT'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid lg:grid-cols-12 gap-12">
-
-          {/* LEFT COLUMN: CONTROL PANEL */}
-          <div className="lg:col-span-4 space-y-8">
-            <div className="neo-box bg-white p-8">
-              <div className="relative w-32 h-32 bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mx-auto mb-8 overflow-hidden">
-                {pendingProfileImage ? (
-                  <img src={pendingProfileImage} className="w-full h-full object-cover" />
+        <div className="grid lg:grid-cols-12 gap-12 mt-12">
+          {/* QUEUE & SCHEDULE - Keep this prominent as it is active work */}
+          <div className="lg:col-span-12">
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* WAITLIST */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-2xl font-black uppercase tracking-tighter italic text-black">Waitlist</h3>
+                  <div className="h-1 flex-1 bg-black" />
+                  <span className="text-[10px] font-black bg-black text-white px-2 py-0.5">{requests.length}</span>
+                </div>
+                {requests.length === 0 ? (
+                  <div className="border-4 border-black border-dashed p-10 text-center text-black">
+                    <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">Queue Empty</p>
+                  </div>
                 ) : (
-                  <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`} className="w-full h-full object-cover" />
-                )}
-              </div>
-              <h2 className="text-3xl font-black uppercase text-center mb-4 tracking-tighter italic text-black">{username}</h2>
-              <a
-                href={`/${username}`}
-                target="_blank"
-                className="block w-full text-center bg-black text-white py-3 font-black uppercase text-xs border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-neo-pink transition-colors"
-              >
-                View Public Profile →
-              </a>
-            </div>
-
-            <div className="bg-neo-yellow border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
-              <h3 className="text-2xl font-black uppercase mb-2">Energy Wallet</h3>
-              <p className="font-black text-5xl mb-4 tabular-nums">{balance ?? '0'} <span className="text-xl">TKN</span></p>
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-black/60">
-                <Sparkles className="w-4 h-4" />
-                Ready to use
-              </div>
-            </div>
-
-
-            <div className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
-                  Session Log
-                </h3>
-                <span className="bg-black text-white text-[10px] font-black uppercase px-2 py-0.5 border-2 border-black">LIVE</span>
-              </div>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center border-b-2 border-black/10 pb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-black/40">Tokens Earned</span>
-                  <span className="font-black text-2xl tabular-nums">1.2k <span className="text-xs">TKN</span></span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-black/40">Total Minutes</span>
-                  <span className="font-black text-2xl tabular-nums">142 <span className="text-xs">MIN</span></span>
-                </div>
-              </div>
-            </div>
-
-            {withdrawable > 0 && (
-              <div className="bg-neo-pink border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-white">
-                <h3 className="text-lg font-black uppercase mb-1 flex items-center gap-2">
-                  <Zap className="w-4 h-4" /> Earnings
-                </h3>
-                <p className="font-black text-3xl mb-4 tabular-nums">₹{withdrawable}</p>
-                <button
-                  onClick={() => router.push('/wallet')}
-                  className="w-full bg-white text-black py-3 font-black uppercase text-[10px] hover:bg-neo-yellow transition-all border-2 border-black"
-                >
-                  SETTLE IN VAULT
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* RIGHT COLUMN: QUEUE & CONTENT */}
-          <div className="lg:col-span-8 space-y-12">
-
-            {/* Incoming call handled by top-level overlay below */}
-
-
-            {/* Call requests and stats - shown when accepting calls */}
-            {false ? (
-              <div className="space-y-12">
-                {/* REMOVED: Solitude content */}
-                <div className="neo-box bg-black p-8 border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] text-white">
-                  <div className="flex justify-between items-center mb-8">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                      <h3 className="text-3xl font-black uppercase italic tracking-tighter">Solitude Lab</h3>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-1 bg-zinc-800 text-[10px] font-black uppercase border-2 border-black">
-                      <Shield className="w-3 h-3 text-neo-green" /> Offline
-                    </div>
-                  </div>
-
-                  <div className="relative aspect-video bg-zinc-900 border-4 border-white/10 overflow-hidden mb-8 group">
-                    <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-40 transition-opacity">
-                      <Zap className="w-32 h-32" />
-                    </div>
-                    {/* Simulated Stage Feed */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-8">
-                      <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">Preview Active</p>
-                      <h4 className="text-2xl font-black uppercase tracking-tighter">System Baseline</h4>
-                    </div>
-
-                    <div className="absolute top-6 left-6 flex gap-2">
-                      <div className="bg-neo-pink text-[8px] font-black uppercase px-2 py-0.5 border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">DEV_ENV</div>
-                      <div className="bg-white text-black text-[8px] font-black uppercase px-2 py-0.5 border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">4K_READY</div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-zinc-800 border-4 border-black hover:bg-neo-pink hover:text-white transition-all group">
-                      <Camera className="w-6 h-6" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Snapshot</span>
-                    </button>
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-zinc-800 border-4 border-black hover:bg-neo-blue hover:text-white transition-all group">
-                      <Play className="w-6 h-6" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Record</span>
-                    </button>
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-zinc-800 border-4 border-black hover:bg-neo-green hover:text-black transition-all group">
-                      <Users className="w-6 h-6" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Training</span>
-                    </button>
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-zinc-800 border-4 border-black hover:bg-neo-yellow hover:text-black transition-all group">
-                      <Plus className="w-6 h-6" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Add App</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* DEVELOPER ECOSYSTEM TEASER */}
-                <div className="neo-box bg-neo-yellow/5 border-4 border-black border-dashed p-10 text-center relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-neo-yellow/10 rounded-full translate-x-8 translate-y-[-8px] blur-3xl" />
-                  <InfinityIcon className="w-12 h-12 text-zinc-300 mx-auto mb-4 group-hover:rotate-180 transition-transform duration-700" />
-                  <h3 className="text-xl font-black uppercase italic mb-2 text-black">Extensible Stage</h3>
-                  <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest max-w-md mx-auto leading-relaxed">
-                    Build custom apps and plug them directly into your Studio. Coming soon to Supertime SDK.
-                  </p>
-                </div>
-              </div>
-            ) : false ? (
-              <div className="space-y-12">
-                {/* REMOVED: Theatre content */}
-                <div className="neo-box bg-neo-pink p-8 border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] text-white">
-                  <div className="flex justify-between items-center mb-8">
-                    <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 bg-neo-green rounded-full animate-ping" />
-                      <h3 className="text-3xl font-black uppercase italic tracking-tighter">Live Stage</h3>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2 px-3 py-1 bg-black/20 text-[10px] font-black uppercase border-2 border-white/20">
-                        <Users className="w-3 h-3" /> 14 Admirers
-                      </div>
-                      <div className="flex items-center gap-2 px-3 py-1 bg-neo-yellow text-black text-[10px] font-black uppercase border-2 border-black">
-                        TICKET: 20 TKN
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-6">
-                      <div className="relative aspect-video bg-black border-4 border-black shadow-[8px_8px_0px_0px_rgba(255,255,255,0.1)] overflow-hidden">
-                        {/* Live Stream Preview */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Globe className="w-24 h-24 text-white/5 animate-spin-slow" />
+                  <div className="space-y-3">
+                    {requests.map((req, i) => (
+                      <div key={i} className="neo-box bg-white p-4 flex justify-between items-center group">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-neo-yellow border-2 border-black text-sm font-black italic text-black flex items-center justify-center">#{i + 1}</div>
+                          <div>
+                            <p className="font-black uppercase text-sm text-black">{req.from || 'Guest'}</p>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{new Date(req.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
                         </div>
-                        <div className="absolute top-4 left-4 bg-red-600 px-3 py-1 font-black uppercase text-[10px] tracking-widest">LIVE BROADCAST</div>
-                      </div>
-
-                      <div className="flex gap-4">
-                        <button className="flex-1 neo-btn bg-white text-black py-4 font-black uppercase flex items-center justify-center gap-2">
-                          <Mic className="w-5 h-5" /> Mic On
-                        </button>
-                        <button className="flex-1 neo-btn bg-black text-white py-4 font-black uppercase flex items-center justify-center gap-2 border-white">
-                          <Video className="w-5 h-5" /> Cam Off
+                        <button className="w-8 h-8 border-2 border-black flex items-center justify-center hover:bg-black hover:text-white transition-all text-black">
+                          <ArrowRight className="w-4 h-4" />
                         </button>
                       </div>
-                    </div>
-
-                    <div className="space-y-6">
-                      <div className="bg-black/20 border-4 border-black p-4 h-[300px] flex flex-col">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest mb-4 border-b border-white/10 pb-2">Audience Chat</h4>
-                        <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar">
-                          <p className="text-[10px] font-bold text-white/40 italic">Waiting for connection...</p>
-                        </div>
-                        <div className="mt-4 flex gap-2">
-                          <input type="text" placeholder="Say something..." className="flex-1 bg-black/40 border-2 border-black p-2 text-[10px] font-bold outline-none" />
-                          <button className="bg-white text-black px-3 font-black">SEND</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* THEATRE CONTROLS */}
-                <div className="grid md:grid-cols-3 gap-6">
-                  <div className="neo-box bg-white p-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-40">Entry Fee</h4>
-                    <div className="flex items-end gap-2">
-                      <span className="text-3xl font-black">20</span>
-                      <span className="text-xs font-bold mb-1">TKN</span>
-                    </div>
-                  </div>
-                  <div className="neo-box bg-white p-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-40">Revenue Share</h4>
-                    <div className="flex items-end gap-2">
-                      <span className="text-3xl font-black">₹4.2k</span>
-                      <span className="text-xs font-bold mb-1 italic">TONIGHT</span>
-                    </div>
-                  </div>
-                  <button className="neo-box bg-neo-green p-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black flex flex-col items-center justify-center hover:bg-neo-yellow transition-all">
-                    <Globe className="w-6 h-6 mb-1" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Share Stage</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-8">
-                {/* WAITLIST */}
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <h3 className="text-2xl font-black uppercase tracking-tighter italic text-black">Waitlist</h3>
-                    <div className="h-1 flex-1 bg-black" />
-                    <span className="text-[10px] font-black bg-black text-white px-2 py-0.5">{requests.length}</span>
-                  </div>
-                  {requests.length === 0 ? (
-                    <div className="border-4 border-black border-dashed p-10 text-center text-black">
-                      <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">Queue Empty</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {requests.map((req, i) => (
-                        <div key={i} className="neo-box bg-white p-4 flex justify-between items-center group">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-neo-yellow border-2 border-black text-sm font-black italic text-black flex items-center justify-center">#{i + 1}</div>
-                            <div>
-                              <p className="font-black uppercase text-sm text-black">{req.from || 'Guest'}</p>
-                              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{new Date(req.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                            </div>
-                          </div>
-                          <button className="w-8 h-8 border-2 border-black flex items-center justify-center hover:bg-black hover:text-white transition-all text-black">
-                            <ArrowRight className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* SCHEDULE */}
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <h3 className="text-2xl font-black uppercase tracking-tighter italic text-black">Schedule</h3>
-                    <div className="h-1 flex-1 bg-black" />
-                    <span className="text-[10px] font-black bg-black text-white px-2 py-0.5">{bookings.length}</span>
-                  </div>
-                  {bookings.length === 0 ? (
-                    <div className="border-4 border-black border-dashed p-10 text-center text-black">
-                      <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">No bookings</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {bookings.map((booking, i) => (
-                        <div key={i} className="neo-box bg-white p-4 group">
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-[#D652FF]">{booking.date} @ {booking.time}</span>
-                            <div className="w-2 h-2 rounded-full bg-neo-pink animate-pulse" />
-                          </div>
-                          <p className="font-black uppercase text-lg italic tracking-tight mb-1 text-black">{booking.visitorEmail.split('@')[0]}</p>
-                          <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{booking.duration} Min {booking.type}</span>
-                            <button onClick={() => window.open(`mailto:${booking.visitorEmail}`)} className="text-[10px] font-black uppercase underline decoration-2 decoration-neo-blue underline-offset-4 text-black">Notify Client</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* ARTIFACTS GRID */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <h3 className="text-3xl font-black uppercase tracking-tighter italic text-black">Recorded Highlights</h3>
-                <div className="h-2 flex-1 bg-black" />
-              </div>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {artifacts.map((art: any) => (
-                  <div key={art.id} className="neo-box bg-white overflow-hidden group">
-                    <div className="relative aspect-video bg-zinc-100 border-b-2 border-black">
-                      <video src={art.url} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300" />
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                        <button onClick={() => window.open(art.url, '_blank')} className="neo-btn bg-white text-black px-4 py-1 text-xs font-black">WATCH</button>
-                      </div>
-                    </div>
-                    <div className="p-3 flex justify-between items-center text-black">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{new Date(art.timestamp).toLocaleDateString()}</span>
-                      <button className="text-red-500 hover:scale-110 transition-transform">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {artifacts.length === 0 && (
-                  <div className="col-span-full border-4 border-black border-dashed p-12 text-center text-zinc-400 uppercase font-black tracking-widest text-xs">
-                    Highlights will appear here after calls
+                    ))}
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* PERFORMANCE ANALYTICS */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <h3 className="text-3xl font-black uppercase tracking-tighter italic text-black">Performance Analytics</h3>
-                <div className="h-2 flex-1 bg-black" />
-              </div>
-
-              {!loadingStats && stats && (
-                <div className="grid md:grid-cols-3 gap-8">
-                  <div className="neo-box bg-white p-6">
-                    <p className="text-[10px] font-black uppercase text-zinc-400 mb-2">Total Profile Views</p>
-                    <p className="text-4xl font-black italic">{stats.total.view || 0}</p>
-                  </div>
-                  <div className="neo-box bg-white p-6">
-                    <p className="text-[10px] font-black uppercase text-zinc-400 mb-2">Total Calls</p>
-                    <p className="text-4xl font-black italic">{stats.total.call_start || 0}</p>
-                  </div>
-                  <div className="neo-box bg-white p-6">
-                    <p className="text-[10px] font-black uppercase text-zinc-400 mb-2">Total Earnings</p>
-                    <p className="text-4xl font-black italic">{stats.total.earnings_amount || 0} <span className="text-xs italic">TKN</span></p>
-                  </div>
-
-                  <div className="md:col-span-3 neo-box bg-white p-8">
-                    <h4 className="text-xl font-black uppercase mb-8">Earning & Engagement History (7 Days)</h4>
-                    <div className="flex items-end justify-between h-48 gap-2">
-                      {stats.history.map((day: any, i: number) => (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative">
-                          <div className="w-full bg-zinc-100 relative h-full flex flex-col justify-end">
-                            <motion.div
-                              initial={{ height: 0 }}
-                              animate={{ height: `${Math.min(100, (day.views / (Math.max(...stats.history.map((d: any) => d.views)) || 1)) * 100)}%` }}
-                              className="bg-neo-blue/20 w-full"
-                            />
-                            <motion.div
-                              initial={{ height: 0 }}
-                              animate={{ height: `${Math.min(100, (day.earnings / (Math.max(...stats.history.map((d: any) => d.earnings)) || 1)) * 100)}%` }}
-                              className="bg-neo-green w-full absolute bottom-0 left-0"
-                            />
-                          </div>
-                          <span className="text-[8px] font-black uppercase text-zinc-400 rotate-45 mt-4">{day.date.split('-').slice(1).join('/')}</span>
-
-                          {/* Tooltip */}
-                          <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity bg-black text-white p-2 text-[8px] font-black uppercase z-10 pointer-events-none whitespace-nowrap">
-                            Views: {day.views} | Earned: {day.earnings} TKN
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-12 flex gap-6 text-[10px] font-black uppercase tracking-widest">
-                      <div className="flex items-center gap-2"><div className="w-3 h-3 bg-neo-blue/20" /> Profile Views</div>
-                      <div className="flex items-center gap-2"><div className="w-3 h-3 bg-neo-green" /> TKN Earnings</div>
-                    </div>
-                  </div>
+              {/* SCHEDULE */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-2xl font-black uppercase tracking-tighter italic text-black">Schedule</h3>
+                  <div className="h-1 flex-1 bg-black" />
+                  <span className="text-[10px] font-black bg-black text-white px-2 py-0.5">{bookings.length}</span>
                 </div>
-              )}
+                {bookings.length === 0 ? (
+                  <div className="border-4 border-black border-dashed p-10 text-center text-black">
+                    <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">No bookings</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {bookings.map((booking, i) => (
+                      <div key={i} className="neo-box bg-white p-4 group">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-[#D652FF]">{booking.date} @ {booking.time}</span>
+                          <div className="w-2 h-2 rounded-full bg-neo-pink animate-pulse" />
+                        </div>
+                        <p className="font-black uppercase text-lg italic tracking-tight mb-1 text-black">{booking.visitorEmail.split('@')[0]}</p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{booking.duration} Min {booking.type}</span>
+                          <button onClick={() => window.open(`mailto:${booking.visitorEmail}`)} className="text-[10px] font-black uppercase underline decoration-2 decoration-neo-blue underline-offset-4 text-black">Notify Client</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </main>
 
-      {/* SETTINGS MODAL */}
-      <AnimatePresence>
-        {showSettings && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[600] bg-black/40 backdrop-blur-md flex items-center justify-center p-6"
+      {/* BOTTOM ACTION BAR */}
+      <div className="fixed bottom-0 left-0 right-0 z-[100] bg-white border-t-4 border-black p-4 flex justify-between items-center gap-4">
+        <div className="flex items-center gap-4 flex-1">
+          <button
+            onClick={() => {
+              const next = !isLive;
+              setIsLive(next);
+              fetch('/api/studio/update', { method: 'POST', body: JSON.stringify({ isLive: next }) });
+            }}
+            className={`flex-1 md:flex-none px-6 py-3 border-4 border-black font-black uppercase text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all ${isLive ? 'bg-red-500 text-white' : 'bg-neo-green text-black'}`}
           >
+            {isLive ? 'End Stream' : 'Go Live'}
+          </button>
+          <button
+            onClick={handleToggleCalls}
+            className={`flex-1 md:flex-none px-6 py-3 border-4 border-black font-black uppercase text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all ${isAcceptingCalls ? 'bg-neo-pink text-white' : 'bg-zinc-100 text-black'}`}
+          >
+            {isAcceptingCalls ? 'Calls Ready' : 'Calls Off'}
+          </button>
+        </div>
+
+        <button
+          onClick={() => setShowDashboard(true)}
+          className="bg-neo-yellow text-black px-6 py-3 border-4 border-black font-black uppercase text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex items-center gap-2"
+        >
+          <LayoutDashboard className="w-4 h-4" /> Management
+        </button>
+      </div>
+
+      {/* REFACTORED: BOTTOM DASHBOARD MODAL */}
+      <AnimatePresence>
+        {
+          showDashboard && (
             <motion.div
-              initial={{ scale: 0.9, y: 30 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 30 }}
-              className="bg-white border-8 border-black shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-x-0 bottom-0 z-[1000] bg-white border-t-8 border-black h-[85vh] flex flex-col overflow-hidden shadow-[0_-20px_50px_rgba(0,0,0,0.3)]"
             >
-              <div className="flex justify-between items-start mb-10 pb-6 border-b-4 border-black text-black">
-                <h2 className="text-5xl font-black uppercase italic tracking-tighter">Studio Config</h2>
-                <button onClick={() => setShowSettings(false)} className="w-10 h-10 border-4 border-black flex items-center justify-center font-black hover:bg-neo-pink hover:text-white transition-all text-xl">✕</button>
+              <div className="flex justify-between items-center p-6 border-b-4 border-black bg-zinc-50">
+                <div className="flex items-center gap-3">
+                  <LayoutDashboard className="w-6 h-6" />
+                  <h3 className="text-2xl font-black uppercase tracking-tighter">Management Vault</h3>
+                </div>
+                <button
+                  onClick={() => setShowDashboard(false)}
+                  className="w-10 h-10 bg-black text-white border-2 border-black flex items-center justify-center font-black"
+                >
+                  <X className="w-6 h-6" />
+                </button>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-10">
-                <div className="space-y-8">
-                  <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Core Identity</h3>
-                    <div className="flex items-center gap-6 p-4 bg-zinc-50 border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-                      <div className="w-16 h-16 border-2 border-black bg-white overflow-hidden shrink-0">
-                        {pendingProfileImage ? <img src={pendingProfileImage} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black italic text-black">?</div>}
-                      </div>
-                      <div className="space-y-2">
-                        {isUploading ? <span className="text-[10px] font-black uppercase text-neo-pink animate-pulse">Uploading...</span> : (
-                          <label className="neo-btn bg-black text-white text-[10px] px-3 py-1 cursor-pointer">
-                            CHANGE PHOTO
-                            <input type="file" accept="image/*" onChange={handleUpload} className="hidden" />
-                          </label>
-                        )}
-                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest leading-none">Max file size 5MB</p>
-                      </div>
-                    </div>
+              <div className="flex-1 overflow-y-auto p-6 space-y-12 pb-32">
+                <div className="grid md:grid-cols-3 gap-6">
+                  <div className="bg-neo-yellow border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
+                    <h3 className="text-xl font-black uppercase mb-1">Energy Wallet</h3>
+                    <p className="font-black text-4xl mb-4 tabular-nums">{balance ?? '0'} <span className="text-lg">TKN</span></p>
+                    <WalletManager onBalanceChange={setBalance} />
                   </div>
 
-                  <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Room Configuration (Twitter Spaces)</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <button
-                        onClick={() => setRoomType('audio')}
-                        className={`flex items-center justify-center gap-2 p-4 border-4 border-black font-black uppercase text-xs transition-all ${roomType === 'audio' ? 'bg-neo-blue text-white shadow-none translate-x-[2px] translate-y-[2px]' : 'bg-white text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px]'}`}
-                      >
-                        <Mic className="w-4 h-4" /> AUDIO ROOM
-                      </button>
-                      <button
-                        onClick={() => setRoomType('video')}
-                        className={`flex items-center justify-center gap-2 p-4 border-4 border-black font-black uppercase text-xs transition-all ${roomType === 'video' ? 'bg-neo-pink text-white shadow-none translate-x-[2px] translate-y-[2px]' : 'bg-white text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px]'}`}
-                      >
-                        <Video className="w-4 h-4" /> VIDEO ROOM
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between p-4 bg-zinc-50 border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-black">
-                      <div>
-                        <p className="text-[10px] font-black uppercase">Monetization</p>
-                        <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">{isRoomFree ? 'Everyone can join for free' : 'Joining requires payment'}</p>
-                      </div>
-                      <button
-                        onClick={() => setIsRoomFree(!isRoomFree)}
-                        className={`px-4 py-2 border-2 border-black font-black uppercase text-[10px] transition-colors ${isRoomFree ? 'bg-neo-green' : 'bg-neo-yellow'}`}
-                      >
-                        {isRoomFree ? 'FREE' : 'PAID'}
-                      </button>
-                    </div>
+                  <div className="bg-neo-pink border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-white">
+                    <h3 className="text-xl font-black uppercase mb-1">Earnings</h3>
+                    <p className="font-black text-4xl mb-4 tabular-nums">₹{withdrawable}</p>
+                    <button
+                      onClick={() => router.push('/wallet')}
+                      className="w-full bg-white text-black py-2 font-black uppercase text-[10px] border-2 border-black"
+                    >
+                      Withdraw Funds
+                    </button>
                   </div>
 
-                  <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Energy Matrix (Rates)</h3>
-                    <div className="grid gap-4">
-                      <div className="flex items-center bg-white border-4 border-black focus-within:bg-neo-yellow/10 transition-colors shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] group">
-                        <div className="w-12 h-12 border-r-4 border-black bg-neo-pink flex items-center justify-center text-white shrink-0"><Video className="w-5 h-5" /></div>
-                        <div className="flex-1 px-4 text-black">
-                          <label className="text-[8px] font-black uppercase text-zinc-400 block pb-1">Video Call / MIN</label>
-                          <input type="number" value={pendingVideoRate} onChange={(e) => setPendingVideoRate(Number(e.target.value))} className="w-full bg-transparent border-none outline-none font-black text-lg" />
-                        </div>
+                  <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
+                    <h3 className="text-xl font-black uppercase mb-4 flex items-center gap-2">
+                      <Clock className="w-5 h-5" /> Session Log
+                    </h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-black opacity-40">Earned</span>
+                        <span className="font-black">1.2k TKN</span>
                       </div>
-                      <div className="flex items-center bg-white border-4 border-black focus-within:bg-neo-yellow/10 transition-colors shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] group">
-                        <div className="w-12 h-12 border-r-4 border-black bg-neo-blue flex items-center justify-center text-white shrink-0"><Mic className="w-5 h-5" /></div>
-                        <div className="flex-1 px-4 text-black">
-                          <label className="text-[8px] font-black uppercase text-zinc-400 block pb-1">Audio Only / MIN</label>
-                          <input type="number" value={pendingAudioRate} onChange={(e) => setPendingAudioRate(Number(e.target.value))} className="w-full bg-transparent border-none outline-none font-black text-lg" />
-                        </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-black opacity-40">Minutes</span>
+                        <span className="font-black">142 Min</span>
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Social Matrix</h3>
-                    <div className="grid gap-3">
-                      {['instagram', 'x', 'youtube', 'website'].map((platform) => (
-                        <div key={platform} className="bg-zinc-50 border-4 border-black p-3 focus-within:bg-neo-yellow/10 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center">
-                          <Globe className="w-4 h-4 mr-3 text-zinc-300" />
-                          <input
-                            type="text"
-                            value={(pendingSocials as any)[platform]}
-                            onChange={(e) => setPendingSocials({ ...pendingSocials, [platform]: e.target.value })}
-                            className="bg-transparent border-none outline-none font-bold text-xs flex-1 uppercase tracking-tighter text-black"
-                            placeholder={`${platform} URL`}
-                          />
-                        </div>
-                      ))}
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-8">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Fixed Offerings</h3>
-                      <button
-                        onClick={() => setPendingTemplates([...pendingTemplates, { id: Math.random().toString(36).slice(2, 7), duration: 20, price: 150, description: 'Strategy Session', type: 'video' }])}
-                        className="bg-black text-white text-[9px] font-black p-1 hover:bg-neo-pink transition-colors"
-                      >
-                        + ADD NEW
-                      </button>
-                    </div>
-                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                      {pendingTemplates.map((tpl, idx) => (
-                        <div key={tpl.id} className="neo-box bg-white p-4 relative group">
-                          <button onClick={() => setPendingTemplates(pendingTemplates.filter(t => t.id !== tpl.id))} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:scale-110"><Trash2 className="w-4 h-4" /></button>
-                          <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div className="bg-zinc-50 border-2 border-black p-2">
-                              <label className="text-[8px] font-black uppercase text-zinc-400 block mb-1">Duration (Min)</label>
-                              <input type="number" value={tpl.duration} onChange={(e) => { const n = [...pendingTemplates]; n[idx].duration = Number(e.target.value); setPendingTemplates(n); }} className="w-full bg-transparent border-none outline-none font-black text-xs text-black" />
+                {/* ANALYTICS SECTION */}
+                <div className="space-y-6">
+                  <h3 className="text-2xl font-black uppercase tracking-tighter italic border-b-4 border-black pb-2">Insights</h3>
+                  {!loadingStats && stats && (
+                    <div className="grid md:grid-cols-2 gap-8">
+                      <div className="neo-box bg-white p-6">
+                        <h4 className="text-xl font-black uppercase mb-8">Performance History</h4>
+                        <div className="flex items-end justify-between h-40 gap-2">
+                          {stats.history.map((day: any, i: number) => (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+                              <div className="w-full bg-zinc-100 h-full flex flex-col justify-end">
+                                <div
+                                  style={{ height: `${Math.min(100, (day.earnings / (Math.max(...stats.history.map((d: any) => d.earnings)) || 1)) * 100)}%` }}
+                                  className="bg-neo-green w-full"
+                                />
+                              </div>
+                              <span className="text-[8px] font-black uppercase text-zinc-400 rotate-45 mt-2">{day.date.split('-').slice(1).join('/')}</span>
                             </div>
-                            <div className="bg-zinc-50 border-2 border-black p-2">
-                              <label className="text-[8px] font-black uppercase text-zinc-400 block mb-1">Price (TKN)</label>
-                              <input type="number" value={tpl.price} onChange={(e) => { const n = [...pendingTemplates]; n[idx].price = Number(e.target.value); setPendingTemplates(n); }} className="w-full bg-transparent border-none outline-none font-black text-xs text-black" />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="grid grid-rows-2 gap-4">
+                        <div className="neo-box bg-white p-4 flex justify-between items-center">
+                          <span className="text-[10px] font-black uppercase opacity-40">Profile Views</span>
+                          <span className="text-3xl font-black italic">{stats.total.view || 0}</span>
+                        </div>
+                        <div className="neo-box bg-white p-4 flex justify-between items-center">
+                          <span className="text-[10px] font-black uppercase opacity-40">Total Calls</span>
+                          <span className="text-3xl font-black italic">{stats.total.call_start || 0}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* HIGHLIGHTS SECTION */}
+                <div id="highlights-vault" className="space-y-6 scroll-mt-32">
+                  <div className="border-b-4 border-black pb-2 flex justify-between items-end">
+                    <h3 className="text-2xl font-black uppercase tracking-tighter italic">Highlights</h3>
+                    <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Secure Cloud Vault</span>
+                  </div>
+
+                  {artifacts.length === 0 ? (
+                    <div className="neo-box bg-white p-12 text-center border-dashed border-zinc-200">
+                      <p className="text-[10px] font-black uppercase text-zinc-300 tracking-[0.2em]">No recordings yet. Hit record during your next session!</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {artifacts.map((art: any) => (
+                        <div key={art.id} className="neo-box bg-white overflow-hidden group">
+                          <div className="relative aspect-video bg-zinc-100 border-b-2 border-black">
+                            <video src={art.url} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300" />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                              <button onClick={() => window.open(art.url, '_blank')} className="neo-btn bg-white text-black px-4 py-1 text-[8px] font-black">WATCH</button>
                             </div>
                           </div>
-                          <div className="flex gap-2">
-                            <select value={tpl.type} onChange={(e) => { const n = [...pendingTemplates]; n[idx].type = e.target.value; setPendingTemplates(n); }} className="bg-black text-white font-black uppercase text-[10px] px-2 py-1 outline-none">
-                              <option value="video">Video</option>
-                              <option value="audio">Audio</option>
-                            </select>
-                            <input type="text" value={tpl.description} onChange={(e) => { const n = [...pendingTemplates]; n[idx].description = e.target.value; setPendingTemplates(n); }} className="flex-1 bg-zinc-50 border-2 border-black p-2 text-[10px] font-bold outline-none uppercase text-black" placeholder="Description of session" />
+                          <div className="p-2 flex justify-between items-center text-[8px] font-black uppercase text-zinc-400">
+                            {new Date(art.timestamp).toLocaleDateString()}
+                            <button
+                              onClick={() => {
+                                if (confirm('Delete this highlight forever?')) {
+                                  handleDeleteArtifact(art.id);
+                                }
+                              }}
+                              className="hover:text-red-500 transition-colors p-1"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
                           </div>
                         </div>
                       ))}
-                      {pendingTemplates.length === 0 && <p className="text-center text-[10px] font-black uppercase text-zinc-300 py-10 border-4 border-black border-dashed">No Fixed Offerings Defined</p>}
                     </div>
-                  </div>
-
-                  <div className="pt-8 border-t-8 border-black flex gap-6">
-                    <button onClick={() => setShowSettings(false)} className="flex-1 text-sm font-black uppercase tracking-widest hover:underline underline-offset-8 text-black">Cancel Changes</button>
-                    <button onClick={saveSettings} className="flex-1 neo-btn bg-neo-green text-black py-5 text-xl">APPLY MATRIX</button>
-                  </div>
+                  )}
                 </div>
               </div>
             </motion.div>
-          </motion.div>
-        )}
+          )
+        }
       </AnimatePresence>
-    </div >
+
+
+    </div>
   );
 }

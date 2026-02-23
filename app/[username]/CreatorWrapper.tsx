@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { AblyProvider, useCallSignaling } from '@/app/lib/ably';
 import CreatorClient from './CreatorClient';
+import { IncomingCallRing } from '@/app/components/IncomingCallRing';
+import { PushNotificationManager } from '@/app/components/PushNotificationManager';
 
 interface CreatorWrapperProps {
   username: string;
@@ -19,6 +21,7 @@ interface CreatorWrapperProps {
   templates?: any[];
   availability?: any;
   artifacts?: any[];
+  faqs?: any[];
   roomType?: 'audio' | 'video';
   isRoomFree?: boolean;
   studioMode?: 'solitude' | 'theatre' | 'private';
@@ -28,11 +31,23 @@ function CreatorWithSignaling(props: CreatorWrapperProps & { clientId: string })
   const signaling = useCallSignaling(props.clientId);
 
   return (
-    <CreatorClient
-      {...props}
-      // Inject Ably signaling for call initiation
-      _ablySignaling={signaling}
-    />
+    <>
+      <IncomingCallRing
+        incomingCall={signaling.incomingCall}
+        onAccept={async () => {
+          signaling.acceptCall();
+        }}
+        onReject={async () => {
+          await signaling.rejectCall();
+        }}
+      />
+      <PushNotificationManager userId={props.clientId} />
+      <CreatorClient
+        {...props}
+        // Inject Ably signaling for call initiation
+        _ablySignaling={signaling}
+      />
+    </>
   );
 }
 

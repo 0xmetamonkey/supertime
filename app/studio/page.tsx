@@ -1,4 +1,4 @@
-import { auth } from "../../auth";
+import { currentUser } from "@clerk/nextjs/server";
 import { kv } from "@vercel/kv";
 import { redirect } from "next/navigation";
 import StudioWrapper from "./StudioWrapper";
@@ -9,8 +9,8 @@ export const dynamic = 'force-dynamic';
 export default async function StudioPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const params = await searchParams;
   const isSimulated = params.sim === 'true';
-  const session = await auth().catch(() => null);
-  const email = session?.user?.email?.toLowerCase(); // Normalize email
+  const user = await currentUser();
+  const email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase(); // Normalize email
 
   if (!email && !isSimulated) return redirect("/");
 
@@ -43,9 +43,11 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
     const artifacts = await kv.get(`user:${email}:artifacts`) as any[] || [];
     const mode = await kv.get(`user:${email}:mode`) || 'solitude';
     const isAcceptingCalls = await kv.get(`user:${email}:isAcceptingCalls`);
+    const upiId = await kv.get(`user:${email}:upiId`);
 
     if (vRate !== null) settings.videoRate = Number(vRate);
     if (aRate !== null) settings.audioRate = Number(aRate);
+    if (upiId) (settings as any).upiId = upiId as string;
     if (socials) {
       // Normalize twitter to x
       if (socials.twitter && !socials.x) {
@@ -72,5 +74,11 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
     (settings as any).mode = mode;
   }
 
-  return <StudioWrapper username={username || null} session={session} initialSettings={settings} />;
+  return (
+    <StudioWrapper
+      username={username || null}
+      session={user ? { user: { id: user.id, email: email } } : null}
+      initialSettings={settings}
+    />
+  );
 }

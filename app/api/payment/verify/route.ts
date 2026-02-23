@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { kv } from '@vercel/kv';
-import { auth } from '../../../../auth';
+import { currentUser } from "@clerk/nextjs/server";
 
 // Fallback memory store
 declare global {
@@ -13,14 +13,15 @@ if (!global.mockWalletStore) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session || !session.user?.email) {
+  const user = await currentUser();
+  const email = user?.emailAddresses?.[0]?.emailAddress;
+  if (!user || !email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = await req.json();
-    const email = session.user.email;
+    const normalizedEmail = email.toLowerCase();
 
     const secret = process.env.RAZORPAY_KEY_SECRET;
     if (!secret) throw new Error("Razorpay secret missing");
@@ -47,11 +48,11 @@ export async function POST(req: NextRequest) {
 
       // Credit Wallet using EMAIL as identifier
       if (process.env.KV_URL) {
-        const current = (await kv.get<number>(`balance:${email}`)) ?? 0;
-        await kv.set(`balance:${email}`, current + tokensToAdd);
+        const current = (await kv.get<number>(`balance:${normalizedEmail}`)) ?? 0;
+        await kv.set(`balance:${normalizedEmail}`, current + tokensToAdd);
       } else {
-        const current = global.mockWalletStore.get(email) ?? 0;
-        global.mockWalletStore.set(email, current + tokensToAdd);
+        const current = global.mockWalletStore.get(normalizedEmail) ?? 0;
+        global.mockWalletStore.set(normalizedEmail, current + tokensToAdd);
       }
 
       return NextResponse.json({ success: true, newBalance: tokensToAdd });

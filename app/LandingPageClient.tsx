@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { loginWithGoogle, checkAvailability, claimUsername } from './actions';
 import { useRouter } from 'next/navigation';
 import {
   Zap,
@@ -15,11 +13,20 @@ import {
   Heart,
   Globe,
   Menu,
-  X
+  X,
+  Crown,
+  ShoppingBag,
+  CheckCircle2,
+  BarChart3
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useUser, useClerk } from "@clerk/nextjs";
 
 export default function LandingPageClient({ session, savedUsername }: { session: any, savedUsername: string | null }) {
   const router = useRouter();
+  const { user: clerkUser, isLoaded } = useUser();
+  const { openSignIn } = useClerk();
+
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,7 +34,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  const isLoggedIn = !!session?.user;
+  const isLoggedIn = !!clerkUser;
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -112,9 +119,9 @@ export default function LandingPageClient({ session, savedUsername }: { session:
 
       if (isLoggedIn) {
         await claimUsername(username);
-        window.location.href = '/studio';
+        window.location.href = '/dashboard';
       } else {
-        await loginWithGoogle(username);
+        router.push(`/sign-in?forceRedirectUrl=/dashboard?claim=${username}`);
       }
     } catch (e: any) {
       console.error("Claim Hub Error:", e);
@@ -151,13 +158,14 @@ export default function LandingPageClient({ session, savedUsername }: { session:
             <div className="hidden md:flex gap-8 font-bold uppercase text-xs tracking-widest mr-4">
               <a href="#philosophy" className="hover:text-neo-blue transition-colors">Philosophy</a>
               <a href="#mission" className="hover:text-neo-pink transition-colors">Mission</a>
+              <a href="#pricing" className="hover:text-neo-yellow transition-colors">Pricing</a>
               <a href="#platform" className="hover:text-neo-green transition-colors">Platform</a>
             </div>
 
             <button
               onClick={() => {
-                if (isLoggedIn) window.location.href = '/studio';
-                else loginWithGoogle('/');
+                if (isLoggedIn) window.location.href = '/dashboard';
+                else router.push('/sign-in?forceRedirectUrl=/dashboard');
               }}
               className="hidden md:flex neo-btn bg-black text-white hover:bg-zinc-800"
             >
@@ -217,6 +225,13 @@ export default function LandingPageClient({ session, savedUsername }: { session:
                 Mission
               </a>
               <a
+                href="#pricing"
+                onClick={() => setShowMobileMenu(false)}
+                className="text-4xl font-black uppercase tracking-widest text-black hover:text-neo-yellow border-b-4 border-black pb-6 transition-colors"
+              >
+                Pricing
+              </a>
+              <a
                 href="#platform"
                 onClick={() => setShowMobileMenu(false)}
                 className="text-4xl font-black uppercase tracking-widest text-black hover:text-neo-green border-b-4 border-black pb-6 transition-colors"
@@ -229,7 +244,7 @@ export default function LandingPageClient({ session, savedUsername }: { session:
               <button
                 onClick={() => {
                   if (isLoggedIn) window.location.href = '/studio';
-                  else loginWithGoogle('/');
+                  else router.push('/sign-in?forceRedirectUrl=/dashboard');
                 }}
                 className="w-full bg-black text-white py-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(46,213,115,0.4)] font-black uppercase text-2xl tracking-widest flex items-center justify-center gap-4 active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
               >
@@ -410,6 +425,178 @@ export default function LandingPageClient({ session, savedUsername }: { session:
                 <div className={`absolute top-4 right-4 w-4 h-4 rounded-full bg-theme(colors.${feature.color})`} />
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-24 px-6 bg-zinc-50 overflow-hidden relative">
+        {/* Background Accents */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-neo-yellow/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-neo-blue/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="text-center mb-20">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="inline-block px-4 py-1 border-2 border-black bg-white mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            >
+              <span className="font-black uppercase text-xs tracking-[0.2em] text-black">Simple, Fair Pricing</span>
+            </motion.div>
+            <h2 className="text-5xl md:text-8xl font-black uppercase mb-6 leading-none">
+              Choose your <span className="text-neo-pink">Energy</span> level.
+            </h2>
+            <p className="text-xl text-zinc-600 font-bold uppercase tracking-widest max-w-2xl mx-auto">
+              Scale your creativity with tools that grow with your impact.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-8 items-stretch">
+            {/* Free Tier */}
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="flex flex-col p-8 md:p-10 border-4 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transition-all relative group"
+            >
+              <div className="mb-8 flex justify-between items-start">
+                <div>
+                  <h3 className="text-3xl font-black uppercase mb-2">Free</h3>
+                  <p className="text-zinc-500 font-bold uppercase tracking-widest text-sm">Magic begins here</p>
+                </div>
+                <div className="w-16 h-16 bg-zinc-100 border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_black] group-hover:bg-neo-yellow transition-colors shrink-0">
+                  <Zap className="w-8 h-8 text-black fill-current" />
+                </div>
+              </div>
+              <div className="mb-8">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-5xl font-black">₹0</span>
+                  <span className="text-zinc-400 font-bold uppercase text-xs tracking-widest">/forever</span>
+                </div>
+              </div>
+              <ul className="space-y-4 mb-10 flex-1">
+                {[
+                  '1,000 DMs / Month',
+                  'Unlimited Automations',
+                  '2 Hours 1:1 Calls',
+                  '1 Digital Product Store',
+                  'Basic Profile Customization'
+                ].map((feature, i) => (
+                  <li key={i} className="flex items-start gap-2 font-bold uppercase text-[10px] tracking-wide text-zinc-500">
+                    <span className="text-black">•</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button className="w-full neo-btn bg-white text-black border-4 border-black hover:bg-zinc-50 py-5 font-black uppercase">
+                Claim Free Hub
+              </button>
+            </motion.div>
+
+            {/* Pro Tier */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="flex flex-col p-8 md:p-10 border-4 border-black bg-black text-white shadow-[16px_16px_0px_0px_theme(colors.neo-yellow)] hover:shadow-[20px_20px_0px_0px_theme(colors.neo-yellow)] transition-all relative z-10 overflow-hidden group"
+            >
+              {/* Popular Tag */}
+              <div className="absolute top-0 right-0 bg-neo-yellow text-black font-black uppercase text-[10px] tracking-[0.2em] px-6 py-2 rotate-45 translate-x-6 translate-y-2 border-l-2 border-black z-20">
+                Popular
+              </div>
+
+              <div className="mb-8 flex justify-between items-start relative z-10">
+                <div>
+                  <h3 className="text-3xl font-black uppercase mb-2 text-neo-yellow">Pro</h3>
+                  <p className="text-zinc-400 font-bold uppercase tracking-widest text-sm text-neo-pink">Power Creator</p>
+                </div>
+                <div className="w-16 h-16 bg-neo-yellow border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_white] group-hover:rotate-12 transition-transform shrink-0">
+                  <ShoppingBag className="w-8 h-8 text-black" />
+                </div>
+              </div>
+              <div className="mb-8">
+                <div className="flex items-baseline gap-1 text-white">
+                  <span className="text-5xl font-black">₹999</span>
+                  <span className="text-zinc-500 font-bold uppercase text-xs tracking-widest">/month</span>
+                </div>
+              </div>
+              <ul className="space-y-4 mb-10 flex-1">
+                {[
+                  'Unlimited DMs & Automations',
+                  'Unlimited 1:1 Calls*',
+                  'Unlimited Digital Products',
+                  'Verified Creator Badge',
+                  'Advanced Deep Analytics',
+                  'Premium Storefront Themes',
+                  'Zero Storefront Fee'
+                ].map((feature, i) => (
+                  <li key={i} className="flex items-start gap-2 font-bold uppercase text-[10px] tracking-wide text-zinc-400">
+                    <span className="text-neo-yellow">•</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button className="w-full neo-btn bg-neo-yellow text-black border-4 border-black hover:bg-neo-yellow/90 py-5 font-black uppercase group">
+                Scale Your Growth
+                <ArrowRight className="w-5 h-5 inline-block ml-2 group-hover:translate-x-1 transition-transform" />
+              </button>
+              <p className="mt-4 text-[8px] font-bold text-zinc-500 text-center uppercase tracking-widest">*Subject to platform commission</p>
+            </motion.div>
+
+            {/* Enterprise Tier */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="flex flex-col p-8 md:p-10 border-4 border-black bg-neo-blue text-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transition-all relative group"
+            >
+              <div className="mb-8 flex justify-between items-start">
+                <div>
+                  <h3 className="text-3xl font-black uppercase mb-2">Scale</h3>
+                  <p className="text-white/80 font-bold uppercase tracking-widest text-sm">Bespoke Solution</p>
+                </div>
+                <div className="w-16 h-16 bg-white border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_black] group-hover:bg-neo-green transition-colors shrink-0">
+                  <Crown className="w-8 h-8 text-black" />
+                </div>
+              </div>
+              <div className="mb-8">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-5xl font-black italic">Custom</span>
+                </div>
+              </div>
+              <ul className="space-y-4 mb-10 flex-1">
+                {[
+                  'Everything in Pro',
+                  'Custom Storefront Design',
+                  'Dedicated Manager',
+                  'Custom Commission Rates',
+                  'Full White-label Support',
+                  'Beta API Features'
+                ].map((feature, i) => (
+                  <li key={i} className="flex items-start gap-2 font-bold uppercase text-[10px] tracking-wide text-white/70">
+                    <span className="text-white">•</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button className="w-full neo-btn bg-black text-white border-4 border-white hover:bg-zinc-900 py-5 font-black uppercase">
+                Contact Strategy
+              </button>
+            </motion.div>
+          </div>
+
+          <div className="mt-20 text-center">
+            <p className="font-black uppercase text-xs tracking-[0.3em] text-zinc-400 mb-4 px-4">
+              Safe Payments via Razorpay • Cancel Anytime • No Hidden Fees
+            </p>
+            <div className="flex justify-center gap-4 opacity-30 grayscale hover:grayscale-0 transition-all">
+              {/* Decorative badges */}
+              <div className="w-12 h-6 bg-zinc-400 rounded" />
+              <div className="w-12 h-6 bg-zinc-400 rounded" />
+              <div className="w-12 h-6 bg-zinc-400 rounded" />
+            </div>
           </div>
         </div>
       </section>

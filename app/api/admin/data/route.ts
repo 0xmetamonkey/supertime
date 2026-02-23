@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { kv } from '@vercel/kv';
-import { auth } from '../../../../auth';
 import { ADMIN_EMAILS } from '../../../config';
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  const email = session?.user?.email?.toLowerCase();
+  const user = await currentUser();
+  const email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase();
 
   if (!email || !ADMIN_EMAILS.includes(email)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -22,10 +22,10 @@ export async function GET(req: NextRequest) {
 
   const users = new Map();
 
-  const getUser = (email: string) => {
-    if (!users.has(email)) {
-      users.set(email, {
-        email: email,
+  const getUser = (userEmail: string) => {
+    if (!users.has(userEmail)) {
+      users.set(userEmail, {
+        email: userEmail,
         username: 'N/A',
         role: 'Caller',
         balance: 0,
@@ -33,35 +33,35 @@ export async function GET(req: NextRequest) {
         isDisabled: false
       });
     }
-    return users.get(email);
+    return users.get(userEmail);
   };
 
   for (const key of ownerKeys) {
-    const email = await kv.get<string>(key);
+    const ownerEmail = await kv.get<string>(key);
     const username = key.replace('owner:', '');
-    if (email) {
-      const u = getUser(email);
+    if (ownerEmail) {
+      const u = getUser(ownerEmail);
       u.username = username;
       u.role = 'Creator';
     }
   }
 
   for (const key of balanceKeys) {
-    const email = key.replace('balance:', '');
+    const balanceEmail = key.replace('balance:', '');
     const balance = await kv.get<number>(key);
-    const u = getUser(email);
+    const u = getUser(balanceEmail);
     u.balance = typeof balance === 'number' ? balance : 0;
   }
 
   for (const key of verifiedKeys) {
-    const email = key.replace('user:', '').replace(':verified', '');
+    const verifiedEmail = key.replace('user:', '').replace(':verified', '');
     const isVerified = await kv.get(key);
-    if (isVerified) getUser(email).isVerified = true;
+    if (isVerified) getUser(verifiedEmail).isVerified = true;
   }
   for (const key of disabledKeys) {
-    const email = key.replace('user:', '').replace(':disabled', '');
+    const disabledEmail = key.replace('user:', '').replace(':disabled', '');
     const isDisabled = await kv.get(key);
-    if (isDisabled) getUser(email).isDisabled = true;
+    if (isDisabled) getUser(disabledEmail).isDisabled = true;
   }
 
   const config = {
