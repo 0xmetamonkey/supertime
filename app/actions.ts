@@ -43,6 +43,15 @@ export async function claimUsername(usernameRaw: string) {
 
   if (!process.env.KV_URL) throw new Error("Database not connected");
 
+  // Prevent claiming reserved names
+  const reservedUsernames = [
+    'admin', 'supertime', 'api', 'help', 'support', 'billing', 'auth',
+    'login', 'signup', 'dashboard', 'settings', 'null', 'undefined'
+  ];
+  if (reservedUsernames.includes(username)) {
+    throw new Error("This username is reserved and cannot be claimed.");
+  }
+
   // 1. Check if name is taken
   const owner = await kv.get(`owner:${username}`);
   if (owner && owner !== email) {

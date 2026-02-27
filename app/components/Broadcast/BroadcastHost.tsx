@@ -207,6 +207,60 @@ export default function BroadcastHost({ channelName, uid, username, onEnd, onCal
   const [isSpeakerOff, setIsSpeakerOff] = useState(false);
   const [showChat, setShowChat] = useState(true);
 
+  // Music State
+  const [musicTrack, setMusicTrack] = useState<any>(null);
+  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const [musicVolume, setMusicVolume] = useState(30);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
+  const [showMusicMenu, setShowMusicMenu] = useState(false);
+
+  const SUPERTIME_BEATS = [
+    { title: "Neon Nights", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
+    { title: "Cyber Dreams", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
+    { title: "Lo-Fi Glow", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" }
+  ];
+
+  const startMusic = async (index: number) => {
+    try {
+      if (musicTrack) {
+        await client.unpublish(musicTrack);
+        musicTrack.stop();
+        musicTrack.close();
+      }
+
+      const track = await AgoraRTC.createBufferSourceAudioTrack({
+        source: SUPERTIME_BEATS[index].url,
+      });
+
+      track.startProcessAudioBuffer({ loop: true });
+      track.setVolume(musicVolume);
+
+      await client.publish(track);
+      setMusicTrack(track);
+      setCurrentTrackIndex(index);
+      setIsMusicPlaying(true);
+      console.log(`[Music] Playing: ${SUPERTIME_BEATS[index].title}`);
+    } catch (e) {
+      console.error("[Music] Failed to start:", e);
+    }
+  };
+
+  const stopMusic = async () => {
+    if (musicTrack) {
+      await client.unpublish(musicTrack);
+      musicTrack.stop();
+      musicTrack.close();
+      setMusicTrack(null);
+      setIsMusicPlaying(false);
+      setCurrentTrackIndex(-1);
+    }
+  };
+
+  const handleVolumeChange = (v: number) => {
+    setMusicVolume(v);
+    if (musicTrack) musicTrack.setVolume(v);
+  };
+
   const toggleSpeaker = () => {
     // Agora client in broadcast mode handles remote users differently but we can iterate through remote users
     // For simplicity and consistency with CallStage:
@@ -340,6 +394,7 @@ export default function BroadcastHost({ channelName, uid, username, onEnd, onCal
                 </span>
               </div>
             )}
+
           </div>
         </div>
 

@@ -109,8 +109,11 @@ export default function StudioClient({ username, session, initialSettings }: { u
       setCallType(ablySignaling.activeCall.type);
       setActiveChannelName(ablySignaling.activeCall.channelName);
     } else if (isCalling && !ablySignaling?.activeCall) {
+      console.log('[StudioClient] 👋 Call ended via signaling. Resetting session.');
       setIsCalling(false);
       setActiveChannelName(null);
+      setCallDuration(0);
+      setTokensEarned(0);
     }
   }, [ablySignaling?.activeCall, isCalling]);
 

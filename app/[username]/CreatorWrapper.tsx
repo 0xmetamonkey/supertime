@@ -59,7 +59,10 @@ export default function CreatorWrapper(props: CreatorWrapperProps) {
   }, []);
 
   // Generate a client ID for the visitor
-  const clientId = props.user?.id || props.user?.email || `visitor-${Math.random().toString(36).slice(2, 8)}`;
+  // CRITICAL: If owner, we MUST use the username slug so callers (who use props.username) can find us.
+  const clientId = props.isOwner
+    ? props.username.toLowerCase()
+    : (props.user?.id || props.user?.email || `visitor-${Math.random().toString(36).slice(2, 8)}`).toLowerCase();
 
   if (!mounted) {
     // SSR fallback - render without Ably

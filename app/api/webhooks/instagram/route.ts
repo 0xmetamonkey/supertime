@@ -31,7 +31,8 @@ async function sendReply(recipientId: string, text: string, optionalToken?: stri
     return;
   }
 
-  const url = `https://graph.facebook.com/v19.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
+  // Native IG Tokens must use graph.instagram.com, not graph.facebook.com
+  const url = `https://graph.instagram.com/v21.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
 
   const payload = {
     recipient: { id: recipientId },
@@ -130,8 +131,11 @@ async function processAutoReply(pageId: string, senderId: string, text: string, 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    console.log('\n--- INCOMING INSTAGRAM WEBHOOK PUSH ---');
+    console.log(JSON.stringify(body, null, 2));
 
-    if (body.object === 'instagram' || body.object === 'page') {
+    // The new 2024 Native API might send object: 'instagram' or something else entirely.
+    if (body.object === 'instagram' || body.object === 'page' || body.entry) {
       const entries = body.entry || [];
       for (const entry of entries) {
         const pageId = entry.id;

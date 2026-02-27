@@ -58,49 +58,63 @@ export async function POST(req: NextRequest) {
 
     // Handle Professional OAuth Flow (Token Exchange)
     if (instagramToken && isUserToken) {
-      console.log('--- Professional OAuth: Exchanging User Token ---');
-      try {
-        // 1. Get Pages (Accounts) with Instagram Business Accounts linked
-        const accountsRes = await fetch(`https://graph.facebook.com/v19.0/me/accounts?fields=name,access_token,instagram_business_account&access_token=${instagramToken}`);
-        const accountsData = await accountsRes.json();
-        console.log(`Found ${accountsData.data?.length || 0} Pages associated with this user.`);
-        if (accountsData.data && accountsData.data.length > 0) {
-          // Find the first page with a linked Instagram account
-          const linkedAccount = accountsData.data.find((acc: any) => acc.instagram_business_account);
+      if (configData.resolvedPageId) {
+        // Bypass FB Graph if we already resolved the IG User ID via Native Login
+        resolvedPageId = configData.resolvedPageId;
+        console.log(`Native IG Auth provided Account ID: ${resolvedPageId}. Bypassing FB Graph.`);
+      } else {
+        console.log('--- Professional OAuth: Exchanging User Token ---');
+        try {
+          // 1. Get Pages (Accounts) with Instagram Business Accounts linked
+          const accountsRes = await fetch(`https://graph.facebook.com/v19.0/me/accounts?fields=name,access_token,instagram_business_account&access_token=${instagramToken}`);
+          const accountsData = await accountsRes.json();
+          console.log(`Found ${accountsData.data?.length || 0} Pages associated with this user.`);
+          if (accountsData.data && accountsData.data.length > 0) {
+            // Find the first page with a linked Instagram account
+            const linkedAccount = accountsData.data.find((acc: any) => acc.instagram_business_account);
 
-          if (linkedAccount) {
-            const shortLivedPageToken = linkedAccount.access_token;
-            resolvedPageId = linkedAccount.id;
+            if (linkedAccount) {
+              const shortLivedPageToken = linkedAccount.access_token;
+              resolvedPageId = linkedAccount.id;
 
-            console.log(`Found Page ${resolvedPageId} with IG linked. Exchanging for Long-Lived Token...`);
+              console.log(`Found Page ${resolvedPageId} with IG linked. Exchanging for Long-Lived Token...`);
 
-            // 2. Exchange for Long-Lived Page Access Token
-            const appId = process.env.INSTAGRAM_APP_ID;
-            const appSecret = process.env.INSTAGRAM_APP_SECRET;
+              // 2. Exchange for Long-Lived Page Access Token
+              const appId = process.env.INSTAGRAM_APP_ID;
+              const appSecret = process.env.INSTAGRAM_APP_SECRET;
 
-            const exchangeRes = await fetch(`https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLivedPageToken}`);
-            const exchangeData = await exchangeRes.json();
+              const exchangeRes = await fetch(`https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLivedPageToken}`);
+              const exchangeData = await exchangeRes.json();
 
-            if (exchangeData.access_token) {
-              finalToken = exchangeData.access_token;
-              console.log('Successfully generated Long-Lived Token.');
+              if (exchangeData.access_token) {
+                finalToken = exchangeData.access_token;
+                console.log('Successfully generated Long-Lived Token.');
+              }
+            } else {
+              console.warn('No Instagram Business Account linked to any Facebook Page found.');
+              console.log('Full Accounts Data:', JSON.stringify(accountsData.data, null, 2));
             }
           } else {
-            console.warn('No Instagram Business Account linked to any Facebook Page found.');
-            console.log('Full Accounts Data:', JSON.stringify(accountsData.data, null, 2));
+            console.warn('No Facebook Pages found for this user.');
           }
-        } else {
-          console.warn('No Facebook Pages found for this user.');
+        } catch (e) {
+          console.error('Error in professional token exchange:', e);
         }
-      } catch (e) {
-        console.error('Error in professional token exchange:', e);
       }
     }
+
+    // Sanitize rules: lowercase and trimmed keywords
+    const sanitizedRules = (rules || []).map((rule: any) => ({
+      ...rule,
+      keywords: (rule.keywords || [])
+        .map((kw: string) => kw.toLowerCase().trim())
+        .filter((kw: string) => kw.length > 0)
+    }));
 
     // Save user's configuration
     await kv.set(`bot_config:${user.id}`, {
       ...configData,
-      rules: rules || [],
+      rules: sanitizedRules,
       instagramToken: finalToken ? 'CONNECTED' : '', // Store status, not the raw token here for security in config
       instagramPageId: resolvedPageId || configData.instagramPageId,
       updatedAt: new Date().toISOString()

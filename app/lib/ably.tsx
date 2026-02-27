@@ -259,6 +259,7 @@ export function useCallSignaling(userId: string) {
       // Notify caller that we accepted
       await publish(`user:${normalizedFromId}`, 'call:accepted', { from: userId });
 
+      setIsAccepted(true); // CRITICAL: Stop the safety timer
       setActiveCall(call);
       setIncomingCall(null);
       return call;
@@ -267,9 +268,11 @@ export function useCallSignaling(userId: string) {
   }, [publish, userId, incomingCall]);
 
   const endActiveCall = useCallback(() => {
+    console.log('[Signal] ⏹️ Terminating active call state');
     setActiveCall(null);
     setIsAccepted(false);
     if (callSafetyTimerRef.current) {
+      console.log('[Signal] 🛡️ Clearing safety timer during termination');
       clearTimeout(callSafetyTimerRef.current);
       callSafetyTimerRef.current = null;
     }
@@ -281,23 +284,32 @@ export function useCallSignaling(userId: string) {
     if (activeCall && !isAccepted) {
       // Safety Timer: If call isn't accepted in 45s, auto-cancel
       if (!callSafetyTimerRef.current) {
+        const isInitiator = activeCall.from === userId;
+        console.log(`[Signal] 🛡️ STARTING 45s safety timer. Role: ${isInitiator ? 'Caller' : 'Receiver'}`);
+
         callSafetyTimerRef.current = setTimeout(() => {
-          console.log('[Signal] ⏳ Call connection timed out. Auto-terminating.');
-          // Auto-cancel if we were the initiator
-          if (activeCall.from === userId) {
-            cancelCall(activeCall.channelName.split('-')[1]); // Extract target from channelName if possible, or just clear locally
+          console.log('[Signal] ⏳ Session expired at 45s marker.');
+          if (isInitiator) {
+            console.log('[Signal] 📡 Caller auto-cancelling due to timeout');
+            cancelCall(activeCall.channelName.split('-')[1]);
+          } else {
+            console.log('[Signal] 📡 Receiver auto-hanging up due to safety timeout');
           }
           endActiveCall();
         }, 45000);
       }
     } else {
       if (callSafetyTimerRef.current) {
+        console.log('[Signal] ✅ Safety timer DISARMED (Active call accepted or cleared)');
         clearTimeout(callSafetyTimerRef.current);
         callSafetyTimerRef.current = null;
       }
     }
     return () => {
-      if (callSafetyTimerRef.current) clearTimeout(callSafetyTimerRef.current);
+      if (callSafetyTimerRef.current) {
+        clearTimeout(callSafetyTimerRef.current);
+        callSafetyTimerRef.current = null;
+      }
     };
   }, [activeCall, isAccepted, userId, cancelCall, endActiveCall]);
 

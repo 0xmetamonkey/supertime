@@ -114,12 +114,59 @@ export default function CallStage({
 
   const isVideo = type === 'video';
   const tracksRef = useRef<any[]>([]);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const c = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+    // 'chat' scenario prioritized earpiece on mobile.
+    // We create the client with mode 'rtc' for low latency 2-way audio.
+    const c = AgoraRTC.createClient({
+      mode: 'rtc',
+      codec: 'vp8'
+    });
+
+    // Explicitly set audio scenario and profile for mobile earpiece prioritization
+    try {
+      if ((c as any).setAudioScenario) {
+        console.log('[AGORA] 🎧 Setting audio scenario to CHAT');
+        (c as any).setAudioScenario('chat');
+      }
+
+      if ((c as any).setAudioProfile) {
+        console.log('[AGORA] 🎧 Setting audio profile to speech_standard');
+        (c as any).setAudioProfile('speech_standard');
+      }
+    } catch (e) {
+      console.warn('[AGORA] Audio hint failed:', e);
+    }
+
     setClient(c);
     c.enableAudioVolumeIndicator();
-    return () => { c.leave(); };
+
+    // Monitor connection health
+    const handleStateChange = (curState: string, revState: string, reason?: string) => {
+      console.log(`[AGORA] 🌐 State: ${curState}, Reason: ${reason}`);
+
+      if (curState === 'RECONNECTING' || (curState === 'DISCONNECTED' && reason === 'INTERRUPTED')) {
+        setIsReconnecting(true);
+      } else if (curState === 'CONNECTED') {
+        setIsReconnecting(false);
+        setErrorMessage(null);
+      }
+
+      if (curState === 'FAILED') {
+        setErrorMessage(`Connection failed: ${reason || 'Unknown reason'}. Please try reloading.`);
+        setIsReconnecting(false);
+      }
+    };
+
+    c.on('connection-state-change', handleStateChange);
+
+    return () => {
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      c.off('connection-state-change', handleStateChange);
+      c.leave();
+    };
   }, []);
 
   useEffect(() => {
@@ -127,12 +174,21 @@ export default function CallStage({
     let active = true;
 
     // Listeners for remote user events
-    // We attach these BEFORE calling connect() so we don't miss any events during join
     const handleUserPublished = async (user: IAgoraRTCRemoteUser, mediaType: 'audio' | 'video') => {
       if (user.uid === uid) return;
       console.log(`[CALL] 📥 Remote user published: ${user.uid} (${mediaType})`);
+
+      // If we were in a grace period, clear it
+      if (reconnectTimeoutRef.current) {
+        console.log('[CALL] ⚡ Peer re-joined during grace period. Clearing timeout.');
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+        setIsReconnecting(false);
+      }
+
       try {
         await client.subscribe(user, mediaType);
+        // ... existing subscription logic ...
         console.log(`[CALL] ✨ Subscribed to ${user.uid} (${mediaType})`);
 
         // Update state to trigger re-render
@@ -161,6 +217,7 @@ export default function CallStage({
     };
 
     const handleUserLeft = (user: IAgoraRTCRemoteUser) => {
+      console.log(`[CALL] 📤 Remote user left: ${user.uid}`);
       setRemoteUsers(prev => {
         const next = prev.filter(u => u.uid !== user.uid);
         if (prev.length > 0 && next.length === 0) {
@@ -170,8 +227,16 @@ export default function CallStage({
       });
 
       if (!channelName.startsWith('room-')) {
-        console.log('[CALL] 🛡️ Ending private session as peer has left');
-        onDisconnect();
+        // GRACE PERIOD: On mobile, network can flicker. Don't DC immediately.
+        setIsReconnecting(true);
+        console.log('[CALL] 🛡️ Peer left private session. Starting 15s grace period...');
+
+        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+
+        reconnectTimeoutRef.current = setTimeout(() => {
+          console.log('[CALL] ⏳ Grace period expired. Ending session.');
+          onDisconnect();
+        }, 15000); // 15 second window to recover
       }
     };
 
@@ -362,36 +427,20 @@ export default function CallStage({
   };
 
   const toggleMic = async () => {
-    if (!client || !localTracks?.[0]) return;
+    if (!localTracks?.[0]) return;
     const track = localTracks[0];
-    if (track.enabled) {
-      if (client.connectionState === 'CONNECTED') {
-        await client.unpublish(track);
-      }
-      await track.setEnabled(false);
-    } else {
-      await track.setEnabled(true);
-      if (client.connectionState === 'CONNECTED') {
-        await client.publish(track);
-      }
-    }
+    const newState = !track.enabled;
+    console.log(`[CALL] 🎙️ Toggling Mic: ${newState ? 'ON' : 'OFF'}`);
+    await track.setEnabled(newState);
     setLocalTracks([...localTracks]);
   };
 
   const toggleCam = async () => {
-    if (isVideo && client && localTracks?.[1]) {
+    if (isVideo && localTracks?.[1]) {
       const track = localTracks[1];
-      if (track.enabled) {
-        if (client.connectionState === 'CONNECTED') {
-          await client.unpublish(track);
-        }
-        await track.setEnabled(false);
-      } else {
-        await track.setEnabled(true);
-        if (client.connectionState === 'CONNECTED') {
-          await client.publish(track);
-        }
-      }
+      const newState = !track.enabled;
+      console.log(`[CALL] 📷 Toggling Cam: ${newState ? 'ON' : 'OFF'}`);
+      await track.setEnabled(newState);
       setLocalTracks([...localTracks]);
     }
   };
@@ -585,14 +634,30 @@ export default function CallStage({
         )}
       </div>
 
-      {/* TOP STATUS OVERLAYS (REC ONLY) */}
-      <div className="absolute top-0 left-0 right-0 p-4 md:p-8 flex justify-end items-start z-10 pointer-events-none">
+      {/* TOP STATUS OVERLAYS (REC & RECONNECTING) */}
+      <div className="absolute top-0 left-0 right-0 p-4 md:p-8 flex flex-col items-end gap-2 z-50 pointer-events-none">
         {isRecording && (
           <div className="pointer-events-auto bg-red-600 px-3 py-1 rounded-full border border-white/20 flex items-center gap-2 shadow-2xl animate-in fade-in slide-in-from-right-4">
             <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
             <span className="text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
               REC • {formatDuration(recordDuration)}
             </span>
+          </div>
+        )}
+        {isReconnecting && (
+          <div className="pointer-events-auto flex flex-col items-end gap-2">
+            <div className="bg-neo-yellow text-black px-4 py-2 rounded-xl border-2 border-black flex items-center gap-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] animate-bounce">
+              <div className="w-2 h-2 rounded-full bg-black animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                Reconnecting...
+              </span>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-zinc-900 border border-white/20 text-white text-[9px] font-black uppercase tracking-widest px-4 py-1.5 rounded-lg shadow-xl hover:bg-zinc-800"
+            >
+              Manual Recovery
+            </button>
           </div>
         )}
       </div>

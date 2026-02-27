@@ -68,7 +68,7 @@ export default function BroadcastViewer({
 }: BroadcastViewerProps) {
   const [client] = useState<IAgoraRTCClient>(() => AgoraRTC.createClient({ mode: 'live', codec: 'vp8', role: 'audience' }));
   const [remoteVideo, setRemoteVideo] = useState<IRemoteVideoTrack | null>(null);
-  const [remoteAudio, setRemoteAudio] = useState<IRemoteAudioTrack | null>(null);
+  const [remoteAudioTracks, setRemoteAudioTracks] = useState<IRemoteAudioTrack[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [viewerCount, setViewerCount] = useState(1);
   const [chatInput, setChatInput] = useState('');
@@ -79,13 +79,13 @@ export default function BroadcastViewer({
   const [isSpeakerOff, setIsSpeakerOff] = useState(false);
 
   const toggleSpeaker = () => {
-    if (remoteAudio) {
+    remoteAudioTracks.forEach(track => {
       if (isSpeakerOff) {
-        remoteAudio.play();
+        track.play();
       } else {
-        remoteAudio.stop();
+        track.stop();
       }
-    }
+    });
     setIsSpeakerOff(!isSpeakerOff);
   };
 
@@ -110,15 +110,19 @@ export default function BroadcastViewer({
           if (mediaType === 'video') {
             setRemoteVideo(user.videoTrack || null);
           }
-          if (mediaType === 'audio') {
-            setRemoteAudio(user.audioTrack || null);
-            user.audioTrack?.play();
+          if (mediaType === 'audio' && user.audioTrack) {
+            const track = user.audioTrack;
+            setRemoteAudioTracks(prev => [...prev, track]);
+            track.play();
           }
         });
 
         client.on('user-unpublished', (user, mediaType) => {
           if (mediaType === 'video') setRemoteVideo(null);
-          if (mediaType === 'audio') setRemoteAudio(null);
+          if (mediaType === 'audio' && user.audioTrack) {
+            const track = user.audioTrack;
+            setRemoteAudioTracks(prev => prev.filter(t => t !== track));
+          }
         });
 
         client.on('user-joined', () => setViewerCount(v => v + 1));

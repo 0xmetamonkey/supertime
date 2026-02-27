@@ -29,7 +29,15 @@ import {
   X,
   ShoppingBag,
   Crown,
-  Globe
+  Globe,
+  Loader2,
+  Upload,
+  Link,
+  Calendar,
+  FileText,
+  Eye,
+  Edit2,
+  Package
 } from 'lucide-react';
 import { useClerk } from "@clerk/nextjs";
 
@@ -68,14 +76,34 @@ export default function DashboardClient({ session, username, initialBalance, ini
   const [selectedCategory, setSelectedCategory] = useState<'dm' | 'comment' | null>(null);
 
   const [storefrontTab, setStorefrontTab] = useState<'store' | 'courses' | 'about'>('store');
+  const [products, setProducts] = useState<any[]>([]);
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [productForm, setProductForm] = useState({
+    name: '',
+    description: '',
+    price: '',
+    type: 'digital' as 'digital' | 'link' | 'booking',
+    content: '', // download URL for digital, external URL for link, meeting URL for booking
+    duration: '', // for booking type
+    thumbnail: '',
+  });
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadingThumb, setUploadingThumb] = useState(false);
 
-  // Fetch bot config on mount or when tools tab is visited
+  // Fetch products and bot config
   useEffect(() => {
     // Sync tab from URL if present
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
     if (tabParam && ['overview', 'studio', 'storefront', 'profile', 'tools', 'wallet', 'membership'].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
+    }
+
+    if (activeTab === 'storefront') {
+      fetch('/api/user/products')
+        .then(res => res.json())
+        .then(data => setProducts(data.products || []));
     }
 
     if (activeTab === 'tools') {
@@ -107,48 +135,73 @@ export default function DashboardClient({ session, username, initialBalance, ini
     }
   }, [activeTab]);
 
-  // Initialize Facebook SDK
+  // Handle Instagram OAuth callback
   useEffect(() => {
-    const appId = process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID;
-    if (!appId) return;
-
-    (window as any).fbAsyncInit = function () {
-      (window as any).FB.init({
-        appId: appId,
-        cookie: true,
-        xfbml: true,
-        version: 'v19.0'
-      });
-    };
-
-    // Load the SDK asynchronously
-    (function (d, s, id) {
-      var js, fjs = d.getElementsByTagName(s)[0];
-      if (d.getElementById(id)) return;
-      js = d.createElement(s) as any; js.id = id;
-      js.src = "https://connect.facebook.net/en_US/sdk.js";
-      fjs.parentNode?.insertBefore(js, fjs);
-    }(document, 'script', 'facebook-jssdk'));
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('ig_connected') === 'true') {
+      setIsConnected(true);
+      // Clean URL
+      window.history.replaceState({}, '', '/dashboard');
+    }
+    if (params.get('ig_error')) {
+      console.error('Instagram connection error:', params.get('ig_error'));
+      window.history.replaceState({}, '', '/dashboard');
+    }
   }, []);
 
-  const handleFacebookLogin = () => {
-    if (!(window as any).FB) {
-      alert('Facebook SDK not loaded yet.');
+  const handleInstagramConnect = () => {
+    const appId = process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID;
+    if (!appId) {
+      alert('Instagram App ID not configured.');
       return;
     }
 
-    (window as any).FB.login((response: any) => {
-      if (response.authResponse) {
-        const userToken = response.authResponse.accessToken;
-        // Send this token to our backend to exchange it for a Page Access Token
-        handleSaveBotConfig(userToken);
-      } else {
-        console.log('User cancelled login or did not fully authorize.');
+    const redirectUri = encodeURIComponent(
+      `${window.location.origin}/api/auth/instagram/callback`
+    );
+
+    // native Instagram OAuth URL
+    const scopes = [
+      'instagram_business_basic',
+      'instagram_business_manage_messages',
+      'instagram_business_manage_comments',
+    ].join(',');
+
+    const authUrl = `https://www.instagram.com/oauth/authorize?enable_fb_login=0&client_id=${appId}&redirect_uri=${redirectUri}&response_type=code&scope=${scopes}`;
+
+    const width = 600;
+    const height = 700;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+
+    // Open in a popup window instead of redirecting
+    const popup = window.open(
+      authUrl,
+      'instagram_auth',
+      `width=${width},height=${height},top=${top},left=${left},toolbar=no,menubar=no,scrollbars=yes,status=no`
+    );
+
+    // Listen for messages from the popup
+    const messageListener = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+
+      if (event.data?.type === 'IG_AUTH_SUCCESS') {
+        setIsConnected(true);
+        window.removeEventListener('message', messageListener);
+        popup?.close();
+      } else if (event.data?.type === 'IG_AUTH_ERROR') {
+        console.error('Instagram connection error:', event.data.error);
+        window.removeEventListener('message', messageListener);
+        popup?.close();
       }
-    }, {
-      scope: 'public_profile,email,instagram_basic,instagram_manage_messages,pages_show_list,pages_read_engagement',
-      return_scopes: true
-    });
+    };
+
+    window.addEventListener('message', messageListener);
+
+    // Fallback if popup blocker prevents the window from opening
+    if (!popup) {
+      window.location.href = authUrl;
+    }
   };
 
   const hasActiveRules = botRules.length > 0 && !(botRules.length === 1 && (botRules[0].keywords?.length === 0 || !botRules[0].keywords) && botRules[0].response === "");
@@ -183,7 +236,90 @@ export default function DashboardClient({ session, username, initialBalance, ini
     }
   };
 
+  const handleSaveProducts = async (newProducts: any[]) => {
+    setProducts(newProducts);
+    try {
+      await fetch('/api/user/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products: newProducts }),
+      });
+    } catch (err) {
+      console.error('Error saving products:', err);
+    }
+  };
+
+  const handleFileUpload = async (file: File, type: 'product' | 'thumbnail') => {
+    if (type === 'product') setUploadingFile(true);
+    else setUploadingThumb(true);
+    try {
+      const res = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
+        method: 'POST',
+        body: file,
+      });
+      const data = await res.json();
+      if (data.url) {
+        if (type === 'product') {
+          setProductForm(prev => ({ ...prev, content: data.url }));
+        } else {
+          setProductForm(prev => ({ ...prev, thumbnail: data.url }));
+        }
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+    } finally {
+      if (type === 'product') setUploadingFile(false);
+      else setUploadingThumb(false);
+    }
+  };
+
+  const handleProductSubmit = () => {
+    if (!productForm.name || !productForm.price) return;
+    const product = {
+      id: editingProduct?.id || Math.random().toString(36).substr(2, 9),
+      name: productForm.name,
+      description: productForm.description,
+      price: parseInt(productForm.price),
+      type: productForm.type,
+      content: productForm.content,
+      duration: productForm.duration,
+      thumbnail: productForm.thumbnail,
+      createdAt: editingProduct?.createdAt || Date.now(),
+    };
+    let newProducts;
+    if (editingProduct) {
+      newProducts = products.map(p => p.id === editingProduct.id ? product : p);
+    } else {
+      newProducts = [...products, product];
+    }
+    handleSaveProducts(newProducts);
+    setProductForm({ name: '', description: '', price: '', type: 'digital', content: '', duration: '', thumbnail: '' });
+    setShowProductForm(false);
+    setEditingProduct(null);
+  };
+
+  const startEditProduct = (prod: any) => {
+    setEditingProduct(prod);
+    setProductForm({
+      name: prod.name || '',
+      description: prod.description || '',
+      price: String(prod.price || ''),
+      type: prod.type || 'digital',
+      content: prod.content || '',
+      duration: prod.duration || '',
+      thumbnail: prod.thumbnail || '',
+    });
+    setShowProductForm(true);
+  };
+
+  const productTypeConfig = {
+    digital: { icon: Package, label: 'Digital Product', color: 'neo-green', desc: 'PDF, preset, template, video' },
+    link: { icon: Link, label: 'Link / Course', color: 'neo-blue', desc: 'Course, community, resource URL' },
+    booking: { icon: Calendar, label: 'Booking / Call', color: 'neo-pink', desc: 'Zoom, Meet, Calendly link' },
+  };
+
   const isCreator = !!username;
+
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -259,11 +395,11 @@ export default function DashboardClient({ session, username, initialBalance, ini
             <span className="text-[8px] font-black uppercase text-center">Home</span>
           </button>
           <button
-            onClick={() => setActiveTab('studio')}
-            className={`flex flex-col items-center gap-1 p-2 ${activeTab === 'studio' ? 'text-neo-pink' : 'text-zinc-500'}`}
+            onClick={() => setActiveTab('storefront')}
+            className={`flex flex-col items-center gap-1 p-2 ${activeTab === 'storefront' ? 'text-neo-pink' : 'text-zinc-500'}`}
           >
-            <Video className="w-5 h-5" />
-            <span className="text-[8px] font-black uppercase text-center">Studio</span>
+            <Store className="w-5 h-5" />
+            <span className="text-[8px] font-black uppercase text-center">Store</span>
           </button>
           <button
             onClick={() => setActiveTab('tools')}
@@ -280,11 +416,8 @@ export default function DashboardClient({ session, username, initialBalance, ini
             <span className="text-[8px] font-black uppercase text-center">Vault</span>
           </button>
           <button
-            onClick={() => {
-              // We could open a drawer, but for now let's just cycle to membership or show a tiny indicator
-              setActiveTab('membership');
-            }}
-            className={`flex flex-col items-center gap-1 p-2 ${activeTab === 'membership' || activeTab === 'profile' || activeTab === 'storefront' ? 'text-neo-pink' : 'text-zinc-500'}`}
+            onClick={() => setActiveTab('membership')}
+            className={`flex flex-col items-center gap-1 p-2 ${activeTab === 'membership' ? 'text-neo-pink' : 'text-zinc-500'}`}
           >
             <Sparkles className="w-5 h-5" />
             <span className="text-[8px] font-black uppercase text-center">Pro</span>
@@ -432,11 +565,24 @@ export default function DashboardClient({ session, username, initialBalance, ini
                     </motion.div>
 
                     <motion.div variants={itemVariants} className="neo-box bg-neo-yellow p-8 border-4 border-black shadow-[12px_12px_0px_0px_black]">
-                      <Sparkles className="w-8 h-8 text-black mb-6" />
-                      <h4 className="text-xl font-black uppercase tracking-tighter mb-4 italic">The Mission</h4>
-                      <p className="text-xs font-bold leading-relaxed text-zinc-800">
-                        Presence into bliss. 100% capacity.
-                      </p>
+                      <Store className="w-8 h-8 text-black mb-6" />
+                      <h4 className="text-xl font-black uppercase tracking-tighter mb-3 italic">Your Store</h4>
+                      <div className="space-y-2 mb-6">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold uppercase text-zinc-700">Products</span>
+                          <span className="text-sm font-black">{products?.length || 0}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold uppercase text-zinc-700">Status</span>
+                          <span className="text-sm font-black">{products?.length > 0 ? '🟢 Live' : '⚫ Empty'}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('storefront')}
+                        className="w-full py-3 bg-black text-white font-black uppercase text-[10px] border-2 border-black hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2"
+                      >
+                        Manage Store <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
                     </motion.div>
                   </div>
                 </div>
@@ -631,22 +777,6 @@ export default function DashboardClient({ session, username, initialBalance, ini
                         <p className="text-[8px] font-bold uppercase mt-2">Coming Soon</p>
                       </div>
                     </div>
-
-                    {/* EXTRA OPTIONS FOOTER */}
-                    <div className="flex flex-wrap justify-center gap-12 pt-8 opacity-60">
-                      <div className="flex items-center gap-2">
-                        <Zap className="w-4 h-4 text-neo-yellow" />
-                        <span className="text-[10px] font-black uppercase">Most popular automations</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-neo-blue" />
-                        <span className="text-[10px] font-black uppercase">Publish in 3 minutes</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Bot className="w-4 h-4 text-neo-pink" />
-                        <span className="text-[10px] font-black uppercase">Preview first, go live when ready</span>
-                      </div>
-                    </div>
                   </div>
                 ) : (
                   <div className="space-y-8">
@@ -684,13 +814,6 @@ export default function DashboardClient({ session, username, initialBalance, ini
                         </div>
                         <div className="flex gap-4">
                           <button
-                            onClick={() => handleSaveBotConfig()}
-                            disabled={savingConfig}
-                            className="neo-btn bg-black text-white px-8 py-3 font-black uppercase text-sm hover:bg-neo-blue transition-colors disabled:opacity-50"
-                          >
-                            {savingConfig ? 'SAVING...' : 'SAVE CONFIG'}
-                          </button>
-                          <button
                             onClick={(e) => {
                               if (e.altKey || !isConnected) {
                                 if (e.altKey) {
@@ -701,7 +824,7 @@ export default function DashboardClient({ session, username, initialBalance, ini
                                     handleSaveBotConfig(token);
                                   }
                                 } else {
-                                  handleFacebookLogin();
+                                  handleInstagramConnect();
                                 }
                               } else {
                                 if (confirm('Disconnect Instagram?')) {
@@ -1064,9 +1187,17 @@ export default function DashboardClient({ session, username, initialBalance, ini
                                         setBotView('list');
                                       }}
                                       disabled={savingConfig}
-                                      className="neo-btn bg-neo-pink text-white px-8 py-3 font-black uppercase text-sm flex items-center gap-2"
+                                      className="neo-btn bg-neo-pink text-white px-8 py-3 font-black uppercase text-sm flex items-center gap-2 group"
                                     >
-                                      {savingConfig ? 'SAVING...' : 'FINISH & GO LIVE'} <Zap className="w-4 h-4 shadow-sm" />
+                                      {savingConfig ? (
+                                        <>
+                                          <Loader2 className="w-4 h-4 animate-spin" /> SAVING...
+                                        </>
+                                      ) : (
+                                        <>
+                                          FINISH & GO LIVE <Zap className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                        </>
+                                      )}
                                     </button>
                                   </div>
                                 </div>
@@ -1192,17 +1323,6 @@ export default function DashboardClient({ session, username, initialBalance, ini
                       )}
                     </div>
 
-                    <div className="neo-box bg-neo-yellow/10 p-6 border-4 border-black shadow-[4px_4px_0px_0px_black] flex items-start gap-4">
-                      <div className="w-10 h-10 bg-neo-yellow flex items-center justify-center border-4 border-black shrink-0">
-                        <MessageSquare className="w-6 h-6" />
-                      </div>
-                      <div className="space-y-1">
-                        <h4 className="font-black uppercase text-sm italic">Pro Tip: Strategy Selection</h4>
-                        <p className="text-[10px] font-bold text-zinc-600 uppercase leading-relaxed">
-                          Your bot is currently using **Standard Mode**. It will trigger on exact keyword matches. Upgrade to Premium for AI Fuzzy matching!
-                        </p>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>
@@ -1210,141 +1330,412 @@ export default function DashboardClient({ session, username, initialBalance, ini
 
             {activeTab === 'storefront' && (
               <div className="space-y-8">
-                <div className="neo-box bg-white p-8 border-4 border-black shadow-[8px_8px_0px_0px_black] relative overflow-hidden">
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10 pb-6 border-b-4 border-black">
-                    <div>
-                      <h3 className="text-4xl font-black uppercase italic tracking-tighter flex items-center gap-3">
-                        <Store className="w-10 h-10 text-neo-blue" /> Storefront Demo
-                      </h3>
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Preview your organized profile layout</p>
-                    </div>
-                    <div className="flex gap-4">
-                      <button
-                        onClick={() => router.push(`/${username || ''}`)}
-                        className="neo-btn bg-black text-white px-8 py-3 font-black uppercase text-sm hover:bg-neo-blue transition-colors"
-                      >
-                        View Live Profile
-                      </button>
-                    </div>
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+                  <div>
+                    <h3 className="text-3xl font-black uppercase italic tracking-tighter">Product Manager</h3>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Sell digital products, courses, bookings & more</p>
                   </div>
+                  <div className="flex gap-3">
+                    {username && (
+                      <button
+                        onClick={() => window.open('/' + username, '_blank')}
+                        className="neo-btn bg-white text-black px-5 py-3 font-black uppercase text-[10px] flex items-center gap-2 border-4 border-black"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> View Live Store
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setEditingProduct(null);
+                        setProductForm({ name: '', description: '', price: '', type: 'digital', content: '', duration: '', thumbnail: '' });
+                        setShowProductForm(true);
+                      }}
+                      className="neo-btn bg-black text-white px-5 py-3 font-black uppercase text-[10px] flex items-center gap-2"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Product
+                    </button>
+                  </div>
+                </div>
 
-                  {/* PREVIEW CONTAINER */}
-                  <div className="max-w-4xl mx-auto border-4 border-black bg-[#F9F9F9] shadow-[12px_12px_0px_0px_black] min-h-[600px] overflow-hidden flex flex-col">
-                    {/* MINI HEADER */}
-                    <div className="px-6 py-4 flex justify-between items-center bg-white border-b-4 border-black">
-                      <div className="flex items-center gap-3">
-                        <div className="tiny-call-btn">
-                          <Video className="w-4 h-4" />
-                        </div>
-                        <div className="tiny-call-btn">
-                          <Clock className="w-4 h-4" />
+                {/* Product Form Modal */}
+                <AnimatePresence>
+                  {showProductForm && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="neo-box bg-white p-8 border-4 border-black shadow-[8px_8px_0px_0px_black]"
+                    >
+                      <div className="flex justify-between items-center mb-8">
+                        <h4 className="text-2xl font-black uppercase italic tracking-tighter">
+                          {editingProduct ? 'Edit Product' : 'New Product'}
+                        </h4>
+                        <button onClick={() => { setShowProductForm(false); setEditingProduct(null); }} className="p-2 hover:bg-zinc-100 transition-colors">
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      {/* Type Selector */}
+                      <div className="mb-8">
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-3">Product Type</label>
+                        <div className="grid grid-cols-3 gap-3">
+                          {(['digital', 'link', 'booking'] as const).map((type) => {
+                            const config = productTypeConfig[type];
+                            const isActive = productForm.type === type;
+                            return (
+                              <button
+                                key={type}
+                                onClick={() => setProductForm(prev => ({ ...prev, type }))}
+                                className={`p-4 border-4 border-black text-left transition-all ${isActive
+                                  ? `bg-black text-white shadow-none translate-x-[2px] translate-y-[2px]`
+                                  : 'bg-white text-black shadow-[4px_4px_0px_0px_black] hover:shadow-[2px_2px_0px_0px_black] hover:translate-x-[1px] hover:translate-y-[1px]'
+                                  }`}
+                              >
+                                <config.icon className={`w-5 h-5 mb-2 ${isActive ? 'text-neo-yellow' : ''}`} />
+                                <p className="text-xs font-black uppercase leading-none">{config.label}</p>
+                                <p className={`text-[8px] font-bold uppercase mt-1 ${isActive ? 'opacity-60' : 'text-zinc-400'}`}>{config.desc}</p>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="monochrome-social">
-                          <Instagram className="w-4 h-4" />
+
+                      {/* Form Fields */}
+                      <div className="grid md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Product Name *</label>
+                          <input
+                            type="text"
+                            value={productForm.name}
+                            onChange={(e) => setProductForm(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="e.g. Premium Lightroom Presets"
+                            className="w-full bg-zinc-50 border-4 border-black p-3 font-bold text-sm focus:outline-none focus:bg-white transition-colors"
+                          />
                         </div>
-                        <div className="monochrome-social">
-                          <Globe className="w-4 h-4" />
-                        </div>
-                        <div className="monochrome-social">
-                          <Zap className="w-4 h-4" />
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Price (₹) *</label>
+                          <input
+                            type="number"
+                            value={productForm.price}
+                            onChange={(e) => setProductForm(prev => ({ ...prev, price: e.target.value }))}
+                            placeholder="499"
+                            min="0"
+                            className="w-full bg-zinc-50 border-4 border-black p-3 font-bold text-sm focus:outline-none focus:bg-white transition-colors"
+                          />
                         </div>
                       </div>
-                    </div>
 
-                    {/* HERO PREVIEW */}
-                    <div className="p-8 text-center border-b-4 border-black bg-white">
-                      <div className="w-24 h-24 mx-auto border-4 border-black mb-4 flex items-center justify-center bg-neo-yellow shadow-[4px_4px_0px_0px_black]">
-                        <UserCircle className="w-12 h-12" />
+                      <div className="mb-6">
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Description</label>
+                        <textarea
+                          value={productForm.description}
+                          onChange={(e) => setProductForm(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Describe what the buyer will get..."
+                          rows={3}
+                          className="w-full bg-zinc-50 border-4 border-black p-3 font-bold text-sm focus:outline-none focus:bg-white transition-colors resize-none"
+                        />
                       </div>
-                      <h4 className="text-3xl font-black uppercase tracking-tighter">@{username || 'CREATOR'}</h4>
-                      <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mt-2 px-12 leading-relaxed">
-                        Helping you scale your digital empire through high-energy sessions and elite digital assets.
-                      </p>
-                    </div>
 
-                    {/* TABS PREVIEW */}
-                    <div className="bg-white flex border-b-4 border-black">
-                      <button
-                        onClick={() => setStorefrontTab('store')}
-                        className={`flex-1 store-tab-btn ${storefrontTab === 'store' ? 'store-tab-active' : 'store-tab-inactive'}`}
-                      >
-                        Store
-                      </button>
-                      <button
-                        onClick={() => setStorefrontTab('courses')}
-                        className={`flex-1 store-tab-btn ${storefrontTab === 'courses' ? 'store-tab-active' : 'store-tab-inactive'}`}
-                      >
-                        Courses
-                      </button>
-                      <button
-                        onClick={() => setStorefrontTab('about')}
-                        className={`flex-1 store-tab-btn ${storefrontTab === 'about' ? 'store-tab-active' : 'store-tab-inactive'}`}
-                      >
-                        About
-                      </button>
-                    </div>
-
-                    {/* TAB CONTENT */}
-                    <div className="flex-1 p-8">
-                      {storefrontTab === 'store' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {[
-                            { name: '15-Min Strategy PDF', price: '₹999', time: '15-Min', type: 'PDF' },
-                            { name: 'The Growth Script', price: '₹499', time: '5-Min', type: 'Script' }
-                          ].map((item, i) => (
-                            <div key={i} className="neo-box bg-white p-6 border-4 border-black shadow-[6px_6px_0px_0px_black] group hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all cursor-pointer">
-                              <div className="flex justify-between items-start mb-4">
-                                <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-neo-yellow border-2 border-black">{item.time} Value</span>
-                                <ShoppingBag className="w-4 h-4 text-zinc-400 group-hover:text-neo-blue transition-colors" />
+                      {/* Type-specific fields */}
+                      {productForm.type === 'digital' && (
+                        <div className="mb-6">
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Upload File</label>
+                          <div className="border-4 border-black border-dashed p-6 bg-zinc-50 text-center">
+                            {productForm.content ? (
+                              <div className="flex items-center justify-center gap-3">
+                                <FileText className="w-5 h-5 text-neo-green" />
+                                <span className="text-xs font-black uppercase text-neo-green">File Uploaded ✓</span>
+                                <button onClick={() => setProductForm(prev => ({ ...prev, content: '' }))} className="text-zinc-400 hover:text-red-500">
+                                  <X className="w-4 h-4" />
+                                </button>
                               </div>
-                              <h5 className="font-black uppercase tracking-tight text-sm mb-1">{item.name}</h5>
-                              <p className="text-[10px] font-bold text-zinc-400 uppercase">{item.type}</p>
-                              <div className="mt-4 pt-4 border-t-2 border-zinc-50 flex justify-between items-center">
-                                <span className="font-black text-neo-green">{item.price}</span>
-                                <span className="text-[8px] font-black uppercase text-neo-blue">Buy Now</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {storefrontTab === 'courses' && (
-                        <div className="flex flex-col items-center justify-center h-48 py-10 border-4 border-black border-dashed opacity-50 bg-white">
-                          <Sparkles className="w-8 h-8 mb-4 text-neo-blue" />
-                          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Enrollments loading...</p>
-                        </div>
-                      )}
-                      {storefrontTab === 'about' && (
-                        <div className="space-y-6">
-                          <div className="p-6 bg-white border-4 border-black shadow-[4px_4px_0px_0px_black]">
-                            <h5 className="text-xs font-black uppercase tracking-widest mb-2 italic">About the Creator</h5>
-                            <p className="text-[10px] font-bold text-zinc-600 uppercase leading-relaxed">
-                              I've spent 10,000+ minutes mastery my craft. Now I'm packaging that time into bite-sized digital assets for you.
-                            </p>
+                            ) : (
+                              <label className="cursor-pointer flex flex-col items-center gap-2">
+                                <Upload className={`w-8 h-8 ${uploadingFile ? 'animate-bounce text-neo-blue' : 'text-zinc-300'}`} />
+                                <span className="text-[10px] font-black uppercase text-zinc-400">
+                                  {uploadingFile ? 'Uploading...' : 'Click to upload (PDF, ZIP, etc.)'}
+                                </span>
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'product')}
+                                  disabled={uploadingFile}
+                                />
+                              </label>
+                            )}
                           </div>
                         </div>
                       )}
-                    </div>
+
+                      {productForm.type === 'link' && (
+                        <div className="mb-6">
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">External URL</label>
+                          <input
+                            type="url"
+                            value={productForm.content}
+                            onChange={(e) => setProductForm(prev => ({ ...prev, content: e.target.value }))}
+                            placeholder="https://notion.so/your-course or discord.gg/invite"
+                            className="w-full bg-zinc-50 border-4 border-black p-3 font-bold text-sm focus:outline-none focus:bg-white transition-colors"
+                          />
+                        </div>
+                      )}
+
+                      {productForm.type === 'booking' && (
+                        <div className="grid md:grid-cols-2 gap-6 mb-6">
+                          <div>
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Meeting Link</label>
+                            <input
+                              type="url"
+                              value={productForm.content}
+                              onChange={(e) => setProductForm(prev => ({ ...prev, content: e.target.value }))}
+                              placeholder="https://meet.google.com/... or calendly.com/..."
+                              className="w-full bg-zinc-50 border-4 border-black p-3 font-bold text-sm focus:outline-none focus:bg-white transition-colors"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Duration</label>
+                            <input
+                              type="text"
+                              value={productForm.duration}
+                              onChange={(e) => setProductForm(prev => ({ ...prev, duration: e.target.value }))}
+                              placeholder="30 min / 1 hour"
+                              className="w-full bg-zinc-50 border-4 border-black p-3 font-bold text-sm focus:outline-none focus:bg-white transition-colors"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cover Image */}
+                      <div className="mb-8">
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Cover Image (optional)</label>
+                        <div className="border-4 border-black border-dashed p-4 bg-zinc-50">
+                          {productForm.thumbnail ? (
+                            <div className="flex items-center gap-4">
+                              <img src={productForm.thumbnail} alt="Cover" className="w-16 h-16 object-cover border-2 border-black" />
+                              <span className="text-[10px] font-black uppercase text-neo-green flex-1">Image uploaded ✓</span>
+                              <button onClick={() => setProductForm(prev => ({ ...prev, thumbnail: '' }))} className="text-zinc-400 hover:text-red-500">
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer flex items-center justify-center gap-2 py-2">
+                              <Upload className={`w-5 h-5 ${uploadingThumb ? 'animate-bounce text-neo-blue' : 'text-zinc-300'}`} />
+                              <span className="text-[10px] font-black uppercase text-zinc-400">
+                                {uploadingThumb ? 'Uploading...' : 'Upload cover image'}
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'thumbnail')}
+                                disabled={uploadingThumb}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Submit */}
+                      <div className="flex justify-end gap-4">
+                        <button
+                          onClick={() => { setShowProductForm(false); setEditingProduct(null); }}
+                          className="px-6 py-3 font-black uppercase text-[10px] text-zinc-400 hover:text-black transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleProductSubmit}
+                          disabled={!productForm.name || !productForm.price}
+                          className="neo-btn bg-black text-white px-8 py-3 font-black uppercase text-[10px] flex items-center gap-2 disabled:opacity-30"
+                        >
+                          <Zap className="w-3.5 h-3.5" />
+                          {editingProduct ? 'Save Changes' : 'Publish Product'}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Stats Bar */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="neo-box bg-white p-5 border-4 border-black shadow-[4px_4px_0px_0px_black]">
+                    <span className="block text-[8px] font-black uppercase tracking-widest text-zinc-400 mb-1">Total Products</span>
+                    <span className="text-2xl font-black">{products?.length || 0}</span>
                   </div>
+                  <div className="neo-box bg-white p-5 border-4 border-black shadow-[4px_4px_0px_0px_black]">
+                    <span className="block text-[8px] font-black uppercase tracking-widest text-zinc-400 mb-1">Types Active</span>
+                    <span className="text-2xl font-black">{new Set(products?.map((p: any) => p.type)).size || 0}</span>
+                  </div>
+                  <div className="neo-box bg-white p-5 border-4 border-black shadow-[4px_4px_0px_0px_black]">
+                    <span className="block text-[8px] font-black uppercase tracking-widest text-zinc-400 mb-1">Store Status</span>
+                    <span className="text-2xl font-black text-neo-green">{products?.length > 0 ? 'LIVE' : '—'}</span>
+                  </div>
+                </div>
+
+                {/* Product Grid */}
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {products?.map((prod: any) => {
+                    const typeConf = productTypeConfig[prod.type as keyof typeof productTypeConfig] || productTypeConfig.digital;
+                    const TypeIcon = typeConf.icon;
+                    return (
+                      <motion.div
+                        key={prod.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="neo-box bg-white border-4 border-black shadow-[6px_6px_0px_0px_black] group relative overflow-hidden hover:shadow-[8px_8px_0px_0px_black] hover:translate-x-[-1px] hover:translate-y-[-1px] transition-all"
+                      >
+                        {/* Thumbnail / Header */}
+                        {prod.thumbnail ? (
+                          <div className="h-36 bg-zinc-100 border-b-4 border-black overflow-hidden">
+                            <img src={prod.thumbnail} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          </div>
+                        ) : (
+                          <div className={`h-24 bg-${typeConf.color}/10 border-b-4 border-black flex items-center justify-center`}>
+                            <TypeIcon className="w-10 h-10 opacity-20" />
+                          </div>
+                        )}
+
+                        <div className="p-6">
+                          {/* Type Badge */}
+                          <div className="flex justify-between items-start mb-3">
+                            <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-black text-white`}>
+                              {typeConf.label}
+                            </span>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => startEditProduct(prod)}
+                                className="p-1.5 text-zinc-300 hover:text-neo-blue transition-colors"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm('Delete this product?')) {
+                                    handleSaveProducts(products.filter((p: any) => p.id !== prod.id));
+                                  }
+                                }}
+                                className="p-1.5 text-zinc-300 hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <h4 className="text-lg font-black uppercase tracking-tight mb-1 leading-tight">{prod.name}</h4>
+                          {prod.description && (
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase leading-relaxed mb-4 line-clamp-2">{prod.description}</p>
+                          )}
+
+                          <div className="flex justify-between items-end pt-4 border-t-2 border-zinc-100">
+                            <span className="text-xl font-black text-neo-green">₹{prod.price}</span>
+                            {prod.type === 'booking' && prod.duration && (
+                              <span className="text-[8px] font-black uppercase text-zinc-400 flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {prod.duration}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+
+                  {/* Empty State / Add Card */}
+                  {(!products || products.length === 0) ? (
+                    <div
+                      onClick={() => {
+                        setEditingProduct(null);
+                        setProductForm({ name: '', description: '', price: '', type: 'digital', content: '', duration: '', thumbnail: '' });
+                        setShowProductForm(true);
+                      }}
+                      className="lg:col-span-3 py-16 bg-zinc-50 border-4 border-black border-dashed flex flex-col items-center justify-center cursor-pointer hover:bg-zinc-100 transition-colors group"
+                    >
+                      <div className="w-16 h-16 bg-white border-4 border-black flex items-center justify-center mb-4 shadow-[4px_4px_0px_0px_black] group-hover:shadow-none group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">
+                        <Plus className="w-8 h-8 text-zinc-400 group-hover:text-black transition-colors" />
+                      </div>
+                      <p className="text-sm font-black uppercase">Add Your First Product</p>
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase mt-1">Digital goods, courses, bookings & more</p>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => {
+                        setEditingProduct(null);
+                        setProductForm({ name: '', description: '', price: '', type: 'digital', content: '', duration: '', thumbnail: '' });
+                        setShowProductForm(true);
+                      }}
+                      className="border-4 border-black border-dashed flex flex-col items-center justify-center p-8 cursor-pointer hover:bg-zinc-50 transition-colors group"
+                    >
+                      <Plus className="w-6 h-6 text-zinc-300 group-hover:text-black transition-colors mb-2" />
+                      <span className="text-[10px] font-black uppercase text-zinc-400 group-hover:text-black">Add Another</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
             {/* Fallback for empty tabs */}
             {activeTab === 'profile' && (
-              <div className="flex flex-col items-center justify-center py-20 bg-white border-4 border-black border-dashed opacity-50">
-                <Sparkles className="w-12 h-12 mb-4" />
-                <h3 className="text-xl font-black uppercase tracking-widest text-black">Feature Coming Soon</h3>
-                <p className="text-[10px] font-bold uppercase mt-2">This module is being synchronized...</p>
-                <button className="mt-8 neo-btn bg-black text-white px-8 py-3 font-black uppercase tracking-widest text-sm" onClick={() => router.push(`/${username || ''}`)}>
-                  View Public Profile
-                </button>
+              <div className="space-y-8">
+                <div className="neo-box bg-white p-10 border-4 border-black shadow-[8px_8px_0px_0px_black]">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="w-24 h-24 bg-neo-pink border-4 border-black mb-6 flex items-center justify-center text-white font-black text-3xl uppercase shadow-[6px_6px_0px_0px_black]">
+                      {username?.[0] || 'S'}
+                    </div>
+                    <h3 className="text-4xl font-black uppercase tracking-tighter italic mb-2">@{username || 'Creator'}</h3>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-8">
+                      supertime.wtf/{username || 'your-name'}
+                    </p>
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => username && window.open('/' + username, '_blank')}
+                        className="neo-btn bg-black text-white px-8 py-3 font-black uppercase text-[10px] flex items-center gap-2"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> View Public Profile
+                      </button>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(`https://supertime.wtf/${username || ''}`);
+                          alert('Profile link copied!');
+                        }}
+                        className="neo-btn bg-white text-black px-8 py-3 font-black uppercase text-[10px] flex items-center gap-2 border-4 border-black"
+                      >
+                        <Globe className="w-3.5 h-3.5" /> Copy Link
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-6">
+                  <button
+                    onClick={() => setActiveTab('storefront')}
+                    className="neo-box bg-white p-6 border-4 border-black shadow-[4px_4px_0px_0px_black] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all text-left"
+                  >
+                    <Store className="w-6 h-6 mb-3" />
+                    <h4 className="text-sm font-black uppercase">Manage Products</h4>
+                    <p className="text-[8px] font-bold text-zinc-400 uppercase mt-1">Add, edit, or remove products</p>
+                  </button>
+                  <button
+                    onClick={() => router.push('/studio')}
+                    className="neo-box bg-white p-6 border-4 border-black shadow-[4px_4px_0px_0px_black] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all text-left"
+                  >
+                    <Video className="w-6 h-6 mb-3" />
+                    <h4 className="text-sm font-black uppercase">Studio Settings</h4>
+                    <p className="text-[8px] font-bold text-zinc-400 uppercase mt-1">Pricing, bio, availability</p>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('tools')}
+                    className="neo-box bg-white p-6 border-4 border-black shadow-[4px_4px_0px_0px_black] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all text-left"
+                  >
+                    <Bot className="w-6 h-6 mb-3" />
+                    <h4 className="text-sm font-black uppercase">Instagram Bot</h4>
+                    <p className="text-[8px] font-bold text-zinc-400 uppercase mt-1">Auto-DM to drive traffic</p>
+                  </button>
+                </div>
               </div>
             )}
           </motion.div>
         </div>
-      </main>
-    </div>
+      </main >
+    </div >
   );
 }

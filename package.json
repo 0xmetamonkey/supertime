@@ -21,7 +21,6 @@
     "framer-motion": "^12.30.0",
     "lucide-react": "^0.563.0",
     "next": "16.1.4",
-    "next-auth": "^5.0.0-beta.30",
     "razorpay": "^2.9.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"

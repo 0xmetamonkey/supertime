@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import Script from 'next/script';
 import {
   Zap,
   Globe,
@@ -16,7 +17,15 @@ import {
   Link as LinkIcon,
   Send,
   HelpCircle,
-  ChevronDown
+  ChevronDown,
+  ShoppingBag,
+  Package,
+  Calendar,
+  Coffee,
+  Download,
+  ExternalLink,
+  Check,
+  Loader2
 } from 'lucide-react';
 import WalletManager from '../components/WalletManager';
 import dynamic from 'next/dynamic';
@@ -142,6 +151,136 @@ export default function CreatorClient({
   const [isLoadingAdmirers, setIsLoadingAdmirers] = useState(false);
 
   const [profileTab, setProfileTab] = useState<'store' | 'courses' | 'about'>('store');
+  const [products, setProducts] = useState<any[]>([]);
+  const [tipAmount, setTipAmount] = useState('');
+  const [purchasedProduct, setPurchasedProduct] = useState<any>(null);
+  const [buyingId, setBuyingId] = useState<string | null>(null);
+  const [tipping, setTipping] = useState(false);
+  const [tipSuccess, setTipSuccess] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/user/products?username=${username}`)
+      .then(res => res.json())
+      .then(data => setProducts(data.products || []));
+  }, [username]);
+
+  const handleBuyProduct = async (product: any) => {
+    if (!isLoggedIn) {
+      openSignIn({ forceRedirectUrl: window.location.pathname });
+      return;
+    }
+    setBuyingId(product.id);
+    try {
+      const res = await fetch('/api/payment/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: product.price,
+          productId: product.id,
+          creatorUsername: username,
+        }),
+      });
+      const order = await res.json();
+      if (!order.orderId) { setBuyingId(null); return; }
+
+      const options = {
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency,
+        order_id: order.orderId,
+        name: `Buy: ${product.name}`,
+        description: `From @${username}`,
+        handler: async (response: any) => {
+          const verifyRes = await fetch('/api/payment/purchase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'verify',
+              amount: product.price,
+              productId: product.id,
+              creatorUsername: username,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }),
+          });
+          const result = await verifyRes.json();
+          if (result.success && result.deliverable) {
+            setPurchasedProduct(result.deliverable);
+          } else if (result.success) {
+            setPurchasedProduct({ type: product.type, content: product.content, name: product.name });
+          }
+          setBuyingId(null);
+        },
+        modal: { ondismiss: () => setBuyingId(null) },
+        theme: { color: '#000000' },
+      };
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      console.error('Purchase error:', err);
+      setBuyingId(null);
+    }
+  };
+
+  const handleTip = async () => {
+    if (!isLoggedIn) {
+      openSignIn({ forceRedirectUrl: window.location.pathname });
+      return;
+    }
+    const amount = parseInt(tipAmount);
+    if (!amount || amount < 1) return;
+    setTipping(true);
+    try {
+      const res = await fetch('/api/payment/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, creatorUsername: username }),
+      });
+      const order = await res.json();
+      if (!order.orderId) { setTipping(false); return; }
+
+      const options = {
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency,
+        order_id: order.orderId,
+        name: `Tip for @${username}`,
+        description: `₹${amount} tip`,
+        handler: async (response: any) => {
+          await fetch('/api/payment/purchase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'verify',
+              amount,
+              creatorUsername: username,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }),
+          });
+          setTipSuccess(true);
+          setTipAmount('');
+          setTipping(false);
+          setTimeout(() => setTipSuccess(false), 3000);
+        },
+        modal: { ondismiss: () => setTipping(false) },
+        theme: { color: '#000000' },
+      };
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      console.error('Tip error:', err);
+      setTipping(false);
+    }
+  };
+
+  const productTypeConfig: Record<string, { icon: any; label: string; color: string }> = {
+    digital: { icon: Package, label: 'Digital Product', color: 'neo-green' },
+    link: { icon: LinkIcon, label: 'Link / Course', color: 'neo-blue' },
+    booking: { icon: Calendar, label: 'Booking / Call', color: 'neo-pink' },
+  };
 
   // Reactive sync with unified signaling
   useEffect(() => {
@@ -151,10 +290,11 @@ export default function CreatorClient({
       setCallType(_ablySignaling.activeCall.type);
       setActiveChannelName(_ablySignaling.activeCall.channelName);
     } else if (isCalling && !_ablySignaling?.activeCall && !activeChannelName?.startsWith('room-')) {
-      // If the hook says there's no active call but we were in one, reset
-      // UNLESS we are in a watch room (indicated by room- prefix)
+      console.log('[CreatorClient] 👋 Call ended via signaling. Resetting session.');
       setIsCalling(false);
       setActiveChannelName(null);
+      setCallDuration(0);
+      setTokensSpent(0);
     }
   }, [_ablySignaling?.activeCall, isCalling, activeChannelName]);
 
@@ -363,18 +503,6 @@ export default function CreatorClient({
     };
   }, [isCalling, isPeerConnected, _ablySignaling?.isAccepted]);
 
-  useEffect(() => {
-    if (!isOwner || isCalling) return;
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/call/signal?username=${username}`);
-        const data = await res.json();
-        if (data.incoming) setIncomingCall(data.incoming);
-        else setIncomingCall(null);
-      } catch (e) { }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [isOwner, isCalling, username]);
 
   const handleAcceptCall = (type: 'audio' | 'video') => {
     setCallType(type);
@@ -400,6 +528,8 @@ export default function CreatorClient({
     setIsCalling(false);
     setActiveChannelName(null);
     setIsPeerConnected(false);
+    setCallDuration(0);
+    setTokensSpent(0);
 
     // 2. Immediately tell the signaling hook to clear its state
     // This prevents the useEffect from re-triggering setIsCalling(true)
@@ -513,6 +643,7 @@ export default function CreatorClient({
 
   return (
     <div className="min-h-screen bg-white text-black font-sans selection:bg-neo-pink selection:text-white pb-20">
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <AnimatePresence>
         {errorMsg && (
           <motion.div
@@ -593,11 +724,14 @@ export default function CreatorClient({
             <button onClick={() => handleStartCall('audio')} className="tiny-call-btn" title="Audio Call">
               <Mic className="w-5 h-5" />
             </button>
-            {isLive && (
-              <div className="flex items-center gap-2 px-3 py-1 bg-neo-green/10 border-2 border-neo-green rounded-full">
+            {isCreatorOnline && (
+              <button
+                onClick={handleJoinRoom}
+                className="flex items-center gap-2 px-3 py-1 bg-neo-green/10 border-2 border-neo-green rounded-full hover:bg-neo-green/20 transition-all group"
+              >
                 <div className="w-2 h-2 rounded-full bg-neo-green animate-pulse" />
-                <span className="text-[10px] font-black uppercase text-neo-green">Live</span>
-              </div>
+                <span className="text-[10px] font-black uppercase text-neo-green">Live <span className="opacity-40 group-hover:opacity-100 ml-1">• Enter Room</span></span>
+              </button>
             )}
           </div>
 
@@ -664,9 +798,68 @@ export default function CreatorClient({
 
           <div className="p-6 md:p-10 flex-1">
             {profileTab === 'store' && (
-              <div className="grid md:grid-cols-2 gap-6">
-                {templates && templates.length > 0 ? (
-                  templates.map((tpl: any) => (
+              <div className="space-y-8">
+                {/* Product Grid */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Real Products */}
+                  {products && products.length > 0 && products.map((prod: any) => {
+                    const typeConf = productTypeConfig[prod.type] || productTypeConfig.digital;
+                    const TypeIcon = typeConf.icon;
+                    return (
+                      <motion.div
+                        key={prod.id}
+                        whileHover={{ y: -2 }}
+                        className="neo-box bg-white border-4 border-black shadow-[6px_6px_0px_0px_black] group overflow-hidden"
+                      >
+                        {/* Thumbnail */}
+                        {prod.thumbnail ? (
+                          <div className="h-40 bg-zinc-100 border-b-4 border-black overflow-hidden">
+                            <img src={prod.thumbnail} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          </div>
+                        ) : (
+                          <div className="h-20 bg-zinc-50 border-b-4 border-black flex items-center justify-center">
+                            <TypeIcon className="w-8 h-8 opacity-10" />
+                          </div>
+                        )}
+
+                        <div className="p-6">
+                          <div className="flex justify-between items-start mb-3">
+                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-black text-white">
+                              {typeConf.label}
+                            </span>
+                            {prod.type === 'booking' && prod.duration && (
+                              <span className="text-[8px] font-black uppercase text-zinc-400 flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {prod.duration}
+                              </span>
+                            )}
+                          </div>
+
+                          <h4 className="font-black uppercase tracking-tight text-lg mb-1 leading-tight">{prod.name}</h4>
+                          {prod.description && (
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase leading-relaxed mb-4 line-clamp-2">{prod.description}</p>
+                          )}
+
+                          <div className="mt-4 pt-4 border-t-2 border-zinc-100 flex justify-between items-center">
+                            <span className="text-xl font-black text-neo-green">₹{prod.price}</span>
+                            <button
+                              onClick={() => handleBuyProduct(prod)}
+                              disabled={buyingId === prod.id}
+                              className="neo-btn bg-black text-white px-5 py-2 font-black uppercase text-[10px] flex items-center gap-2 disabled:opacity-50"
+                            >
+                              {buyingId === prod.id ? (
+                                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing...</>
+                              ) : (
+                                <><ShoppingBag className="w-3.5 h-3.5" /> Buy Now</>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+
+                  {/* Session Templates */}
+                  {templates && templates.length > 0 && templates.map((tpl: any) => (
                     <div key={tpl.id} onClick={() => handleStartCall(tpl.type)} className="neo-box bg-white p-6 border-4 border-black shadow-[6px_6px_0px_0px_black] group hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all cursor-pointer">
                       <div className="flex justify-between items-start mb-4">
                         <span className={`text-[8px] font-black uppercase px-2 py-0.5 border-2 border-black ${tpl.type === 'video' ? 'bg-neo-pink text-white' : 'bg-neo-blue text-white'}`}>{tpl.duration} Min {tpl.type}</span>
@@ -679,13 +872,63 @@ export default function CreatorClient({
                         <span className="text-[8px] font-black uppercase text-neo-pink">Call Now</span>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="col-span-2 py-20 bg-zinc-50 border-4 border-black border-dashed flex flex-col items-center justify-center opacity-50">
-                    <Clock className="w-10 h-10 mb-4" />
-                    <p className="text-[10px] font-black uppercase">Store Items arriving soon...</p>
+                  ))}
+
+                  {(!products || products.length === 0) && (!templates || templates.length === 0) && (
+                    <div className="col-span-2 py-20 bg-zinc-50 border-4 border-black border-dashed flex flex-col items-center justify-center opacity-50">
+                      <Clock className="w-10 h-10 mb-4" />
+                      <p className="text-[10px] font-black uppercase">Store items arriving soon...</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Tip Jar */}
+                <div className="neo-box bg-zinc-50 p-8 border-4 border-black shadow-[6px_6px_0px_0px_black]">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Coffee className="w-6 h-6" />
+                    <h4 className="text-xl font-black uppercase tracking-tighter italic">Support {username}</h4>
                   </div>
-                )}
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-6">
+                    Show your appreciation with a tip — 100% goes to the creator
+                  </p>
+                  <div className="flex gap-3 mb-4">
+                    {[49, 99, 199, 499].map(amt => (
+                      <button
+                        key={amt}
+                        onClick={() => setTipAmount(String(amt))}
+                        className={`flex-1 py-3 border-4 border-black font-black text-sm transition-all ${tipAmount === String(amt)
+                            ? 'bg-black text-white shadow-none translate-x-[2px] translate-y-[2px]'
+                            : 'bg-white shadow-[4px_4px_0px_0px_black] hover:shadow-[2px_2px_0px_0px_black]'
+                          }`}
+                      >
+                        ₹{amt}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-3">
+                    <input
+                      type="number"
+                      value={tipAmount}
+                      onChange={e => setTipAmount(e.target.value)}
+                      placeholder="Custom amount"
+                      min="1"
+                      className="flex-1 bg-white border-4 border-black p-3 font-bold text-sm focus:outline-none"
+                    />
+                    <button
+                      onClick={handleTip}
+                      disabled={tipping || !tipAmount || parseInt(tipAmount) < 1}
+                      className="neo-btn bg-black text-white px-8 py-3 font-black uppercase text-[10px] flex items-center gap-2 disabled:opacity-30"
+                    >
+                      {tipping ? (
+                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending...</>
+                      ) : tipSuccess ? (
+                        <><Check className="w-3.5 h-3.5" /> Sent! 🎉</>
+                      ) : (
+                        <><Heart className="w-3.5 h-3.5" /> Send Tip</>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -796,6 +1039,37 @@ export default function CreatorClient({
                 <button onClick={() => setShowBookingModal(false)} className="flex-1 font-black uppercase text-xs py-4 text-black">Cancel</button>
                 <button onClick={handleBookCall} disabled={isBooking || !bookingDate || !bookingTime || !bookingTemplate} className="flex-1 neo-btn bg-neo-green text-black py-4 disabled:opacity-50">{isBooking ? '...' : 'Reserve'}</button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Purchased Product Deliverable Modal */}
+      <AnimatePresence>
+        {purchasedProduct && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[400] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white border-8 border-black shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-8 max-w-md w-full">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-3xl font-black uppercase italic tracking-tighter">Purchase Complete! 🎉</h2>
+                <button onClick={() => setPurchasedProduct(null)} className="w-8 h-8 border-2 border-black flex items-center justify-center font-black">✕</button>
+              </div>
+              <p className="text-sm font-bold text-zinc-600 uppercase mb-6">{purchasedProduct.name}</p>
+              {purchasedProduct.content && (
+                <a
+                  href={purchasedProduct.content}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full neo-btn bg-black text-white py-4 font-black uppercase text-sm flex items-center justify-center gap-2"
+                >
+                  {purchasedProduct.type === 'digital' && <><Download className="w-4 h-4" /> Download File</>}
+                  {purchasedProduct.type === 'link' && <><ExternalLink className="w-4 h-4" /> Open Link</>}
+                  {purchasedProduct.type === 'booking' && <><Calendar className="w-4 h-4" /> Open Meeting Link</>}
+                  {!['digital', 'link', 'booking'].includes(purchasedProduct.type) && <><Download className="w-4 h-4" /> Access Content</>}
+                </a>
+              )}
+              {!purchasedProduct.content && (
+                <p className="text-xs font-bold text-zinc-400 uppercase text-center">The creator will share the deliverable with you soon.</p>
+              )}
             </motion.div>
           </motion.div>
         )}
