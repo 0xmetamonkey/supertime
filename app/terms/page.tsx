@@ -1,4 +1,5 @@
 import React from 'react';
+// Force redeploy to fix routing issues
 
 export default function TermsOfUse() {
   return (
