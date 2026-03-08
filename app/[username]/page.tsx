@@ -29,6 +29,13 @@ export async function generateMetadata(
 export default async function CreatorPage({ params }: Props) {
   const { username: rawUsername } = await params;
   const username = rawUsername.toLowerCase();
+
+  // Guard against hijacking static routes
+  if (['privacy', 'api', 'dashboard', 'studio'].includes(username)) {
+    const { notFound } = await import('next/navigation');
+    return notFound();
+  }
+
   const user = await currentUser();
   const email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase(); // normalize session email
   const visitorUsername = email ? await resolveUsername(email) : null;
