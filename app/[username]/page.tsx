@@ -31,7 +31,7 @@ export default async function CreatorPage({ params }: Props) {
   const username = rawUsername.toLowerCase();
 
   // Guard against hijacking static routes
-  if (['privacy', 'api', 'dashboard', 'studio'].includes(username)) {
+  if (['privacy', 'terms', 'api', 'dashboard', 'studio'].includes(username)) {
     const { notFound } = await import('next/navigation');
     return notFound();
   }
