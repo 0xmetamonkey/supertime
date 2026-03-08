@@ -9,7 +9,7 @@ type Props = {
   params: Promise<{ username: string }>
 }
 
-export const revalidate = 5; // Revalidate every 5 seconds for testing
+export const revalidate = 0; // Always fetch fresh data (fundraiser status, etc.)
 
 export async function generateMetadata(
   { params }: Props
@@ -55,6 +55,15 @@ export default async function CreatorPage({ params }: Props) {
   if (email && ownerEmail && ownerEmail.toLowerCase() === email) {
     // This user owns this username
     isOwner = true;
+  }
+
+  // FUNDRAISER TAKEOVER: If creator has an active fundraiser, show it instead of profile
+  if (ownerEmail && !isOwner && process.env.KV_URL) {
+    const fundraiser: any = await kv.get(`fundraise:${username}`);
+    if (fundraiser && fundraiser.isActive) {
+      const { redirect } = await import('next/navigation');
+      redirect(`/fundraise/${username}`);
+    }
   }
 
   if (!ownerEmail) {

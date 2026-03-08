@@ -24,19 +24,30 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
       }
 
-      // Credit creator's withdrawable balance
+      // Credit creator's withdrawable balance (90% — platform takes 10% commission)
       if (creatorUsername && process.env.KV_URL) {
         const creatorEmail = await kv.get<string>(`owner:${creatorUsername.toLowerCase()}`);
         if (creatorEmail) {
-          const current = (await kv.get<number>(`withdrawable:${creatorEmail}`)) ?? 0;
-          await kv.set(`withdrawable:${creatorEmail}`, current + (amount || 0));
+          const grossAmount = amount || 0;
+          const COMMISSION_RATE = 0.10; // 10%
+          const commission = Math.round(grossAmount * COMMISSION_RATE);
+          const netAmount = grossAmount - commission;
 
-          // Record sale
+          const current = (await kv.get<number>(`withdrawable:${creatorEmail}`)) ?? 0;
+          await kv.set(`withdrawable:${creatorEmail}`, current + netAmount);
+
+          // Track platform commission
+          const totalCommission = (await kv.get<number>('platform:commission:total')) ?? 0;
+          await kv.set('platform:commission:total', totalCommission + commission);
+
+          // Record sale with commission breakdown
           const sales = (await kv.get<any[]>(`sales:${creatorEmail}`)) || [];
           sales.unshift({
             id: razorpay_payment_id,
             productId: productId || 'tip',
-            amount: amount || 0,
+            amount: grossAmount,
+            netAmount,
+            commission,
             type: productId ? 'sale' : 'tip',
             timestamp: Date.now(),
           });

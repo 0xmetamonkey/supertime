@@ -25,7 +25,10 @@ import {
   Download,
   ExternalLink,
   Check,
-  Loader2
+  Loader2,
+  Youtube,
+  Twitter,
+  MessageSquare,
 } from 'lucide-react';
 import WalletManager from '../components/WalletManager';
 import dynamic from 'next/dynamic';
@@ -150,7 +153,25 @@ export default function CreatorClient({
   const [showAdmirersModal, setShowAdmirersModal] = useState(false);
   const [isLoadingAdmirers, setIsLoadingAdmirers] = useState(false);
 
-  const [profileTab, setProfileTab] = useState<'store' | 'courses' | 'about'>('store');
+  const [profileTab, setProfileTab] = useState<'store' | 'shows' | 'courses' | 'about'>('store');
+  const [shows, setShows] = useState<any[]>([]);
+  const [loadingShows, setLoadingShows] = useState(false);
+
+  useEffect(() => {
+    const fetchShows = async () => {
+      setLoadingShows(true);
+      try {
+        const res = await fetch(`/api/shows?username=${username}`);
+        const data = await res.json();
+        setShows(data.shows || []);
+      } catch (e) {
+        console.error("Failed to fetch shows", e);
+      } finally {
+        setLoadingShows(false);
+      }
+    };
+    if (username) fetchShows();
+  }, [username]);
   const [products, setProducts] = useState<any[]>([]);
   const [tipAmount, setTipAmount] = useState('');
   const [purchasedProduct, setPurchasedProduct] = useState<any>(null);
@@ -737,20 +758,31 @@ export default function CreatorClient({
 
           <div className="flex items-center gap-2">
             {socials?.instagram && (
-              <a href={`https://instagram.com/${socials.instagram}`} target="_blank" className="monochrome-social">
+              <a href={socials.instagram.startsWith('http') ? socials.instagram : `https://instagram.com/${socials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="monochrome-social">
                 <Instagram className="w-4 h-4" />
               </a>
             )}
+            {socials?.youtube && (
+              <a href={socials.youtube.startsWith('http') ? socials.youtube : `https://youtube.com/${socials.youtube.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="monochrome-social">
+                <Youtube className="w-4 h-4" />
+              </a>
+            )}
             {socials?.x && (
-              <a href={`https://x.com/${socials.x}`} target="_blank" className="monochrome-social font-black text-xs">
+              <a href={socials.x.startsWith('http') ? socials.x : `https://x.com/${socials.x.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="monochrome-social font-black text-xs">
                 𝕏
               </a>
             )}
             {socials?.website && (
-              <a href={socials.website} target="_blank" className="monochrome-social">
+              <a href={socials.website.startsWith('http') ? socials.website : `https://${socials.website}`} target="_blank" rel="noopener noreferrer" className="monochrome-social">
                 <Globe className="w-4 h-4" />
               </a>
             )}
+            <a href={`/chat?to=${username}`} className="monochrome-social group relative">
+              <MessageSquare className="w-4 h-4" />
+              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[8px] font-black px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap uppercase tracking-widest border border-white/20">
+                Direct Chat
+              </span>
+            </a>
             <button
               onClick={() => {
                 navigator.clipboard.writeText(window.location.href);
@@ -792,6 +824,9 @@ export default function CreatorClient({
         <div className="border-4 border-black bg-white shadow-[8px_8px_0px_0px_black] overflow-hidden flex flex-col min-h-[500px]">
           <div className="flex border-b-4 border-black">
             <button onClick={() => setProfileTab('store')} className={`flex-1 store-tab-btn ${profileTab === 'store' ? 'store-tab-active' : 'store-tab-inactive'}`}>Store</button>
+            <button onClick={() => setProfileTab('shows')} className={`flex-1 store-tab-btn ${profileTab === 'shows' ? 'store-tab-active' : 'store-tab-inactive'}`}>
+              Shows {shows.length > 0 && <span className="ml-1 bg-neo-pink text-white text-[9px] px-1.5 py-0.5 rounded-full">{shows.length}</span>}
+            </button>
             <button onClick={() => setProfileTab('courses')} className={`flex-1 store-tab-btn ${profileTab === 'courses' ? 'store-tab-active' : 'store-tab-inactive'}`}>Courses</button>
             <button onClick={() => setProfileTab('about')} className={`flex-1 store-tab-btn ${profileTab === 'about' ? 'store-tab-active' : 'store-tab-inactive'}`}>About</button>
           </div>
@@ -929,6 +964,62 @@ export default function CreatorClient({
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {profileTab === 'shows' && (
+              <div className="space-y-8">
+                {loadingShows ? (
+                  <div className="py-20 flex flex-col items-center justify-center space-y-4">
+                    <Loader2 className="w-10 h-10 animate-spin text-zinc-200" />
+                    <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Scanning Transmission...</p>
+                  </div>
+                ) : shows.length === 0 ? (
+                  <div className="py-20 border-4 border-black border-dashed flex flex-col items-center justify-center space-y-4 text-zinc-300">
+                    <Sparkles className="w-12 h-12" />
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em]">No live shows scheduled yet</p>
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-8">
+                    {shows.map((show) => (
+                      <div key={show.id} className="neo-box bg-white overflow-hidden group border-4 border-black shadow-[6px_6px_0px_0px_black]">
+                        <div className="aspect-video bg-zinc-950 flex flex-col items-center justify-center p-6 border-b-4 border-black relative overflow-hidden">
+                          <div className="absolute inset-0 bg-neo-pink/5 animate-pulse" />
+                          <Sparkles className="w-10 h-10 text-white relative z-10 mb-4 opacity-20" />
+                          <div className="absolute top-4 left-4">
+                            <div className="flex items-center gap-1.5 px-3 py-1 bg-neo-green text-black border-2 border-black">
+                              <span className="font-black uppercase text-[10px] tracking-widest">₹{show.ticketPrice}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-6 space-y-4">
+                          <div>
+                            <h4 className="font-black uppercase text-xl leading-tight mb-2 tracking-tighter">{show.title}</h4>
+                            <p className="text-xs font-bold text-zinc-500 line-clamp-2 uppercase tracking-wide">{show.description}</p>
+                          </div>
+                          
+                          <div className="flex gap-4 border-y-2 border-zinc-100 py-3">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-3.5 h-3.5 text-neo-pink" />
+                              <span className="text-[10px] font-black uppercase text-black">{show.date}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-3.5 h-3.5 text-neo-blue" />
+                              <span className="text-[10px] font-black uppercase text-black">{show.time}</span>
+                            </div>
+                          </div>
+
+                          <button 
+                            onClick={() => alert("Ticket purchase coming soon! For now, just mark your calendar.")}
+                            className="w-full bg-black text-white py-3 border-4 border-black font-black uppercase text-xs shadow-[4px_4px_0px_0px_theme(colors.neo-pink)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                          >
+                            Get Ticket
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

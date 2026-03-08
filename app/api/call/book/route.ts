@@ -21,6 +21,11 @@ export async function POST(req: NextRequest) {
     if (!creatorEmail) return NextResponse.json({ error: 'Creator not found' }, { status: 404 });
 
     const bookingId = Math.random().toString(36).slice(2, 10);
+    const grossPrice = price || 0;
+    const COMMISSION_RATE = 0.10; // 10% platform commission
+    const commission = grossPrice > 0 ? Math.round(grossPrice * COMMISSION_RATE) : 0;
+    const netPrice = grossPrice - commission;
+
     const booking = {
       id: bookingId,
       visitorEmail,
@@ -30,7 +35,9 @@ export async function POST(req: NextRequest) {
       templateId,
       type,
       duration,
-      price,
+      price: grossPrice,
+      netPrice,
+      commission,
       status: 'pending',
       timestamp: Date.now()
     };

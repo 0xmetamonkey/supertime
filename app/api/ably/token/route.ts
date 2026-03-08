@@ -29,6 +29,8 @@ export async function GET(req: NextRequest) {
         // User can join room/broadcast channels
         ['room:*']: ['subscribe', 'publish', 'presence'],
         ['broadcast:*']: ['subscribe', 'publish'],
+        // Team chat channels
+        ['team:*']: ['subscribe', 'publish'],
       }
     });
 
