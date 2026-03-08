@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     const finalToken = longLivedData.access_token || tokenData.access_token;
 
     // Step 3: Get Instagram user info
-    const meRes = await fetch(`https://graph.instagram.com/v20.0/me?fields=id,username&access_token=${finalToken}`);
+    const meRes = await fetch(`https://graph.instagram.com/v21.0/me?fields=id,username&access_token=${finalToken}`);
     const meData = await meRes.json();
 
     if (!meData.id) {
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
     } else {
       // Step 4: Programmatically subscribe the app to webhooks for this user (Crucial for Native Login)
       try {
-        const subRes = await fetch(`https://graph.instagram.com/v20.0/me/subscribed_apps`, {
+        const subRes = await fetch(`https://graph.instagram.com/v21.0/me/subscribed_apps`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: new URLSearchParams({

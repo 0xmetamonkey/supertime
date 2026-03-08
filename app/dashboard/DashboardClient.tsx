@@ -37,25 +37,34 @@ import {
   FileText,
   Eye,
   Edit2,
-  Package
+  Package,
+  Copy,
+  CheckCircle,
+  Heart
 } from 'lucide-react';
 import { useClerk } from "@clerk/nextjs";
+import SettingsClient from '../studio/settings/SettingsClient';
+import ProfileEditor from './ProfileEditor';
+import SetupChecklist from './SetupChecklist';
+import FundraiserManager from './FundraiserManager';
 
 interface UIProps {
   session: any;
   username: string | null;
   initialBalance: number;
   initialWithdrawable: number;
+  initialSettings?: any;
 }
 
-type Tab = 'overview' | 'studio' | 'storefront' | 'profile' | 'tools' | 'wallet' | 'membership';
+type Tab = 'overview' | 'studio' | 'storefront' | 'profile' | 'tools' | 'wallet' | 'membership' | 'settings' | 'fundraiser';
 
-export default function DashboardClient({ session, username, initialBalance, initialWithdrawable }: UIProps) {
+export default function DashboardClient({ session, username, initialBalance, initialWithdrawable, initialSettings }: UIProps) {
   const router = useRouter();
   const { signOut } = useClerk();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [balance, setBalance] = useState(initialBalance);
   const [withdrawable, setWithdrawable] = useState(initialWithdrawable);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const [activeTool, setActiveTool] = useState<'none' | 'insta-bot'>('none');
   const [botRules, setBotRules] = useState<{ keywords: string[], response: string, triggerType: 'dm' | 'comment' }[]>([
@@ -76,6 +85,14 @@ export default function DashboardClient({ session, username, initialBalance, ini
   const [selectedCategory, setSelectedCategory] = useState<'dm' | 'comment' | null>(null);
 
   const [storefrontTab, setStorefrontTab] = useState<'store' | 'courses' | 'about'>('store');
+  // Live Shows state
+  const [showCreateShow, setShowCreateShow] = useState(false);
+  const [newShowTitle, setNewShowTitle] = useState('');
+  const [newShowDesc, setNewShowDesc] = useState('');
+  const [newShowDate, setNewShowDate] = useState('');
+  const [newShowTime, setNewShowTime] = useState('');
+  const [newShowPrice, setNewShowPrice] = useState('');
+  const [newShowSeats, setNewShowSeats] = useState('100');
   const [products, setProducts] = useState<any[]>([]);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
@@ -96,7 +113,7 @@ export default function DashboardClient({ session, username, initialBalance, ini
     // Sync tab from URL if present
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['overview', 'studio', 'storefront', 'profile', 'tools', 'wallet', 'membership'].includes(tabParam)) {
+    if (tabParam && ['overview', 'studio', 'storefront', 'profile', 'tools', 'wallet', 'membership', 'settings'].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
     }
 
@@ -187,6 +204,19 @@ export default function DashboardClient({ session, username, initialBalance, ini
 
       if (event.data?.type === 'IG_AUTH_SUCCESS') {
         setIsConnected(true);
+        // Re-fetch config to get the profile picture and status immediately
+        fetch('/api/bot/config')
+          .then(res => res.json())
+          .then(data => {
+            if (!data.error) {
+              if (data.rules) setBotRules(data.rules);
+              setInstagramToken(data.instagramToken || '');
+              setIsConnected(!!data.instagramToken);
+              if (data.profilePicture) setProfilePicture(data.profilePicture);
+            }
+          })
+          .catch(err => console.error('Error re-fetching bot config:', err));
+
         window.removeEventListener('message', messageListener);
         popup?.close();
       } else if (event.data?.type === 'IG_AUTH_ERROR') {
@@ -342,6 +372,8 @@ export default function DashboardClient({ session, username, initialBalance, ini
     { label: 'Tools', icon: Wrench, id: 'tools' as const },
     { label: 'Membership', icon: Sparkles, id: 'membership' as const },
     { label: 'Wallet', icon: Wallet, id: 'wallet' as const },
+    { label: 'Settings', icon: Settings, id: 'settings' as const },
+    { label: 'Fundraiser', icon: Heart, id: 'fundraiser' as const },
   ];
 
   return (
@@ -422,6 +454,13 @@ export default function DashboardClient({ session, username, initialBalance, ini
             <Sparkles className="w-5 h-5" />
             <span className="text-[8px] font-black uppercase text-center">Pro</span>
           </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`flex flex-col items-center gap-1 p-2 ${activeTab === 'settings' ? 'text-neo-pink' : 'text-zinc-500'}`}
+          >
+            <Settings className="w-5 h-5" />
+            <span className="text-[8px] font-black uppercase text-center">Settings</span>
+          </button>
         </div>
       </nav>
 
@@ -430,14 +469,28 @@ export default function DashboardClient({ session, username, initialBalance, ini
           <h2 className="text-2xl font-black uppercase tracking-tighter italic">
             {menuItems.find(m => m.id === activeTab)?.label}
           </h2>
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex flex-col items-end">
-              <span className="text-[8px] font-black uppercase tracking-widest text-zinc-400">Balance</span>
-              <span className="text-sm font-black text-neo-green">{balance.toLocaleString()} TKN</span>
-            </div>
-            <div className="w-10 h-10 border-2 border-black bg-white flex items-center justify-center">
-              <User className="w-5 h-5" />
-            </div>
+          <div className="flex items-center gap-3">
+            {username && (
+              <>
+                <a
+                  href={`/${username}`}
+                  target="_blank"
+                  className="hidden md:flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-black/60 hover:text-neo-pink transition-colors bg-white border-2 border-black px-3 py-2"
+                >
+                  supertime.wtf/{username}
+                </a>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`https://supertime.wtf/${username}`);
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 2000);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-2 border-2 border-black font-black uppercase text-[10px] bg-neo-pink text-white hover:bg-neo-pink/80 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+                >
+                  {copiedLink ? <><CheckCircle className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
+                </button>
+              </>
+            )}
           </div>
         </header>
 
@@ -461,6 +514,13 @@ export default function DashboardClient({ session, username, initialBalance, ini
                     </h1>
                   </div>
                 </motion.section>
+
+                {/* SETUP CHECKLIST */}
+                <SetupChecklist
+                  username={username || ''}
+                  initialSettings={initialSettings}
+                  onNavigateTab={(tab: string) => setActiveTab(tab as Tab)}
+                />
 
                 {/* MAIN GRID */}
                 <div className="grid lg:grid-cols-12 gap-8">
@@ -591,25 +651,187 @@ export default function DashboardClient({ session, username, initialBalance, ini
 
             {activeTab === 'studio' && (
               <div className="space-y-8">
-                <div className="neo-box bg-white p-8 border-4 border-black shadow-[8px_8px_0px_0px_black]">
-                  <h3 className="text-3xl font-black uppercase italic mb-6">Studio Management</h3>
-                  <div className="grid md:grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400">Quick Config</label>
-                      <button className="neo-btn bg-zinc-950 text-white w-full py-4 border-4" onClick={() => router.push('/studio')}>Go to Studio HUD</button>
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase leading-relaxed">Adjust your pricing, bio, and live status from the dedicated Studio HUD.</p>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="p-6 border-4 border-black bg-neo-yellow/10">
-                        <span className="text-xs font-black uppercase underline decoration-2 underline-offset-4">Active Pricing</span>
-                        <div className="mt-4 flex justify-between items-center">
-                          <span className="font-bold uppercase text-xs">Video Call</span>
-                          <span className="font-black">100 TKN/min</span>
-                        </div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-3xl font-black uppercase italic tracking-tighter">Creator Studio</h3>
+                  <button className="px-4 py-2 border-2 border-black font-black uppercase text-[9px] bg-white shadow-[3px_3px_0px_0px_black] active:shadow-none active:translate-x-[1.5px] active:translate-y-[1.5px]"
+                    onClick={() => router.push('/studio')}>
+                    Open Studio HUD
+                  </button>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-6">
+                  {/* GO LIVE */}
+                  <motion.div variants={itemVariants}
+                    className="bg-neo-pink border-4 border-black p-6 shadow-[8px_8px_0px_0px_black] text-white flex flex-col">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-white border-2 border-black flex items-center justify-center">
+                        <Video className="w-5 h-5 text-black" />
+                      </div>
+                      <div>
+                        <h4 className="font-black uppercase text-lg tracking-tighter">Go Live</h4>
+                        <p className="text-[8px] font-bold uppercase tracking-widest opacity-70">Free Broadcast</p>
                       </div>
                     </div>
-                  </div>
+                    <p className="text-[10px] font-bold opacity-80 leading-relaxed mb-6 flex-1">
+                      Start a free live stream. Anyone with the link can join. Great for Q&amp;As and community building.
+                    </p>
+                    <button
+                      onClick={() => {
+                        const roomId = `${username}-live-${Date.now()}`;
+                        router.push(`/live/${roomId}?host=true`);
+                      }}
+                      className="w-full py-3 bg-white text-black border-2 border-black font-black uppercase text-[10px] shadow-[3px_3px_0px_0px_black] active:shadow-none active:translate-x-[1.5px] active:translate-y-[1.5px]">
+                      Start Broadcasting
+                    </button>
+                    <div className="mt-4 pt-3 border-t border-white/20 flex justify-between text-[8px] font-bold uppercase tracking-widest opacity-60">
+                      <span>Free</span><span>Tips Enabled</span>
+                    </div>
+                  </motion.div>
+
+                  {/* 1:1 CALLS */}
+                  <motion.div variants={itemVariants}
+                    className="bg-neo-blue border-4 border-black p-6 shadow-[8px_8px_0px_0px_black] text-white flex flex-col">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-white border-2 border-black flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-black" />
+                      </div>
+                      <div>
+                        <h4 className="font-black uppercase text-lg tracking-tighter">1:1 Calls</h4>
+                        <p className="text-[8px] font-bold uppercase tracking-widest opacity-70">Scheduled Sessions</p>
+                      </div>
+                    </div>
+                    <p className="text-[10px] font-bold opacity-80 leading-relaxed mb-6 flex-1">
+                      Bookable video/audio sessions. Fans pick a time, pay your rate, both get a link.
+                    </p>
+                    <button onClick={() => setActiveTab('settings')}
+                      className="w-full py-3 bg-white text-black border-2 border-black font-black uppercase text-[10px] shadow-[3px_3px_0px_0px_black] active:shadow-none active:translate-x-[1.5px] active:translate-y-[1.5px]">
+                      Manage Call Settings
+                    </button>
+                    <div className="mt-4 pt-3 border-t border-white/20 flex justify-between text-[8px] font-bold uppercase tracking-widest opacity-60">
+                      <span>Per-minute</span><span>10% Commission</span>
+                    </div>
+                  </motion.div>
+
+                  {/* LIVE SHOWS */}
+                  <motion.div variants={itemVariants}
+                    className="bg-neo-yellow border-4 border-black p-6 shadow-[8px_8px_0px_0px_black] text-black flex flex-col">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-black border-2 border-black flex items-center justify-center">
+                        <Sparkles className="w-5 h-5 text-neo-yellow" />
+                      </div>
+                      <div>
+                        <h4 className="font-black uppercase text-lg tracking-tighter">Live Shows</h4>
+                        <p className="text-[8px] font-bold uppercase tracking-widest opacity-60">Ticketed Events</p>
+                      </div>
+                    </div>
+                    <p className="text-[10px] font-bold opacity-70 leading-relaxed mb-6 flex-1">
+                      Host ticketed live shows — concerts, workshops, masterclasses. Set a price and max capacity.
+                    </p>
+                    <button onClick={() => setShowCreateShow(true)}
+                      className="w-full py-3 bg-black text-white border-2 border-black font-black uppercase text-[10px] shadow-[3px_3px_0px_0px_black] active:shadow-none active:translate-x-[1.5px] active:translate-y-[1.5px]">
+                      Create a Show
+                    </button>
+                    <div className="mt-4 pt-3 border-t border-black/20 flex justify-between text-[8px] font-bold uppercase tracking-widest opacity-50">
+                      <span>Up to 10K Seats</span><span>10% Commission</span>
+                    </div>
+                  </motion.div>
                 </div>
+
+                {/* CREATE SHOW FORM */}
+                <AnimatePresence>
+                  {showCreateShow && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+                      className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_black]">
+                      <div className="flex justify-between items-start mb-6">
+                        <div>
+                          <h3 className="text-2xl font-black uppercase italic tracking-tighter">Create Live Show</h3>
+                          <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Schedule a ticketed event for your fans</p>
+                        </div>
+                        <button onClick={() => setShowCreateShow(false)}
+                          className="w-8 h-8 border-2 border-black flex items-center justify-center hover:bg-zinc-100">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Show Title</label>
+                            <input type="text" value={newShowTitle} onChange={e => setNewShowTitle(e.target.value)}
+                              placeholder="e.g. Live Acoustic Night"
+                              className="w-full border-4 border-black p-3 font-bold text-sm outline-none shadow-[4px_4px_0px_0px_black] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] transition-all" />
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Description</label>
+                            <textarea value={newShowDesc} onChange={e => setNewShowDesc(e.target.value)}
+                              placeholder="Tell fans what to expect..." rows={3}
+                              className="w-full border-4 border-black p-3 font-bold text-sm outline-none shadow-[4px_4px_0px_0px_black] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] transition-all resize-none" />
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Date</label>
+                              <input type="date" value={newShowDate} onChange={e => setNewShowDate(e.target.value)}
+                                className="w-full border-4 border-black p-3 font-bold text-sm outline-none shadow-[4px_4px_0px_0px_black]" />
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Time</label>
+                              <input type="time" value={newShowTime} onChange={e => setNewShowTime(e.target.value)}
+                                className="w-full border-4 border-black p-3 font-bold text-sm outline-none shadow-[4px_4px_0px_0px_black]" />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Ticket Price (INR)</label>
+                              <input type="number" value={newShowPrice} onChange={e => setNewShowPrice(e.target.value)}
+                                placeholder="299" min="0"
+                                className="w-full border-4 border-black p-3 font-black text-lg outline-none shadow-[4px_4px_0px_0px_black]" />
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Max Seats</label>
+                              <select value={newShowSeats} onChange={e => setNewShowSeats(e.target.value)}
+                                className="w-full border-4 border-black p-3 font-black text-sm outline-none shadow-[4px_4px_0px_0px_black] bg-white">
+                                <option value="25">25 seats</option>
+                                <option value="50">50 seats</option>
+                                <option value="100">100 seats</option>
+                                <option value="500">500 seats</option>
+                                <option value="1000">1,000 seats</option>
+                                <option value="10000">Unlimited</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 mt-6">
+                        <button onClick={() => setShowCreateShow(false)}
+                          className="flex-1 py-3 border-4 border-black font-black uppercase text-xs hover:bg-zinc-50">
+                          Cancel
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!newShowTitle || !newShowDate || !newShowTime || !newShowPrice) { alert('Please fill in all fields'); return; }
+                            try {
+                              await fetch('/api/shows', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ action: 'create', title: newShowTitle, description: newShowDesc, date: newShowDate, time: newShowTime, ticketPrice: Number(newShowPrice), maxSeats: Number(newShowSeats) }),
+                              });
+                              setShowCreateShow(false);
+                              setNewShowTitle(''); setNewShowDesc(''); setNewShowDate(''); setNewShowTime(''); setNewShowPrice(''); setNewShowSeats('100');
+                              alert('Show created!');
+                            } catch (e) { alert('Failed to create show'); }
+                          }}
+                          disabled={!newShowTitle || !newShowDate || !newShowTime || !newShowPrice}
+                          className="flex-1 py-3 bg-neo-yellow text-black border-4 border-black font-black uppercase text-xs shadow-[4px_4px_0px_0px_black] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] disabled:opacity-50">
+                          Create Show
+                        </button>
+                      </div>
+                      <p className="text-[7px] font-bold text-zinc-300 uppercase tracking-widest mt-3 text-center">
+                        Set ticket price to 0 for free shows · Platform takes 10% on paid tickets
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
 
@@ -1673,64 +1895,37 @@ export default function DashboardClient({ session, username, initialBalance, ini
               </div>
             )}
 
-            {/* Fallback for empty tabs */}
+            {/* Old profile tab removed — replaced by ProfileEditor below */}
+
+            {activeTab === 'settings' && (
+              <div className="space-y-8">
+                <SettingsClient username={username || ''} initialSettings={{
+                  videoRate: initialSettings?.videoRate ?? 100,
+                  audioRate: initialSettings?.audioRate ?? 50,
+                  socials: initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' },
+                  profileImage: initialSettings?.profileImage || '',
+                  templates: initialSettings?.templates || [],
+                  faqs: initialSettings?.faqs || [],
+                  roomType: initialSettings?.roomType || 'audio',
+                  isRoomFree: initialSettings?.isRoomFree ?? true,
+                }} />
+              </div>
+            )}
+
             {activeTab === 'profile' && (
               <div className="space-y-8">
-                <div className="neo-box bg-white p-10 border-4 border-black shadow-[8px_8px_0px_0px_black]">
-                  <div className="flex flex-col items-center text-center">
-                    <div className="w-24 h-24 bg-neo-pink border-4 border-black mb-6 flex items-center justify-center text-white font-black text-3xl uppercase shadow-[6px_6px_0px_0px_black]">
-                      {username?.[0] || 'S'}
-                    </div>
-                    <h3 className="text-4xl font-black uppercase tracking-tighter italic mb-2">@{username || 'Creator'}</h3>
-                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-8">
-                      supertime.wtf/{username || 'your-name'}
-                    </p>
-                    <div className="flex gap-4">
-                      <button
-                        onClick={() => username && window.open('/' + username, '_blank')}
-                        className="neo-btn bg-black text-white px-8 py-3 font-black uppercase text-[10px] flex items-center gap-2"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> View Public Profile
-                      </button>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(`https://supertime.wtf/${username || ''}`);
-                          alert('Profile link copied!');
-                        }}
-                        className="neo-btn bg-white text-black px-8 py-3 font-black uppercase text-[10px] flex items-center gap-2 border-4 border-black"
-                      >
-                        <Globe className="w-3.5 h-3.5" /> Copy Link
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <ProfileEditor username={username || ''} initialSettings={{
+                  profileImage: initialSettings?.profileImage || '',
+                  socials: initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' },
+                  faqs: initialSettings?.faqs || [],
+                  templates: initialSettings?.templates || [],
+                }} />
+              </div>
+            )}
 
-                <div className="grid md:grid-cols-3 gap-6">
-                  <button
-                    onClick={() => setActiveTab('storefront')}
-                    className="neo-box bg-white p-6 border-4 border-black shadow-[4px_4px_0px_0px_black] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all text-left"
-                  >
-                    <Store className="w-6 h-6 mb-3" />
-                    <h4 className="text-sm font-black uppercase">Manage Products</h4>
-                    <p className="text-[8px] font-bold text-zinc-400 uppercase mt-1">Add, edit, or remove products</p>
-                  </button>
-                  <button
-                    onClick={() => router.push('/studio')}
-                    className="neo-box bg-white p-6 border-4 border-black shadow-[4px_4px_0px_0px_black] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all text-left"
-                  >
-                    <Video className="w-6 h-6 mb-3" />
-                    <h4 className="text-sm font-black uppercase">Studio Settings</h4>
-                    <p className="text-[8px] font-bold text-zinc-400 uppercase mt-1">Pricing, bio, availability</p>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('tools')}
-                    className="neo-box bg-white p-6 border-4 border-black shadow-[4px_4px_0px_0px_black] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all text-left"
-                  >
-                    <Bot className="w-6 h-6 mb-3" />
-                    <h4 className="text-sm font-black uppercase">Instagram Bot</h4>
-                    <p className="text-[8px] font-bold text-zinc-400 uppercase mt-1">Auto-DM to drive traffic</p>
-                  </button>
-                </div>
+            {activeTab === 'fundraiser' && (
+              <div className="space-y-8">
+                <FundraiserManager username={username || ''} />
               </div>
             )}
           </motion.div>

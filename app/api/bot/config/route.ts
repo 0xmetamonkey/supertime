@@ -21,7 +21,7 @@ export async function GET() {
     if (pageId) {
       const token: string | null = await kv.get(`insta_token:${pageId}`);
       if (token && token !== 'CONNECTED') {
-        const igRes = await fetch(`https://graph.facebook.com/v19.0/${pageId}?fields=profile_pic&access_token=${token}`);
+        const igRes = await fetch(`https://graph.instagram.com/v21.0/${pageId}?fields=profile_pic&access_token=${token}`);
         const igData = await igRes.json();
         if (igData.profile_pic) {
           profilePicture = igData.profile_pic;
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
         console.log('--- Professional OAuth: Exchanging User Token ---');
         try {
           // 1. Get Pages (Accounts) with Instagram Business Accounts linked
-          const accountsRes = await fetch(`https://graph.facebook.com/v19.0/me/accounts?fields=name,access_token,instagram_business_account&access_token=${instagramToken}`);
+          const accountsRes = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=name,access_token,instagram_business_account&access_token=${instagramToken}`);
           const accountsData = await accountsRes.json();
           console.log(`Found ${accountsData.data?.length || 0} Pages associated with this user.`);
           if (accountsData.data && accountsData.data.length > 0) {
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
               const appId = process.env.INSTAGRAM_APP_ID;
               const appSecret = process.env.INSTAGRAM_APP_SECRET;
 
-              const exchangeRes = await fetch(`https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLivedPageToken}`);
+              const exchangeRes = await fetch(`https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLivedPageToken}`);
               const exchangeData = await exchangeRes.json();
 
               if (exchangeData.access_token) {
