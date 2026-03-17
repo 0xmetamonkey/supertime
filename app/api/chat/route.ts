@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
+import { getBotResponse } from '../../lib/bot-logic';
 
 // Team chat API — persistent messages in KV, realtime via Ably
 const TEAM_CHAT_KEY = 'team:chat:supertime';
@@ -48,6 +49,36 @@ export async function POST(req: NextRequest) {
       }
     } catch (e) {
       console.error('[Chat API] Ably publish failed:', e);
+    }
+
+    // --- Bot Hook ---
+    if (message.includes('@Supertime AI')) {
+      (async () => { // Async block so we don't block the user's response
+        try {
+          const botReply = await getBotResponse(message);
+          const botMessage = {
+            id: 'bot-' + Math.random().toString(36).slice(2),
+            from: 'Supertime AI',
+            fromEmail: 'bot@supertime.wtf',
+            text: botReply,
+            timestamp: Date.now() + 100 // Slight offset for sorting
+          };
+
+          // Persist bot reply to KV
+          const current = await kv.get<any[]>(chatKey) || [];
+          const updatedWithBot = [...current.slice(-(MAX_MESSAGES - 1)), botMessage];
+          await kv.set(chatKey, updatedWithBot, { ex: TTL_SECONDS });
+
+          // Publish bot reply to Ably
+          const apiKey = process.env.ABLY_API_KEY;
+          if (apiKey) {
+            const ably = new (await import('ably')).Rest(apiKey);
+            await ably.channels.get(channelName).publish('message', botMessage);
+          }
+        } catch (botErr) {
+          console.error('[Chat API] Bot reply error:', botErr);
+        }
+      })();
     }
 
     return NextResponse.json({ success: true, messageId: newMessage.id });

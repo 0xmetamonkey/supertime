@@ -736,6 +736,7 @@ export default function CreatorClient({
       )}
 
       <main className="max-w-4xl mx-auto px-4 md:px-6 pt-6 md:pt-10 relative">
+
         {/* ORGANIZED HEADER: TINY CALL ACTIONS AT TOP */}
         <div className="flex justify-between items-center mb-10">
           <div className="flex items-center gap-3">
@@ -745,15 +746,20 @@ export default function CreatorClient({
             <button onClick={() => handleStartCall('audio')} className="tiny-call-btn" title="Audio Call">
               <Mic className="w-5 h-5" />
             </button>
-            {isCreatorOnline && (
-              <button
-                onClick={handleJoinRoom}
-                className="flex items-center gap-2 px-3 py-1 bg-neo-green/10 border-2 border-neo-green rounded-full hover:bg-neo-green/20 transition-all group"
-              >
-                <div className="w-2 h-2 rounded-full bg-neo-green animate-pulse" />
-                <span className="text-[10px] font-black uppercase text-neo-green">Live <span className="opacity-40 group-hover:opacity-100 ml-1">• Enter Room</span></span>
-              </button>
-            )}
+            <button
+              onClick={handleJoinRoom}
+              className={`flex items-center gap-2 px-3 py-1 rounded-full border-2 transition-all group ${
+                isCreatorOnline 
+                  ? 'bg-neo-green/10 border-neo-green hover:bg-neo-green/20' 
+                  : 'bg-zinc-100 border-zinc-300 hover:bg-zinc-200 opacity-80'
+              }`}
+            >
+              <div className={`w-2 h-2 rounded-full ${isCreatorOnline ? 'bg-neo-green animate-pulse' : 'bg-zinc-400'}`} />
+              <span className={`text-[10px] font-black uppercase ${isCreatorOnline ? 'text-neo-green' : 'text-zinc-500'}`}>
+                {isCreatorOnline ? 'Live ' : 'Studio '}
+                <span className="opacity-40 group-hover:opacity-100 ml-1">• Enter Room</span>
+              </span>
+            </button>
           </div>
 
           <div className="flex items-center gap-2">

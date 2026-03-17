@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Zap, Send, ArrowLeft, Wifi, WifiOff } from 'lucide-react';
 import Ably from 'ably';
+import { TEAM_MEMBERS } from '../config';
 
 interface ChatMessage {
   id: string;
@@ -40,7 +41,7 @@ function playSound(type: 'receive' | 'send') {
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.12);
     }
-  } catch {} // Silently fail if AudioContext unavailable
+  } catch { } // Silently fail if AudioContext unavailable
 }
 
 export default function ChatClient({ user, recipient }: { user: { id: string; username: string; email: string }, recipient?: string }) {
@@ -49,6 +50,7 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [typingUsers, setTypingUsers] = useState<Map<string, number>>(new Map());
+  const [mentions, setMentions] = useState<{ show: boolean, query: string, index: number }>({ show: false, query: '', index: 0 });
   const bottomRef = useRef<HTMLDivElement>(null);
   const ablyRef = useRef<Ably.Realtime | null>(null);
   const seenIdsRef = useRef<Set<string>>(new Set());
@@ -57,7 +59,7 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
   const historyLoadedRef = useRef(false);
 
   const isDM = !!recipient;
-  const channelName = isDM 
+  const channelName = isDM
     ? `dm:${[user.username.toLowerCase(), recipient.toLowerCase()].sort().join(':')}`
     : 'team:supertime';
 
@@ -72,7 +74,7 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
     // 1. Fetch history
     const loadHistory = async () => {
       try {
-        const url = isDM 
+        const url = isDM
           ? `/api/chat?from=${encodeURIComponent(user.username)}&to=${encodeURIComponent(recipient)}`
           : '/api/chat';
         const res = await fetch(url);
@@ -161,7 +163,7 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
     const client = ablyRef.current;
     if (!client) return;
     const channel = client.channels.get(channelName);
-    channel.publish('typing', { from: user.username }).catch(() => {});
+    channel.publish('typing', { from: user.username }).catch(() => { });
   }, [user.username, channelName]);
 
   const sendMessage = async () => {
@@ -286,7 +288,7 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
               </div>
               <h2 className="font-black uppercase text-2xl tracking-tighter mb-2">Fresh start!</h2>
               <p className="font-bold text-zinc-500 text-sm">
-                {recipient 
+                {recipient
                   ? `Say hi to @${recipient}! No one else can see this chat.`
                   : "Send the first message to your team. Messages persist for 7 days."}
               </p>
@@ -307,15 +309,22 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
                   const isMe = msg.from === user.username;
                   return (
                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[80%] sm:max-w-[60%] ${
-                        isMe
+                      <div className={`max-w-[80%] sm:max-w-[60%] ${isMe
                           ? 'bg-black text-white border-4 border-black shadow-[4px_4px_0px_0px_theme(colors.neo-blue)]'
                           : 'bg-zinc-100 text-black border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]'
-                      } px-4 py-3`}>
+                        } px-4 py-3`}>
                         {!isMe && (
                           <p className="font-black uppercase text-[10px] tracking-widest text-neo-pink mb-1">{msg.from}</p>
                         )}
-                        <p className="font-bold text-sm leading-relaxed break-words whitespace-pre-wrap">{msg.text}</p>
+                        <p className="font-bold text-sm leading-relaxed break-words whitespace-pre-wrap">
+                          {msg.text.split(/(@[\w\s]+)/g).map((part, i) =>
+                            part.startsWith('@') ? (
+                              <span key={i} className="text-neo-blue font-black underline decoration-2 underline-offset-2">
+                                {part}
+                              </span>
+                            ) : part
+                          )}
+                        </p>
                         <p className={`font-bold text-[10px] uppercase tracking-widest mt-1 ${isMe ? 'text-zinc-500' : 'text-zinc-400'} text-right`}>
                           {formatTime(msg.timestamp)}
                         </p>
@@ -345,10 +354,72 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
           onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
           className="flex items-stretch gap-3"
         >
+          {mentions.show && (
+            <div className="absolute bottom-full left-4 bg-white border-4 border-black mb-2 w-64 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] z-[100] max-h-48 overflow-y-auto">
+              <div className="p-2 border-b-2 border-black bg-zinc-50">
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Mention Team Member</span>
+              </div>
+              {TEAM_MEMBERS
+                .filter(m => m.username.toLowerCase().includes(mentions.query.toLowerCase()))
+                .map((member, i) => (
+                  <button
+                    key={member.username}
+                    type="button"
+                    onClick={() => {
+                      const before = input.slice(0, input.lastIndexOf('@'));
+                      setInput(before + '@' + member.username + ' ');
+                      setMentions({ show: false, query: '', index: 0 });
+                    }}
+                    className={`w-full text-left px-4 py-2 font-bold text-sm flex items-center gap-2 hover:bg-neo-yellow transition-colors ${i === mentions.index ? 'bg-neo-yellow/30' : ''}`}
+                  >
+                    <div className="w-5 h-5 bg-black rounded-full flex items-center justify-center">
+                      <Zap className="w-2.5 h-2.5 text-neo-yellow fill-current" />
+                    </div>
+                    <span>@{member.username}</span>
+                  </button>
+                ))
+              }
+            </div>
+          )}
+
           <input
             type="text"
             value={input}
-            onChange={(e) => { setInput(e.target.value); publishTyping(); }}
+            onChange={(e) => {
+              const val = e.target.value;
+              setInput(val);
+              publishTyping();
+
+              // Mention detection
+              const lastAt = val.lastIndexOf('@');
+              if (lastAt !== -1 && lastAt >= val.lastIndexOf(' ')) {
+                setMentions({ show: true, query: val.slice(lastAt + 1), index: 0 });
+              } else {
+                setMentions({ show: false, query: '', index: 0 });
+              }
+            }}
+            onKeyDown={(e) => {
+              if (mentions.show) {
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setMentions(prev => ({ ...prev, index: Math.max(0, prev.index - 1) }));
+                } else if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setMentions(prev => ({ ...prev, index: prev.index + 1 }));
+                } else if (e.key === 'Enter' || e.key === 'Tab') {
+                  e.preventDefault();
+                  const filtered = TEAM_MEMBERS.filter(m => m.username.toLowerCase().includes(mentions.query.toLowerCase()));
+                  const member = filtered[mentions.index % filtered.length];
+                  if (member) {
+                    const before = input.slice(0, input.lastIndexOf('@'));
+                    setInput(before + '@' + member.username + ' ');
+                  }
+                  setMentions({ show: false, query: '', index: 0 });
+                } else if (e.key === 'Escape') {
+                  setMentions({ show: false, query: '', index: 0 });
+                }
+              }
+            }}
             placeholder="Type a message..."
             className="flex-1 bg-zinc-50 border-4 border-black px-4 py-3 font-bold placeholder:text-zinc-300 outline-none focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all"
           />
