@@ -1,0 +1,69 @@
+diff --git a/app/lib/ably.tsx b/app/lib/ably.tsx
+index d7bcb1c..8b40b63 100644
+--- a/app/lib/ably.tsx
++++ b/app/lib/ably.tsx
+@@ -363,7 +363,8 @@ export function useBroadcastChat(channelName: string, username: string) {
+     // If connected, turn off fallback (unless we want hybrid)
+     setUseFallback(false);
+ 
+-    const unsubscribe = subscribe(`broadcast:${channelName}`, (message) => {
++    const normalizedName = `broadcast:${channelName.toLowerCase()}`;
++    const unsubscribe = subscribe(normalizedName, (message) => {
+       if (message.name === 'message') {
+         addMessage(message.data);
+       }
+@@ -410,7 +411,8 @@ export function useBroadcastChat(channelName: string, username: string) {
+ 
+     try {
+       if (isConnected && !useFallback) {
+-        await publish(`broadcast:${channelName}`, 'message', msg);
++        const normalizedName = `broadcast:${channelName.toLowerCase()}`;
++        await publish(normalizedName, 'message', msg);
+       } else {
+         throw new Error("Ably down");
+       }
+@@ -429,3 +431,44 @@ export function useBroadcastChat(channelName: string, username: string) {
+     isConnected: isConnected || useFallback // Report "connected" if fallback works
+   };
+ }
++
++// Hook for monitoring creator presence
++export function useCreatorPresence(creatorUsername: string) {
++  const { isConnected, client } = useAbly();
++  const [isLive, setIsLive] = useState(false);
++
++  useEffect(() => {
++    if (!isConnected || !client || !creatorUsername) return;
++
++    const normalizedName = `broadcast:room-${creatorUsername.toLowerCase()}`;
++    const channel = client.channels.get(normalizedName);
++    
++    console.log(`[Presence] Monitoring channel: ${normalizedName}`);
++    const checkPresence = async () => {
++      try {
++        const members = await channel.presence.get();
++        console.log(`[Presence] Members in ${channel.name}:`, members.map(m => ({ id: m.clientId, data: m.data })));
++        // Check for specific host role
++        const hostLive = members.some(m => m.data?.role === 'host');
++        console.log(`[Presence] Host role detected:`, hostLive);
++        setIsLive(hostLive);
++      } catch (e) {
++        console.error('[Presence] Failed to get presence:', e);
++      }
++    };
++
++    checkPresence();
++
++    const handlePresence = () => {
++      checkPresence();
++    };
++
++    channel.presence.subscribe(['enter', 'leave', 'present', 'update'], handlePresence);
++
++    return () => {
++      channel.presence.unsubscribe(handlePresence);
++    };
++  }, [isConnected, client, creatorUsername]);
++
++  return isLive;
++}

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Zap, Send, ArrowLeft, Wifi, WifiOff } from 'lucide-react';
 import Ably from 'ably';
+import { UserButton } from "@clerk/nextjs";
 import { TEAM_MEMBERS } from '../config';
 
 interface ChatMessage {
@@ -231,9 +232,9 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
   }
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans flex flex-col">
+    <div className="h-screen h-[100dvh] bg-white text-black font-sans flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b-4 border-black px-4 py-3 flex items-center justify-between">
+      <header className="z-50 bg-white border-b-4 border-black px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <button onClick={() => window.history.back()} className="w-8 h-8 bg-black text-white border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all">
             <ArrowLeft className="w-4 h-4" />
@@ -256,18 +257,23 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {connected ? (
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-neo-green/20 border-2 border-black">
-              <Wifi className="w-3 h-3 text-black" />
-              <span className="font-black uppercase text-[9px] tracking-widest">Live</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-red-100 border-2 border-black">
-              <WifiOff className="w-3 h-3 text-red-600" />
-              <span className="font-black uppercase text-[9px] tracking-widest text-red-600">Offline</span>
-            </div>
-          )}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            {connected ? (
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-neo-green/20 border-2 border-black">
+                <Wifi className="w-3 h-3 text-black" />
+                <span className="font-black uppercase text-[9px] tracking-widest">Live</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-red-100 border-2 border-black">
+                <WifiOff className="w-3 h-3 text-red-600" />
+                <span className="font-black uppercase text-[9px] tracking-widest text-red-600">Offline</span>
+              </div>
+            )}
+          </div>
+          <div className="border-2 border-black p-0.5 bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+            <UserButton afterSignOutUrl="/" />
+          </div>
         </div>
       </header>
 
@@ -310,20 +316,24 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
                   return (
                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[80%] sm:max-w-[60%] ${isMe
-                          ? 'bg-black text-white border-4 border-black shadow-[4px_4px_0px_0px_theme(colors.neo-blue)]'
-                          : 'bg-zinc-100 text-black border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]'
+                        ? 'bg-black text-white border-4 border-black shadow-[4px_4px_0px_0px_theme(colors.neo-blue)]'
+                        : 'bg-zinc-100 text-black border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]'
                         } px-4 py-3`}>
                         {!isMe && (
                           <p className="font-black uppercase text-[10px] tracking-widest text-neo-pink mb-1">{msg.from}</p>
                         )}
                         <p className="font-bold text-sm leading-relaxed break-words whitespace-pre-wrap">
-                          {msg.text.split(/(@[\w\s]+)/g).map((part, i) =>
-                            part.startsWith('@') ? (
-                              <span key={i} className="text-neo-blue font-black underline decoration-2 underline-offset-2">
-                                {part}
-                              </span>
-                            ) : part
-                          )}
+                          {(() => {
+                            const mentionNames = TEAM_MEMBERS.map(m => m.username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+                            const regex = new RegExp(`(@(?:${mentionNames.join('|')}))`, 'g');
+                            return msg.text.split(regex).map((part, i) =>
+                              part.startsWith('@') ? (
+                                <span key={i} className="text-neo-blue font-black underline decoration-2 underline-offset-2">
+                                  {part}
+                                </span>
+                              ) : part
+                            );
+                          })()}
                         </p>
                         <p className={`font-bold text-[10px] uppercase tracking-widest mt-1 ${isMe ? 'text-zinc-500' : 'text-zinc-400'} text-right`}>
                           {formatTime(msg.timestamp)}
@@ -349,10 +359,10 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
       )}
 
       {/* Input Area */}
-      <div className="sticky bottom-0 bg-white border-t-4 border-black p-4">
+      <div className="bg-white border-t-4 border-black p-4 shrink-0">
         <form
           onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
-          className="flex items-stretch gap-3"
+          className="flex items-stretch gap-3 relative"
         >
           {mentions.show && (
             <div className="absolute bottom-full left-4 bg-white border-4 border-black mb-2 w-64 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] z-[100] max-h-48 overflow-y-auto">
@@ -392,8 +402,16 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
 
               // Mention detection
               const lastAt = val.lastIndexOf('@');
-              if (lastAt !== -1 && lastAt >= val.lastIndexOf(' ')) {
-                setMentions({ show: true, query: val.slice(lastAt + 1), index: 0 });
+              if (lastAt !== -1) {
+                const query = val.slice(lastAt + 1);
+                const hasMatch = TEAM_MEMBERS.some(m => 
+                  m.username.toLowerCase().startsWith(query.toLowerCase())
+                );
+                if (hasMatch) {
+                  setMentions({ show: true, query, index: 0 });
+                } else {
+                  setMentions({ show: false, query: '', index: 0 });
+                }
               } else {
                 setMentions({ show: false, query: '', index: 0 });
               }

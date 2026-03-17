@@ -42,7 +42,7 @@ import {
   CheckCircle,
   Heart
 } from 'lucide-react';
-import { useClerk } from "@clerk/nextjs";
+import { useClerk, UserButton } from "@clerk/nextjs";
 import SettingsClient from '../studio/settings/SettingsClient';
 import ProfileEditor from './ProfileEditor';
 import SetupChecklist from './SetupChecklist';
@@ -489,6 +489,9 @@ export default function DashboardClient({ session, username, initialBalance, ini
                 >
                   {copiedLink ? <><CheckCircle className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
                 </button>
+                <div className="ml-2 border-2 border-black p-0.5 bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                  <UserButton afterSignOutUrl="/" />
+                </div>
               </>
             )}
           </div>

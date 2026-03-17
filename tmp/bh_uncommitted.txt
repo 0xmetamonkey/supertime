@@ -1,0 +1,187 @@
+diff --git a/app/components/Broadcast/BroadcastHost.tsx b/app/components/Broadcast/BroadcastHost.tsx
+index c243008..d34b472 100644
+--- a/app/components/Broadcast/BroadcastHost.tsx
++++ b/app/components/Broadcast/BroadcastHost.tsx
+@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
+ import AgoraRTC, { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack } from 'agora-rtc-sdk-ng';
+ import { motion, AnimatePresence } from 'framer-motion';
+ import { Mic, MicOff, Video, VideoOff, Phone, MessageCircle, DollarSign, Users, X, Send, Volume2, VolumeX } from 'lucide-react';
+-import { useBroadcastChat } from '@/app/lib/ably';
++import { useBroadcastChat, useAbly } from '@/app/lib/ably';
++import Ably from 'ably';
+ 
+ interface BroadcastHostProps {
+   channelName: string;
+@@ -65,6 +66,7 @@ export default function BroadcastHost({ channelName, uid, username, onEnd, onCal
+   const [viewerCount, setViewerCount] = useState(0);
+   const [chatInput, setChatInput] = useState('');
+   const { messages, setMessages, sendMessage: sendAblyMessage } = useBroadcastChat(channelName, username);
++  const { client: ablyClient, enterPresence, leavePresence } = useAbly();
+   const [callRequests, setCallRequests] = useState<any[]>([]);
+ 
+   const videoRef = useRef<HTMLDivElement>(null);
+@@ -72,15 +74,16 @@ export default function BroadcastHost({ channelName, uid, username, onEnd, onCal
+   const sessionStartTimeRef = useRef<number>(Date.now());
+   const dataStreamIdRef = useRef<number | null>(null);
+ 
+-  // Initialize broadcast
++  // 1. Agora Media Lifecycle (Join and Publish)
+   useEffect(() => {
+     let active = true;
+-    const tracksRef = { current: null as any };
++    const tracksToCleanup: any[] = [];
+ 
+     const startBroadcast = async () => {
+       try {
++        const normalizedChannel = channelName.toLowerCase();
+         // Get token
+-        const res = await fetch(`/api/agora/token?channelName=${encodeURIComponent(channelName)}&uid=${uid}`);
++        const res = await fetch(`/api/agora/token?channelName=${encodeURIComponent(normalizedChannel)}&uid=${uid}`);
+         const data = await res.json();
+         if (!data.token || !active) return;
+ 
+@@ -90,23 +93,23 @@ export default function BroadcastHost({ channelName, uid, username, onEnd, onCal
+           tracks.forEach(t => t.close());
+           return;
+         }
+-        tracksRef.current = tracks;
+         setLocalTracks(tracks);
++        tracksToCleanup.push(...tracks);
+ 
+         // Join as host (broadcaster)
+-        await client.join(data.appId, channelName, data.token, data.uid);
++        await client.join(data.appId, normalizedChannel, data.token, data.uid);
+         setIsConnected(true);
+ 
+         // Publish stream
+         await client.publish(tracks);
+-        console.log('[Broadcast] Host is live');
++        console.log('[Broadcast] Agora media published');
+ 
+         // Play local video
+         if (videoRef.current) {
+           tracks[1].play(videoRef.current);
+         }
+       } catch (err) {
+-        console.error('[Broadcast] Error:', err);
++        console.error('[Broadcast] Agora Error:', err);
+       }
+     };
+ 
+@@ -116,30 +119,43 @@ export default function BroadcastHost({ channelName, uid, username, onEnd, onCal
+ 
+     startBroadcast();
+ 
+-    // Initial fetch of message history (optional, keeping for robustness)
+-    const fetchHistory = async () => {
++    return () => {
++      active = false;
++      tracksToCleanup.forEach(t => t.close());
++      client.leave();
++      setIsConnected(false);
++    };
++  }, [channelName, uid]); // Independent of Ably signaling hooks
++
++  // 2. Ably Presence (Signaling)
++  useEffect(() => {
++    // Only signal presence when Agora is connected and Ably is ready
++    if (!isConnected || !ablyClient || !channelName) return;
++
++    const presenceChannel = `broadcast:${channelName.toLowerCase()}`;
++    let isSubscribed = true;
++
++    const managePresence = async () => {
+       try {
+-        const res = await fetch(`/api/broadcast/chat?channelName=${encodeURIComponent(channelName)}`);
+-        const data = await res.json();
+-        if (data.messages) {
+-          setMessages(prev => {
+-            const existingIds = new Set(prev.map(m => m.id));
+-            const newMsgs = data.messages.filter((m: any) => !existingIds.has(m.id));
+-            return [...newMsgs, ...prev].sort((a, b) => a.timestamp - b.timestamp);
+-          });
+-        }
+-      } catch (e) { }
++        console.log(`[Broadcast] 📡 Entering presence for: ${presenceChannel} as ${username}`);
++        await enterPresence(presenceChannel, {
++          username: username,
++          role: 'host'
++        });
++        if (isSubscribed) console.log('[Broadcast] ✅ Presence entry SUCCESS');
++      } catch (e) {
++        console.error('[Broadcast] ❌ Presence entry failed:', e);
++      }
+     };
+-    fetchHistory();
++
++    managePresence();
+ 
+     return () => {
+-      active = false;
+-      if (tracksRef.current) {
+-        tracksRef.current.forEach((t: any) => t.close());
+-      }
+-      client.leave();
++      isSubscribed = false;
++      console.log(`[Broadcast] 🏳️ Leaving presence for: ${presenceChannel}`);
++      leavePresence(presenceChannel).catch(() => { });
+     };
+-  }, [channelName, uid]);
++  }, [isConnected, ablyClient, channelName, username, enterPresence, leavePresence]);
+ 
+   // Tip sound effect when new tipped messages arrive (Recency check enabled)
+   useEffect(() => {
+@@ -149,6 +165,53 @@ export default function BroadcastHost({ channelName, uid, username, onEnd, onCal
+     }
+   }, [messages.length]);
+ 
++  // Automated Bot Welcome on Presence
++  useEffect(() => {
++    if (!ablyClient || !channelName) return;
++    const normalizedName = `broadcast:${channelName.toLowerCase()}`;
++    const channel = ablyClient.channels.get(normalizedName);
++
++    const handlePresence = (member: Ably.PresenceMessage) => {
++      // Logic for welcoming new entrants
++      if (member.action === 'enter' || member.action === 'present') {
++        if (member.data?.role === 'host') return;
++
++        const viewerName = member.data?.username || 'A viewer';
++
++        // Check if we already welcomed them recently to avoid spam on reconnects
++        const welcomeId = `welcome-${member.clientId}`;
++
++        const botGreeting = `🤖 Welcome to the room, @${viewerName}! So glad you're here! ✨`;
++        const botMsg = {
++          id: 'bot-' + Math.random().toString(36).slice(2),
++          from: 'Supertime AI',
++          text: botGreeting,
++          timestamp: Date.now()
++        };
++
++        // Publish to room
++        channel.publish('message', botMsg);
++
++        // Persist to history
++        fetch('/api/broadcast/chat', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({
++            id: botMsg.id,
++            channelName,
++            message: botGreeting,
++            from: 'Supertime AI'
++          })
++        });
++      }
++    };
++
++    channel.presence.subscribe(handlePresence);
++    return () => {
++      channel.presence.unsubscribe(handlePresence);
++    };
++  }, [ablyClient, channelName]);
++
+   // Auto-scroll chat manually
+   useEffect(() => {
+     if (chatContainerRef.current) {

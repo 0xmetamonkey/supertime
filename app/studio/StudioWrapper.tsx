@@ -74,7 +74,11 @@ export default function StudioWrapper(props: StudioWrapperProps) {
   const clientId = rawId.toLowerCase();
 
   if (!mounted) {
-    return <StudioClient {...props} />;
+    return (
+      <AblyProvider clientId={clientId}>
+        <StudioClient {...props} />
+      </AblyProvider>
+    );
   }
 
   return (

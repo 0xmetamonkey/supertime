@@ -1,0 +1,91 @@
+diff --git a/app/components/Broadcast/BroadcastViewer.tsx b/app/components/Broadcast/BroadcastViewer.tsx
+index 4f18421..11b7afc 100644
+--- a/app/components/Broadcast/BroadcastViewer.tsx
++++ b/app/components/Broadcast/BroadcastViewer.tsx
+@@ -3,7 +3,7 @@
+ import React, { useState, useEffect, useRef } from 'react';
+ import AgoraRTC, { IAgoraRTCClient, IRemoteVideoTrack, IRemoteAudioTrack } from 'agora-rtc-sdk-ng';
+ import { MessageCircle, Send, DollarSign, Phone, Users, X, Volume2, VolumeX } from 'lucide-react';
+-import { useBroadcastChat } from '@/app/lib/ably';
++import { useBroadcastChat, useAbly } from '@/app/lib/ably';
+ 
+ interface BroadcastViewerProps {
+   channelName: string;
+@@ -72,7 +72,9 @@ export default function BroadcastViewer({
+   const [isConnected, setIsConnected] = useState(false);
+   const [viewerCount, setViewerCount] = useState(1);
+   const [chatInput, setChatInput] = useState('');
+-  const { messages, setMessages, sendMessage: sendAblyMessage } = useBroadcastChat(channelName, userDisplayName || (uid.startsWith('guest-') ? `Guest-${uid.slice(6, 10)}` : 'Viewer'));
++  const viewerName = userDisplayName || (uid.startsWith('guest-') ? `Guest-${uid.slice(6, 10)}` : 'Viewer');
++  const { messages, setMessages, sendMessage: sendAblyMessage } = useBroadcastChat(channelName, viewerName);
++  const { enterPresence, leavePresence } = useAbly();
+   const [showTipModal, setShowTipModal] = useState(false);
+   const [tipAmount, setTipAmount] = useState(50);
+ 
+@@ -99,14 +101,17 @@ export default function BroadcastViewer({
+ 
+     const joinStream = async () => {
+       try {
++        const normalizedChannel = channelName.toLowerCase();
+         // Get token
+-        const res = await fetch(`/api/agora/token?channelName=${encodeURIComponent(channelName)}&uid=${uid}`);
++        const res = await fetch(`/api/agora/token?channelName=${encodeURIComponent(normalizedChannel)}&uid=${uid}`);
+         const data = await res.json();
+         if (!data.token || !active) return;
+ 
+         // Subscribe to remote streams
+         client.on('user-published', async (user, mediaType) => {
++          console.log(`[Viewer] 📡 User published: ${user.uid}, type: ${mediaType}`);
+           await client.subscribe(user, mediaType);
++          console.log(`[Viewer] ✅ Subscribed to ${user.uid} ${mediaType}`);
+           if (mediaType === 'video') {
+             setRemoteVideo(user.videoTrack || null);
+           }
+@@ -114,6 +119,7 @@ export default function BroadcastViewer({
+             const track = user.audioTrack;
+             setRemoteAudioTracks(prev => [...prev, track]);
+             track.play();
++            console.log(`[Viewer] 🔊 Audio track playing for ${user.uid}`);
+           }
+         });
+ 
+@@ -129,8 +135,20 @@ export default function BroadcastViewer({
+         client.on('user-left', () => setViewerCount(v => Math.max(1, v - 1)));
+ 
+         // Join as audience
+-        await client.join(data.appId, channelName, data.token, data.uid);
++        await client.join(data.appId, normalizedChannel, data.token, data.uid);
+         setIsConnected(true);
++
++        // Enter Ably presence
++        try {
++          const presenceChannel = `broadcast:${channelName.toLowerCase()}`;
++          await enterPresence(presenceChannel, {
++            username: viewerName,
++            role: 'viewer'
++          });
++        } catch (e) {
++          console.error('[Viewer] Presence failed:', e);
++        }
++
+         console.log('[Viewer] Joined broadcast');
+       } catch (err) {
+         console.error('[Viewer] Error:', err);
+@@ -142,13 +160,17 @@ export default function BroadcastViewer({
+     return () => {
+       active = false;
+       client.leave();
++      const presenceChannel = `broadcast:${channelName.toLowerCase()}`;
++      leavePresence(presenceChannel).catch(() => { });
+     };
+   }, [channelName, uid]);
+ 
+   // Play remote video
+   useEffect(() => {
+     if (remoteVideo && videoRef.current) {
++      console.log('[Viewer] 🎬 Attempting to play video track...');
+       remoteVideo.play(videoRef.current);
++      console.log('[Viewer] 🎬 Video play called');
+     }
+   }, [remoteVideo]);
+ 

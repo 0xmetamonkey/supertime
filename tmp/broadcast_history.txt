@@ -1,0 +1,4 @@
+70486d6 index on meta-review: 3b1d0b1 fix: rename proxy.ts to middleware.ts and allow public routes
+c7239b0 Update UI, auth flow, and include launch checklist
+d778254 feat: integrate professional email setup and low-maintenance forwarding guide
+4b89b6d Separate Broadcast and 1:1 Calls - two independent panels

@@ -1,0 +1,61 @@
+---
+26fe687 fix(meta): force redeploy for terms route
+f8f5330 feat(meta): add terms of use page
+2a1c910 fix(route): prevent username route from hijacking privacy page
+7d3ddbc feat(meta): add privacy policy and app icon
+b914de0 feat(bot): sync dashboard and instabot fixes for meta review
+bc69e6b Instabot fixes: API v21.0, profile pic domain, and middleware configuration
+60e432e chore: rename middleware.ts to proxy.ts per Next.js deprecation warning
+c7239b0 Update UI, auth flow, and include launch checklist
+d778254 feat: integrate professional email setup and low-maintenance forwarding guide
+eed9fb5 commit on 9th feb 2026
+c31e7d6 readme
+cd17cda aYIN
+adf6ffa Fix admin panel styling, remove Agora testing strip, and add user deletion feature
+89f4d7e fix: removed intrusive prompts and applied aggressive mobile responsiveness fixes
+61552c9 fix: optimize in-app browser prompt with phase timer and compact UI
+f42fc27 fix: stage 2 aggressive mobile responsiveness polish
+a1b4125 fix: revert icon to brand Zap and fix imports
+e927a29 fix: landing page and creator profile mobile responsiveness
+95ce71b feat: responsiveness fixes, PWA features, and branding updates
+bfcaea5 Premium 1:1 UI cleanup, audience removal, and blank video fix
+7729276 Fix call session reset bug and add transition logs
+05c1fc9 Fix ringer autoplay block and make call UI unmissable
+447e5e9 Fix AblyProvider crash and add verbose diagnostic logs
+49256a7 Add ringer sound, connection-based billing, and fix Studio session timer
+98fab89 Fix signaling identity, billing flow, and auto-broadcast issues
+2ddcc84 Restore call buttons, fix isAcceptingCalls sync, and add detailed signaling logs
+3d728e1 Force Studio offline on refresh and add signaling logs
+33c3a53 Change Studio default isLive state to false on refresh
+30bdfcf Fix build failure: VideoIcon undefined and isAcceptingCalls prop missing
+95ff863 Normalize Ably signaling casing and support independent Call status
+eb717ff Add debug logs for call signaling
+888f075 remove orphan file causing build failure
+4b89b6d Separate Broadcast and 1:1 Calls - two independent panels
+4429d0c Merge Ably signaling to master branch to restore production stability
+8beb39c Allow simulated access to Studio without auth for testing
+b31a7a7 Enable simulator bypass for Studio to allow testing Ably signaling without OAuth success
+2a0ec93 Redeploy for env vars
+cd72ba8 Add Ably real-time signaling for instant call notifications
+e3cb2ba fix: hardened calling engine and added simulator
+93fba75 fix: add missing route stubs for build
+da78ccc fix: replace lucide-react with inline SVGs
+60db253 style: apply V2 neo-brutalist design to waitlist
+cf444bc feat: set waitlist as main homepage
+d89839a feat: add early adopter waitlist page
+cd3cbe0 fix: wait for Agora channel join before publishing tracks
+1004e1c fix(emergency): enable free tokens and force online for testing
+196f865 fix: sanitize V2 for production (remove guest hacks)
+039e2e8 fix: exclude backups from build
+923fe76 feat: Studio V2, Mobile Optimization, Branding Updates
+947592e feat: complete studio dark mode support
+3f2c4b5 feat: implement recording consent logic with Agora stream messaging
+a861c9f feat: implement call recording and artifact library
+6e361d9 feat: implement persistent live status, call templates, and scheduler with UI polish
+3964d39 FIX: Resolve Agora Type Mismatch
+178eb90 FIX: Delete leftover LiveKit APIs
+6e8ea0e FIX: Remove old LiveKit refs & Dynamic Import
+c7fafd3 FEAT: Switch to Agora
+7456be4 CHORE: Add Server Login Test
+5a6d76d CHORE: Better diagnostics
+2965201 CHORE: Add debug route

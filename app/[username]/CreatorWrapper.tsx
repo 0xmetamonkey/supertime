@@ -65,8 +65,12 @@ export default function CreatorWrapper(props: CreatorWrapperProps) {
     : (props.user?.id || props.user?.email || `visitor-${Math.random().toString(36).slice(2, 8)}`).toLowerCase();
 
   if (!mounted) {
-    // SSR fallback - render without Ably
-    return <CreatorClient {...props} />;
+    // SSR fallback - Wrap with AblyProvider (even if client isn't fully ready yet) to avoid useContext errors
+    return (
+      <AblyProvider clientId={clientId}>
+        <CreatorClient {...props} />
+      </AblyProvider>
+    );
   }
 
   return (

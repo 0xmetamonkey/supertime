@@ -1,0 +1,46 @@
+c7239b0 Update UI, auth flow, and include launch checklist
+d778254 feat: integrate professional email setup and low-maintenance forwarding guide
+e795434 design redesign
+84670a6 design redesign
+adff365 feat: 1. When fan cut a call, the creator call notification should go away. 2. if the caller has visited the creator profile before the creator has stopped taking requests and later if the creator stops then the caller is should not be able to make a call.
+eed9fb5 commit on 9th feb 2026
+8fe7bc7 feat: Implement real-time call signaling, creator studio, and visitor interaction using Ably.
+5468372 feat: Implement creator studio, wallet management, and PWA service worker.
+c31e7d6 readme
+bfcaea5 Premium 1:1 UI cleanup, audience removal, and blank video fix
+7729276 Fix call session reset bug and add transition logs
+05c1fc9 Fix ringer autoplay block and make call UI unmissable
+447e5e9 Fix AblyProvider crash and add verbose diagnostic logs
+49256a7 Add ringer sound, connection-based billing, and fix Studio session timer
+98fab89 Fix signaling identity, billing flow, and auto-broadcast issues
+3d728e1 Force Studio offline on refresh and add signaling logs
+4b89b6d Separate Broadcast and 1:1 Calls - two independent panels
+b31a7a7 Enable simulator bypass for Studio to allow testing Ably signaling without OAuth success
+cd72ba8 Add Ably real-time signaling for instant call notifications
+e3cb2ba fix: hardened calling engine and added simulator
+1004e1c fix(emergency): enable free tokens and force online for testing
+923fe76 feat: Studio V2, Mobile Optimization, Branding Updates
+947592e feat: complete studio dark mode support
+a861c9f feat: implement call recording and artifact library
+6e361d9 feat: implement persistent live status, call templates, and scheduler with UI polish
+6e8ea0e FIX: Remove old LiveKit refs & Dynamic Import
+c7fafd3 FEAT: Switch to Agora
+ff27d17 FIX: Sanitize LiveKit params
+54bc3fa CHORE: Add public test page
+b7f9b84 FEAT: Remove Daily.co (Zero Dependency Clean Slate)
+b6a9d0b removed agora
+a103629 Update UI marker for build verification
+071cbba FEAT: Implemented Hybrid Calling Infrastructure (Agora + Daily.co)
+c5f2d5a FIX: Verified local connectivity fixes (UID Hashing + Media Hardening) - Forcing Prod Sync
+e672e2f UI: Replaced annoying call sound with soft chime and fixed room case-sensitivity
+872a7c2 FIX: Prevented UID collisions in Studio and added connection diagnostics
+9270eb3 FIX: Resolved video subscription race condition and refined Studio incoming UI
+332f028 UI: Refined call waiting messages, added speaker toggle, and updated Twitter to X branding
+53d6082 Critical Fix: Auth stability, Agora Fail-Safe mode, and channel validation
+ae9a51d Fix: Missing AgoraCall component in Studio slick theme
+5fa5545 commitment
+f9e3760 design changes
+8e0de94 Add version number v1.1.0
+2815489 profile picture upload added via blob
+a802cd3 added token edit sync issues
+14f983d Supertime First Commit. LAst three Days were Crazy
