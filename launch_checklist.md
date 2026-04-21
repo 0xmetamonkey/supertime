@@ -4,10 +4,23 @@ This is the definitive "50-point list" tracking every remaining feature, edge-ca
 
 > [!NOTE] 
 > This is a living document. We will aggressively tackle these in vertical slices (design → frontend → backend → test).
+> Each phase now has a **full specification document** in `docs/specs/`. The spec is the source of truth for design, API contracts, and acceptance criteria. **Do not build without a spec.**
+
+## Spec Index
+| Phase | Spec Document | Status |
+|---|---|---|
+| Phase 1: Platform Integrity | [phase1_platform_integrity.md](docs/specs/phase1_platform_integrity.md) | `DRAFT` |
+| Phase 2: Creator Storefront | [phase2_creator_storefront.md](docs/specs/phase2_creator_storefront.md) | `APPROVED` |
+| Phase 3: Calling Engine | [phase3_calling_engine.md](docs/specs/phase3_calling_engine.md) | `DRAFT` |
+| Phase 4: Broadcast Rooms | [phase4_broadcast_rooms.md](docs/specs/phase4_broadcast_rooms.md) | `DRAFT` |
+| Phase 5: Dashboard | [phase5_dashboard.md](docs/specs/phase5_dashboard.md) | `DRAFT` |
+| Phase 6: Admin & Infra | [phase6_admin_infra.md](docs/specs/phase6_admin_infra.md) | `DRAFT` |
+| Template | [_SPEC_TEMPLATE.md](docs/specs/_SPEC_TEMPLATE.md) | — |
 
 ---
 
 ## Phase 1: Core Platform Integrity (Getting the Basics Flawless)
+> 📄 **Spec:** [phase1_platform_integrity.md](docs/specs/phase1_platform_integrity.md)
 **Goal:** Authentication, Routing, and basic Creator Profiles must be bulletproof.
 
 - [ ] **Authentication Polish**
@@ -26,6 +39,7 @@ This is the definitive "50-point list" tracking every remaining feature, edge-ca
 ---
 
 ## Phase 2: The Creator Storefront (The Money Maker)
+> 📄 **Spec:** [phase2_creator_storefront.md](docs/specs/phase2_creator_storefront.md) · 🧪 **Tests:** [tests/launch-specs.spec.ts](tests/launch-specs.spec.ts)
 **Goal:** The public `/[username]` profile must look premium and handle payments flawlessly.
 
 - [ ] **Store UI Polish**
@@ -44,6 +58,7 @@ This is the definitive "50-point list" tracking every remaining feature, edge-ca
 ---
 
 ## Phase 3: The Calling Engine (Scheduled & Real-Time)
+> 📄 **Spec:** [phase3_calling_engine.md](docs/specs/phase3_calling_engine.md)
 **Goal:** 1:1 Video Calls must be scheduled seamlessly, avoiding the technical friction of "browser ringing".
 
 - [ ] **Calendar & Booking System**
@@ -62,6 +77,7 @@ This is the definitive "50-point list" tracking every remaining feature, edge-ca
 ---
 
 ## Phase 4: Broadcast Rooms (1-to-Many)
+> 📄 **Spec:** [phase4_broadcast_rooms.md](docs/specs/phase4_broadcast_rooms.md)
 **Goal:** Restoring the premium streaming experience.
 
 - [ ] **Host View**
@@ -74,6 +90,7 @@ This is the definitive "50-point list" tracking every remaining feature, edge-ca
 ---
 
 ## Phase 5: The Dashboard (Creator Management)
+> 📄 **Spec:** [phase5_dashboard.md](docs/specs/phase5_dashboard.md)
 **Goal:** Creators must clearly understand their earnings and data.
 
 - [ ] **Wallet & Payouts**
@@ -86,6 +103,7 @@ This is the definitive "50-point list" tracking every remaining feature, edge-ca
 ---
 
 ## Phase 6: Admin & Infrastructure (Scale & Security)
+> 📄 **Spec:** [phase6_admin_infra.md](docs/specs/phase6_admin_infra.md)
 **Goal:** Behind-the-scenes control and cost management.
 
 - [ ] **Super Admin Panel**

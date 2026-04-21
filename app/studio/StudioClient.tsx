@@ -431,34 +431,34 @@ export default function StudioClient({ username, session, initialSettings }: { u
       {/* The IncomingCallRing is now handled globally in StudioWrapper */}
 
       {/* HEADER */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b-4 border-black py-4 transition-colors">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-zinc-950/80 backdrop-blur-md border-b border-white/10 py-4 transition-colors">
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-8">
             <a href="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 bg-black flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_theme(colors.neo-pink)] transition-transform group-hover:rotate-12">
+              <div className="w-8 h-8 bg-white/5 flex items-center justify-center border border-white/10 rounded-lg shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-transform group-hover:rotate-12">
                 <Zap className="text-neo-yellow w-5 h-5 fill-current" />
               </div>
-              <span className="text-xl font-black uppercase tracking-tighter text-black">Studio</span>
+              <span className="text-xl font-extrabold uppercase tracking-tighter text-white">Studio</span>
               {isLive && (
                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 rounded-full border border-red-500/20">
                   <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_theme(colors.red.500)]" />
-                  <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">Live</span>
+                  <span className="text-[8px] font-extrabold text-red-500 uppercase tracking-widest">Live</span>
                 </div>
               )}
             </a>
 
             <div className="hidden md:flex items-center gap-6">
-              <a href={`/${username}`} className="text-[10px] font-black uppercase tracking-widest text-black/60 hover:text-neo-pink transition-colors">Public Profile</a>
+              <a href={`/${username}`} className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-neo-pink transition-colors">Public Profile</a>
               <button
                 onClick={() => {
                   const el = document.getElementById('highlights-vault');
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="text-[10px] font-black uppercase tracking-widest text-black/60 hover:text-neo-pink transition-colors"
+                className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-neo-pink transition-colors"
               >
                 My Recordings
               </button>
-              <button onClick={() => router.push('/studio/settings')} className="text-[10px] font-black uppercase tracking-widest text-black/60 hover:text-neo-pink transition-colors">Settings</button>
+              <button onClick={() => router.push('/studio/settings')} className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-neo-pink transition-colors">Settings</button>
             </div>
           </div>
 
@@ -468,7 +468,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
             {/* Desktop Logout - now hidden on small screens */}
             <button
               onClick={() => signOut(() => { window.location.href = "/"; })}
-              className="hidden md:flex w-10 h-10 bg-black text-white border-2 border-black items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none translate-x-[-2px] translate-y-[-2px] active:translate-x-0 active:translate-y-0 transition-all"
+              className="hidden md:flex w-10 h-10 bg-white/5 text-white border border-white/10 rounded-xl items-center justify-center hover:bg-white/10 transition-all"
             >
               <LogOut className="w-5 h-5" />
             </button>
@@ -476,16 +476,15 @@ export default function StudioClient({ username, session, initialSettings }: { u
             {/* Hamburger Button */}
             <button
               onClick={() => setShowMobileMenu(true)}
-              className="md:hidden w-10 h-10 bg-black text-white border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none translate-x-[-1px] translate-y-[-1px] active:translate-x-0 active:translate-y-0 transition-all"
+              className="md:hidden w-10 h-10 bg-white text-black rounded-xl flex items-center justify-center hover:scale-105 transition-all shadow-xl"
             >
               <Menu className="w-6 h-6" />
             </button>
           </div>
         </div>
-
       </nav>
 
-      {/* Mobile Slide-over Menu - HIGH Z-INDEX & SOLID BG */}
+      {/* Mobile Slide-over Menu */}
       <AnimatePresence>
         {showMobileMenu && (
           <motion.div
@@ -495,7 +494,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed inset-0 z-[10000] bg-zinc-950 flex flex-col p-8 md:hidden"
           >
-            {/* Background Accents for Premium Feel */}
+            {/* Background Accents */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
               <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-neo-pink/10 blur-[120px] rounded-full" />
               <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-neo-blue/10 blur-[120px] rounded-full" />
@@ -503,33 +502,33 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
             <div className="relative z-10 flex justify-between items-center mb-16">
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-neo-yellow flex items-center justify-center border-4 border-black shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)]">
-                  <Zap className="text-black w-6 h-6 fill-current" />
+                <div className="w-10 h-10 bg-white/5 flex items-center justify-center border border-white/10 rounded-xl">
+                  <Zap className="text-neo-yellow w-6 h-6 fill-current" />
                 </div>
-                <span className="text-2xl font-black uppercase tracking-tighter text-white">Menu</span>
+                <span className="text-2xl font-extrabold uppercase tracking-tighter text-white">Menu</span>
               </div>
               <button
                 onClick={() => setShowMobileMenu(false)}
-                className="w-12 h-12 bg-white text-black border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] active:shadow-none transition-all"
+                className="w-12 h-12 bg-white text-black rounded-2xl flex items-center justify-center shadow-xl transition-all"
               >
                 <X className="w-8 h-8" />
               </button>
             </div>
 
-            <div className="relative z-10 flex flex-col gap-8 flex-1">
+            <div className="relative z-10 flex flex-col gap-6 flex-1">
               <a
                 href={`/${username}`}
                 onClick={() => setShowMobileMenu(false)}
-                className="text-4xl font-black uppercase tracking-widest text-white hover:text-neo-pink border-b-4 border-white/10 pb-6 transition-colors"
+                className="text-4xl font-extrabold uppercase tracking-tighter text-white hover:text-neo-pink border-b border-white/10 pb-6 transition-colors"
               >
-                Public Profile
+                Profile
               </a>
               <button
                 onClick={() => {
                   setShowMobileMenu(false);
                   router.push('/dashboard?tab=tools');
                 }}
-                className="text-4xl font-black uppercase tracking-widest text-white hover:text-neo-blue text-left border-b-4 border-white/10 pb-6 transition-colors"
+                className="text-4xl font-extrabold uppercase tracking-tighter text-white hover:text-neo-blue text-left border-b border-white/10 pb-6 transition-colors"
               >
                 Tools
               </button>
@@ -538,16 +537,16 @@ export default function StudioClient({ username, session, initialSettings }: { u
                   setShowMobileMenu(false);
                   router.push('/wallet');
                 }}
-                className="text-4xl font-black uppercase tracking-widest text-neo-green hover:text-neo-yellow text-left border-b-4 border-white/10 pb-6 transition-colors"
+                className="text-4xl font-extrabold uppercase tracking-tighter text-neo-green hover:text-neo-yellow text-left border-b border-white/10 pb-6 transition-colors"
               >
-                Power Vault
+                Vault
               </button>
               <button
                 onClick={() => {
                   setShowMobileMenu(false);
                   router.push('/studio/settings');
                 }}
-                className="text-4xl font-black uppercase tracking-widest text-white hover:text-neo-pink text-left border-b-4 border-white/10 pb-6 transition-colors"
+                className="text-4xl font-extrabold uppercase tracking-tighter text-white hover:text-neo-pink text-left border-b border-white/10 pb-6 transition-colors"
               >
                 Settings
               </button>
@@ -556,7 +555,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
             <div className="relative z-10 pt-8">
               <button
                 onClick={() => signOut(() => { window.location.href = "/"; })}
-                className="w-full bg-red-500 text-white py-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] font-black uppercase text-2xl tracking-widest flex items-center justify-center gap-4 active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
+                className="w-full bg-red-500 text-white py-6 rounded-3xl font-extrabold uppercase text-xl tracking-tight flex items-center justify-center gap-4 shadow-2xl transition-all"
               >
                 <LogOut className="w-8 h-8" />
                 Logout
