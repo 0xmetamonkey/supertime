@@ -7,6 +7,9 @@
   --neo-pink: #FF00F5;
   --neo-green: #00FF1F;
   --neo-yellow: #CEFF1A;
+  --slide-yellow: #fbbf24;
+  --slide-blue: #84A9FF;
+  --slide-pink: #FF8B8B;
 }
 
 @theme inline {
@@ -16,6 +19,9 @@
   --color-neo-pink: var(--neo-pink);
   --color-neo-green: var(--neo-green);
   --color-neo-yellow: var(--neo-yellow);
+  --color-slide-yellow: var(--slide-yellow);
+  --color-slide-blue: var(--slide-blue);
+  --color-slide-pink: var(--slide-pink);
   --font-sans: 'Outfit', var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -30,7 +36,7 @@ body {
   position: relative;
 }
 
-.neo-box {
+@utility neo-box {
   border-width: 4px;
   border-color: black;
   box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 1);
@@ -39,31 +45,37 @@ body {
   transition-duration: 150ms;
 }
 
+
 .neo-box-hover:hover {
   transform: translate(-2px, -2px);
   box-shadow: 12px 12px 0px 0px rgba(0, 0, 0, 1);
 }
 
-.neo-btn {
-  border-width: 4px;
+@utility neo-btn {
+  border-width: 3px;
   border-color: black;
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
-  font-weight: 900;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+  font-weight: 800;
   text-transform: uppercase;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  border-radius: 1.25rem; /* rounded-2xl */
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+  }
+
+  &:active {
+    transform: translate(4px, 4px);
+  }
 }
 
-.neo-btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: none;
-}
+
 
 /* Hide Next.js Dev Indicators/Toolbar */
 body>[data-nextjs-toast],
@@ -131,6 +143,40 @@ nextjs-portal {
 .animate-fade-in-up { animation: fade-in-up 0.8s ease-out both; }
 .animate-fade-in { animation: fade-in 1s ease-out 0.5s both; }
 .animate-slide-in-right { animation: slide-in-right 0.3s ease-out both; }
+
+.bg-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+}
+
+.neo-brutal-shadow {
+  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.neo-brutal-shadow-lg {
+  box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 1);
+}
+
+@utility neo-brutal-btn {
+  @apply neo-btn;
+  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  border-radius: 1.25rem; /* rounded-2xl */
+  
+  &:hover {
+    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 1);
+    transform: translate(2px, 2px);
+  }
+
+  &:active {
+    box-shadow: none;
+    transform: translate(4px, 4px);
+  }
+}
+
+
+
 
 .outline-text {
   -webkit-text-stroke: 1px rgba(255, 255, 255, 0.2);
