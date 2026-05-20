@@ -56,7 +56,7 @@ interface UIProps {
   initialSettings?: any;
 }
 
-type Tab = 'overview' | 'storefront' | 'profile' | 'tools' | 'wallet' | 'membership' | 'settings' | 'fundraiser';
+type Tab = 'overview' | 'storefront' | 'tools' | 'wallet' | 'settings';
 
 export default function DashboardClient({ session, username, initialBalance, initialWithdrawable, initialSettings }: UIProps) {
   const router = useRouter();
@@ -113,7 +113,7 @@ export default function DashboardClient({ session, username, initialBalance, ini
     // Sync tab from URL if present
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['overview', 'storefront', 'profile', 'tools', 'wallet', 'membership', 'settings'].includes(tabParam)) {
+    if (tabParam && ['overview', 'storefront', 'tools', 'wallet', 'settings'].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
     }
 
@@ -367,12 +367,9 @@ export default function DashboardClient({ session, username, initialBalance, ini
   const menuItems = [
     { label: 'Overview', icon: LayoutDashboard, id: 'overview' as const },
     { label: 'Storefront', icon: Store, id: 'storefront' as const },
-    { label: 'Profile', icon: UserCircle, id: 'profile' as const },
     { label: 'Tools', icon: Wrench, id: 'tools' as const },
-    { label: 'Membership', icon: Sparkles, id: 'membership' as const },
     { label: 'Wallet', icon: Wallet, id: 'wallet' as const },
     { label: 'Settings', icon: Settings, id: 'settings' as const },
-    { label: 'Fundraiser', icon: Heart, id: 'fundraiser' as const },
   ];
 
   return (
@@ -445,13 +442,6 @@ export default function DashboardClient({ session, username, initialBalance, ini
           >
             <Wallet className="w-5 h-5" />
             <span className="text-[8px] font-black uppercase text-center">Vault</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('membership')}
-            className={`flex flex-col items-center gap-1 p-2 ${activeTab === 'membership' ? 'text-neo-pink' : 'text-zinc-500'}`}
-          >
-            <Sparkles className="w-5 h-5" />
-            <span className="text-[8px] font-black uppercase text-center">Pro</span>
           </button>
           <button
             onClick={() => setActiveTab('settings')}
@@ -529,7 +519,7 @@ export default function DashboardClient({ session, username, initialBalance, ini
                   {/* LEFT COLUMN: PRIMARY ACTIONS */}
                   <div className="lg:col-span-8 space-y-8">
                     <div className="grid md:grid-cols-2 gap-8">
-                      {/* STUDIO CARD → links directly to /studio */}
+                      {/* GO LIVE CARD */}
                       <motion.div
                         variants={itemVariants}
                         whileHover={{ translateX: 4, translateY: 4, boxShadow: 'none' }}
@@ -542,30 +532,30 @@ export default function DashboardClient({ session, username, initialBalance, ini
                           </div>
                           <ArrowRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
                         </div>
-                        <h3 className="text-4xl font-black uppercase tracking-tighter mb-2 italic">Creator Studio</h3>
+                        <h3 className="text-4xl font-black uppercase tracking-tighter mb-2 italic">Go Live Now</h3>
                         <p className="font-bold opacity-80 text-sm leading-relaxed">
                           {isCreator
-                            ? "Go live, manage 1:1 calls, and broadcast to your audience."
+                            ? "Start a broadcast, manage calls, and engage your audience."
                             : "Claim your username to start earning as a creator."}
                         </p>
                       </motion.div>
 
-                      {/* WALLET CARD */}
+                      {/* MEMBERSHIP UPSELL CARD */}
                       <motion.div
                         variants={itemVariants}
                         whileHover={{ translateX: 4, translateY: 4, boxShadow: 'none' }}
-                        onClick={() => setActiveTab('wallet')}
-                        className="neo-box bg-neo-blue p-8 border-4 border-black shadow-[12px_12px_0px_0px_black] text-white cursor-pointer group"
+                        onClick={() => router.push('/membership')}
+                        className="neo-box bg-white p-8 border-4 border-black shadow-[12px_12px_0px_0px_black] text-black cursor-pointer group"
                       >
                         <div className="flex justify-between items-start mb-12">
-                          <div className="w-16 h-16 bg-white border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_black]">
-                            <Wallet className="text-black w-8 h-8" />
+                          <div className="w-16 h-16 bg-neo-yellow border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_black]">
+                            <Crown className="text-black w-8 h-8" />
                           </div>
                           <ArrowRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
                         </div>
-                        <h3 className="text-4xl font-black uppercase tracking-tighter mb-2 italic">Power Vault</h3>
-                        <p className="font-bold opacity-80 text-sm leading-relaxed">
-                          Recharge credits or withdraw your creator earnings to your bank.
+                        <h3 className="text-4xl font-black uppercase tracking-tighter mb-2 italic">Scale-Up Pro</h3>
+                        <p className="font-bold opacity-80 text-sm leading-relaxed text-zinc-600">
+                          Upgrade to unlock full energy potential, unlimited DMs, and deep analytics.
                         </p>
                       </motion.div>
                     </div>
@@ -651,179 +641,7 @@ export default function DashboardClient({ session, username, initialBalance, ini
               </>
             )}
 
-            {/* Studio tab removed – Creator Studio is now exclusively at /studio */}
-            {(activeTab as string) === '_studio_removed_' && <>
-              <motion.div variants={itemVariants}
-                className="bg-neo-pink border-4 border-black p-6 shadow-[8px_8px_0px_0px_black] text-white flex flex-col">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-white border-2 border-black flex items-center justify-center">
-                    <Video className="w-5 h-5 text-black" />
-                  </div>
-                  <div>
-                    <h4 className="font-black uppercase text-lg tracking-tighter">Go Live</h4>
-                    <p className="text-[8px] font-bold uppercase tracking-widest opacity-70">Free Broadcast</p>
-                  </div>
-                </div>
-                <p className="text-[10px] font-bold opacity-80 leading-relaxed mb-6 flex-1">
-                  Start a free live stream. Anyone with the link can join. Great for Q&amp;As and community building.
-                </p>
-                <button
-                  onClick={() => {
-                    const roomId = `${username}-live-${Date.now()}`;
-                    router.push(`/live/${roomId}?host=true`);
-                  }}
-                  className="w-full py-3 bg-white text-black border-2 border-black font-black uppercase text-[10px] shadow-[3px_3px_0px_0px_black] active:shadow-none active:translate-x-[1.5px] active:translate-y-[1.5px]">
-                  Start Broadcasting
-                </button>
-                <div className="mt-4 pt-3 border-t border-white/20 flex justify-between text-[8px] font-bold uppercase tracking-widest opacity-60">
-                  <span>Free</span><span>Tips Enabled</span>
-                </div>
-              </motion.div>
 
-              {/* 1:1 CALLS */}
-              <motion.div variants={itemVariants}
-                className="bg-neo-blue border-4 border-black p-6 shadow-[8px_8px_0px_0px_black] text-white flex flex-col">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-white border-2 border-black flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-black" />
-                  </div>
-                  <div>
-                    <h4 className="font-black uppercase text-lg tracking-tighter">1:1 Calls</h4>
-                    <p className="text-[8px] font-bold uppercase tracking-widest opacity-70">Scheduled Sessions</p>
-                  </div>
-                </div>
-                <p className="text-[10px] font-bold opacity-80 leading-relaxed mb-6 flex-1">
-                  Bookable video/audio sessions. Fans pick a time, pay your rate, both get a link.
-                </p>
-                <button onClick={() => setActiveTab('settings')}
-                  className="w-full py-3 bg-white text-black border-2 border-black font-black uppercase text-[10px] shadow-[3px_3px_0px_0px_black] active:shadow-none active:translate-x-[1.5px] active:translate-y-[1.5px]">
-                  Manage Call Settings
-                </button>
-                <div className="mt-4 pt-3 border-t border-white/20 flex justify-between text-[8px] font-bold uppercase tracking-widest opacity-60">
-                  <span>Per-minute</span><span>10% Commission</span>
-                </div>
-              </motion.div>
-
-              {/* LIVE SHOWS */}
-              <motion.div variants={itemVariants}
-                className="bg-neo-yellow border-4 border-black p-6 shadow-[8px_8px_0px_0px_black] text-black flex flex-col">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-black border-2 border-black flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-neo-yellow" />
-                  </div>
-                  <div>
-                    <h4 className="font-black uppercase text-lg tracking-tighter">Live Shows</h4>
-                    <p className="text-[8px] font-bold uppercase tracking-widest opacity-60">Ticketed Events</p>
-                  </div>
-                </div>
-                <p className="text-[10px] font-bold opacity-70 leading-relaxed mb-6 flex-1">
-                  Host ticketed live shows — concerts, workshops, masterclasses. Set a price and max capacity.
-                </p>
-                <button onClick={() => setShowCreateShow(true)}
-                  className="w-full py-3 bg-black text-white border-2 border-black font-black uppercase text-[10px] shadow-[3px_3px_0px_0px_black] active:shadow-none active:translate-x-[1.5px] active:translate-y-[1.5px]">
-                  Create a Show
-                </button>
-                <div className="mt-4 pt-3 border-t border-black/20 flex justify-between text-[8px] font-bold uppercase tracking-widest opacity-50">
-                  <span>Up to 10K Seats</span><span>10% Commission</span>
-                </div>
-              </motion.div>
-
-              {/* CREATE SHOW FORM */}
-              <AnimatePresence>
-                {showCreateShow && (
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                    className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_black]">
-                    <div className="flex justify-between items-start mb-6">
-                      <div>
-                        <h3 className="text-2xl font-black uppercase italic tracking-tighter">Create Live Show</h3>
-                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Schedule a ticketed event for your fans</p>
-                      </div>
-                      <button onClick={() => setShowCreateShow(false)}
-                        className="w-8 h-8 border-2 border-black flex items-center justify-center hover:bg-zinc-100">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Show Title</label>
-                          <input type="text" value={newShowTitle} onChange={e => setNewShowTitle(e.target.value)}
-                            placeholder="e.g. Live Acoustic Night"
-                            className="w-full border-4 border-black p-3 font-bold text-sm outline-none shadow-[4px_4px_0px_0px_black] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] transition-all" />
-                        </div>
-                        <div>
-                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Description</label>
-                          <textarea value={newShowDesc} onChange={e => setNewShowDesc(e.target.value)}
-                            placeholder="Tell fans what to expect..." rows={3}
-                            className="w-full border-4 border-black p-3 font-bold text-sm outline-none shadow-[4px_4px_0px_0px_black] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] transition-all resize-none" />
-                        </div>
-                      </div>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Date</label>
-                            <input type="date" value={newShowDate} onChange={e => setNewShowDate(e.target.value)}
-                              className="w-full border-4 border-black p-3 font-bold text-sm outline-none shadow-[4px_4px_0px_0px_black]" />
-                          </div>
-                          <div>
-                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Time</label>
-                            <input type="time" value={newShowTime} onChange={e => setNewShowTime(e.target.value)}
-                              className="w-full border-4 border-black p-3 font-bold text-sm outline-none shadow-[4px_4px_0px_0px_black]" />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Ticket Price (INR)</label>
-                            <input type="number" value={newShowPrice} onChange={e => setNewShowPrice(e.target.value)}
-                              placeholder="299" min="0"
-                              className="w-full border-4 border-black p-3 font-black text-lg outline-none shadow-[4px_4px_0px_0px_black]" />
-                          </div>
-                          <div>
-                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Max Seats</label>
-                            <select value={newShowSeats} onChange={e => setNewShowSeats(e.target.value)}
-                              className="w-full border-4 border-black p-3 font-black text-sm outline-none shadow-[4px_4px_0px_0px_black] bg-white">
-                              <option value="25">25 seats</option>
-                              <option value="50">50 seats</option>
-                              <option value="100">100 seats</option>
-                              <option value="500">500 seats</option>
-                              <option value="1000">1,000 seats</option>
-                              <option value="10000">Unlimited</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-4 mt-6">
-                      <button onClick={() => setShowCreateShow(false)}
-                        className="flex-1 py-3 border-4 border-black font-black uppercase text-xs hover:bg-zinc-50">
-                        Cancel
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (!newShowTitle || !newShowDate || !newShowTime || !newShowPrice) { alert('Please fill in all fields'); return; }
-                          try {
-                            await fetch('/api/shows', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ action: 'create', title: newShowTitle, description: newShowDesc, date: newShowDate, time: newShowTime, ticketPrice: Number(newShowPrice), maxSeats: Number(newShowSeats) }),
-                            });
-                            setShowCreateShow(false);
-                            setNewShowTitle(''); setNewShowDesc(''); setNewShowDate(''); setNewShowTime(''); setNewShowPrice(''); setNewShowSeats('100');
-                            alert('Show created!');
-                          } catch (e) { alert('Failed to create show'); }
-                        }}
-                        disabled={!newShowTitle || !newShowDate || !newShowTime || !newShowPrice}
-                        className="flex-1 py-3 bg-neo-yellow text-black border-4 border-black font-black uppercase text-xs shadow-[4px_4px_0px_0px_black] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] disabled:opacity-50">
-                        Create Show
-                      </button>
-                    </div>
-                    <p className="text-[7px] font-bold text-zinc-300 uppercase tracking-widest mt-3 text-center">
-                      Set ticket price to 0 for free shows · Platform takes 10% on paid tickets
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </>}
 
             {activeTab === 'wallet' && (
     <div className="space-y-8">
@@ -843,110 +661,7 @@ export default function DashboardClient({ session, username, initialBalance, ini
   )
 }
 
-{
-  activeTab === 'membership' && (
-    <div className="space-y-12">
-      <section className="neo-box bg-black text-white p-10 border-4 border-black shadow-[12px_12px_0px_0px_theme(colors.neo-pink)] overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-neo-pink opacity-20 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2" />
-        <div className="relative z-10">
-          <div className="inline-block px-3 py-1 bg-neo-pink border-2 border-white mb-6 shadow-[4px_4px_0px_0px_white]">
-            <span className="text-[10px] font-black uppercase tracking-widest text-white">Current Status</span>
-          </div>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-            <div>
-              <h3 className="text-5xl font-black uppercase italic tracking-tighter mb-2">Free Plan</h3>
-              <p className="font-bold opacity-60 uppercase text-xs tracking-widest">Upgrade to unlock full energy potential</p>
-            </div>
-            <div className="flex gap-4">
-              <div className="px-6 py-4 bg-zinc-900 border-2 border-zinc-700">
-                <span className="block text-[8px] font-black uppercase tracking-widest opacity-40 mb-1">DMs Remaining</span>
-                <span className="text-2xl font-black">1,000</span>
-              </div>
-              <div className="px-6 py-4 bg-zinc-900 border-2 border-zinc-700">
-                <span className="block text-[8px] font-black uppercase tracking-widest opacity-40 mb-1">Store Limit</span>
-                <span className="text-2xl font-black">1 Item</span>
-              </div>
-              <div className="px-6 py-4 bg-zinc-900 border-2 border-zinc-700">
-                <span className="block text-[8px] font-black uppercase tracking-widest opacity-40 mb-1">Calls Remaining</span>
-                <span className="text-2xl font-black">2h 00m</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Pro Plan Card */}
-        <div className="neo-box bg-white p-10 border-4 border-black shadow-[12px_12px_0px_0px_black] hover:shadow-[16px_16px_0px_0px_theme(colors.neo-yellow)] transition-all group">
-          <div className="flex justify-between items-start mb-8">
-            <div>
-              <h4 className="text-4xl font-black uppercase italic tracking-tighter">Scale-Up Pro</h4>
-              <p className="text-xs font-black uppercase tracking-widest text-neo-pink">Highly Recommended</p>
-            </div>
-            <div className="w-16 h-16 bg-neo-yellow border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_black] group-hover:rotate-12 transition-transform shrink-0">
-              <ShoppingBag className="w-8 h-8 text-black" />
-            </div>
-          </div>
-
-          <div className="mb-8">
-            <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-black">₹999</span>
-              <span className="text-[10px] font-bold uppercase opacity-40 tracking-widest">/month</span>
-            </div>
-          </div>
-
-          <ul className="space-y-4 mb-10">
-            {[
-              'Unlimited DMs & Automations',
-              'Unlimited 1:1 Calls*',
-              'Unlimited Digital Products',
-              'Verified Creator Badge',
-              'Premium Storefront Themes',
-              'Deep Creator Analytics'
-            ].map((feat, i) => (
-              <li key={i} className="flex items-start gap-2 font-bold uppercase text-[10px] tracking-wide text-zinc-500">
-                <span className="text-black">•</span>
-                {feat}
-              </li>
-            ))}
-          </ul>
-
-          <button className="neo-btn bg-black text-white w-full py-5 text-xl font-black uppercase shadow-[8px_8px_0px_0px_theme(colors.neo-yellow)] hover:shadow-none translate-x-[-4px] translate-y-[-4px] active:translate-x-0 active:translate-y-0 transition-all">
-            Upgrade Now
-          </button>
-          <p className="mt-4 text-[8px] font-bold text-zinc-400 text-center uppercase tracking-widest">*Backed by call commissions</p>
-        </div>
-
-        {/* Enterprise/Custom Card */}
-        <div className="neo-box bg-neo-blue p-10 border-4 border-black shadow-[12px_12px_0px_0px_black] text-white group">
-          <div className="flex justify-between items-start mb-8">
-            <div>
-              <h4 className="text-4xl font-black uppercase italic tracking-tighter">Superstar</h4>
-              <p className="text-xs font-black uppercase tracking-widest opacity-80">Custom Enterprise Solutions</p>
-            </div>
-            <div className="w-16 h-16 bg-white border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_black] group-hover:bg-neo-green transition-colors shrink-0">
-              <Crown className="w-8 h-8 text-black" />
-            </div>
-          </div>
-
-          <div className="mb-10 min-h-[140px]">
-            <p className="text-lg font-bold leading-relaxed">
-              Scale your digital empire with custom commission rates, white-label stores, and a dedicated manager to handle your growth.
-            </p>
-          </div>
-
-          <button className="neo-btn bg-white text-black w-full py-5 text-xl font-black uppercase">
-            Contact Us
-          </button>
-        </div>
-      </div>
-
-      <div className="text-center opacity-40">
-        <p className="text-[10px] font-black uppercase tracking-widest">Secure Billing Powered by Razorpay</p>
-      </div>
-    </div>
-  )
-}
 
 {
   activeTab === 'tools' && (
@@ -1888,49 +1603,132 @@ export default function DashboardClient({ session, username, initialBalance, ini
           </div>
         )}
       </div>
+
+      <div className="w-full h-1 bg-black/10 rounded-full my-12" />
+      <div className="grid lg:grid-cols-2 gap-8">
+        <div>
+           <h3 className="text-3xl font-black uppercase italic tracking-tighter">Live Shows</h3>
+           <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-6">Schedule ticketed broadcast events</p>
+           <button onClick={() => setShowCreateShow(true)}
+              className="w-full py-4 bg-neo-yellow text-black border-4 border-black font-black uppercase text-sm shadow-[4px_4px_0px_0px_black] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]">
+              Create a Show
+           </button>
+           <AnimatePresence>
+                {showCreateShow && (
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+                    className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_black] mt-6">
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <h3 className="text-xl font-black uppercase italic tracking-tighter">New Event</h3>
+                      </div>
+                      <button onClick={() => setShowCreateShow(false)}
+                        className="w-8 h-8 border-2 border-black flex items-center justify-center hover:bg-zinc-100">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Show Title</label>
+                        <input type="text" value={newShowTitle} onChange={e => setNewShowTitle(e.target.value)}
+                          placeholder="e.g. Live Acoustic Night"
+                          className="w-full border-4 border-black p-3 font-bold text-sm outline-none" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Description</label>
+                        <textarea value={newShowDesc} onChange={e => setNewShowDesc(e.target.value)}
+                          placeholder="Tell fans what to expect..." rows={2}
+                          className="w-full border-4 border-black p-3 font-bold text-sm outline-none resize-none" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Date</label>
+                          <input type="date" value={newShowDate} onChange={e => setNewShowDate(e.target.value)}
+                            className="w-full border-4 border-black p-3 font-bold text-sm outline-none" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Time</label>
+                          <input type="time" value={newShowTime} onChange={e => setNewShowTime(e.target.value)}
+                            className="w-full border-4 border-black p-3 font-bold text-sm outline-none" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Ticket Price (INR)</label>
+                          <input type="number" value={newShowPrice} onChange={e => setNewShowPrice(e.target.value)}
+                            placeholder="299" min="0"
+                            className="w-full border-4 border-black p-3 font-black text-lg outline-none" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Max Seats</label>
+                          <select value={newShowSeats} onChange={e => setNewShowSeats(e.target.value)}
+                            className="w-full border-4 border-black p-3 font-black text-sm outline-none bg-white">
+                            <option value="25">25 seats</option>
+                            <option value="100">100 seats</option>
+                            <option value="1000">1,000 seats</option>
+                            <option value="10000">Unlimited</option>
+                          </select>
+                        </div>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (!newShowTitle || !newShowDate || !newShowTime || !newShowPrice) { alert('Please fill in all fields'); return; }
+                          try {
+                            await fetch('/api/shows', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ action: 'create', title: newShowTitle, description: newShowDesc, date: newShowDate, time: newShowTime, ticketPrice: Number(newShowPrice), maxSeats: Number(newShowSeats) }),
+                            });
+                            setShowCreateShow(false);
+                            alert('Show created!');
+                          } catch (e) { alert('Failed to create show'); }
+                        }}
+                        disabled={!newShowTitle || !newShowDate || !newShowTime || !newShowPrice}
+                        className="w-full py-3 bg-black text-white border-4 border-black font-black uppercase text-xs shadow-[4px_4px_0px_0px_theme(colors.neo-pink)] disabled:opacity-50 mt-4">
+                        Create Event
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+           </AnimatePresence>
+        </div>
+        <div>
+           <h3 className="text-3xl font-black uppercase italic tracking-tighter">Fundraisers</h3>
+           <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-6">Run a charity stream or personal goal</p>
+           <FundraiserManager username={username || ''} />
+        </div>
+      </div>
     </div>
   )
 }
-
-{/* Old profile tab removed — replaced by ProfileEditor below */ }
 
 {
   activeTab === 'settings' && (
-    <div className="space-y-8">
-      <SettingsClient username={username || ''} initialSettings={{
-        videoRate: initialSettings?.videoRate ?? 100,
-        audioRate: initialSettings?.audioRate ?? 50,
-        socials: initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' },
-        profileImage: initialSettings?.profileImage || '',
-        templates: initialSettings?.templates || [],
-        faqs: initialSettings?.faqs || [],
-        roomType: initialSettings?.roomType || 'audio',
-        isRoomFree: initialSettings?.isRoomFree ?? true,
-      }} />
+    <div className="space-y-12">
+      <div className="mb-12">
+        <ProfileEditor username={username || ''} initialSettings={{
+          profileImage: initialSettings?.profileImage || '',
+          socials: initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' },
+          faqs: initialSettings?.faqs || [],
+          templates: initialSettings?.templates || [],
+        }} />
+      </div>
+      <div className="w-full h-1 bg-black/10 rounded-full my-8" />
+      <div>
+        <SettingsClient username={username || ''} initialSettings={{
+          videoRate: initialSettings?.videoRate ?? 100,
+          audioRate: initialSettings?.audioRate ?? 50,
+          socials: initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' },
+          profileImage: initialSettings?.profileImage || '',
+          templates: initialSettings?.templates || [],
+          faqs: initialSettings?.faqs || [],
+          roomType: initialSettings?.roomType || 'audio',
+          isRoomFree: initialSettings?.isRoomFree ?? true,
+        }} />
+      </div>
     </div>
   )
 }
 
-{
-  activeTab === 'profile' && (
-    <div className="space-y-8">
-      <ProfileEditor username={username || ''} initialSettings={{
-        profileImage: initialSettings?.profileImage || '',
-        socials: initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' },
-        faqs: initialSettings?.faqs || [],
-        templates: initialSettings?.templates || [],
-      }} />
-    </div>
-  )
-}
-
-{
-  activeTab === 'fundraiser' && (
-    <div className="space-y-8">
-      <FundraiserManager username={username || ''} />
-    </div>
-  )
-}
           </motion.div >
         </div >
       </main >

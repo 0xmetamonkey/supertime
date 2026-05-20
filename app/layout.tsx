@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const viewport: Viewport = {
-  themeColor: '#000000',
+  themeColor: '#ffffff',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -21,11 +21,11 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: "Supertime | supertime.wtf",
-  description: "Monetize your time instantly.",
+  title: "Supertime — Sell your time",
+  description: "A marketplace where anyone can sell their time for money.",
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     title: 'Supertime',
   },
   manifest: '/manifest.json',
@@ -47,34 +47,31 @@ export default function RootLayout({
         layout: {
           socialButtonsVariant: "blockButton",
           logoPlacement: "inside",
-          shimmer: true,
+          shimmer: false,
         },
         variables: {
-          colorPrimary: "#4461FF",
+          colorPrimary: "#111111",
           colorTextOnPrimaryBackground: "white",
           colorBackground: "white",
-          colorText: "black",
+          colorText: "#111111",
           colorInputBackground: "white",
-          colorInputText: "black",
-          borderRadius: "0px",
-          fontFamily: "'Outfit', sans-serif",
+          colorInputText: "#111111",
+          borderRadius: "8px",
         },
         elements: {
-          formButtonPrimary:
-            "bg-black hover:bg-zinc-800 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-white font-black uppercase tracking-widest transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none",
-          card: "border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] rounded-none",
-          headerTitle: "font-black uppercase tracking-tighter text-3xl",
-          headerSubtitle: "font-bold text-zinc-500 uppercase tracking-widest text-[10px]",
-          socialButtonsBlockButton:
-            "border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-black uppercase tracking-widest hover:bg-zinc-50 transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none rounded-none",
-          socialButtonsBlockButtonText: "font-black",
-          formFieldLabel: "font-black uppercase tracking-widest text-[10px]",
-          formFieldInput: "border-4 border-black p-4 font-bold focus:ring-0 rounded-none",
-          footerActionText: "font-bold text-zinc-500",
-          footerActionLink: "font-black text-neo-pink hover:text-neo-pink/80 uppercase tracking-widest text-[10px]",
-          identityPreviewText: "font-bold",
+          formButtonPrimary: "bg-black hover:bg-zinc-800 text-white font-semibold transition-opacity",
+          card: "border border-gray-200 rounded-xl shadow-sm",
+          headerTitle: "font-semibold text-xl",
+          headerSubtitle: "text-gray-500 text-sm",
+          socialButtonsBlockButton: "border border-gray-200 rounded-lg font-medium hover:bg-gray-50 transition-colors",
+          socialButtonsBlockButtonText: "font-medium",
+          formFieldLabel: "font-medium text-sm text-gray-700",
+          formFieldInput: "border border-gray-200 rounded-lg p-3 focus:ring-1 focus:ring-black",
+          footerActionText: "text-gray-500",
+          footerActionLink: "font-medium text-black hover:text-gray-700",
+          identityPreviewText: "font-medium",
           identityPreviewEditButtonIcon: "text-black",
-          userButtonAvatarBox: "border-2 border-black",
+          userButtonAvatarBox: "border border-gray-200",
           userButtonTrigger: "focus:shadow-none",
           footer: "hidden",
           internal_footer: "hidden",

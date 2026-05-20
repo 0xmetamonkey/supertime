@@ -2,82 +2,84 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-  --neo-blue: #4461FF;
-  --neo-pink: #FF00F5;
-  --neo-green: #00FF1F;
-  --neo-yellow: #CEFF1A;
-  --slide-yellow: #fbbf24;
-  --slide-blue: #84A9FF;
-  --slide-pink: #FF8B8B;
+  --foreground: #111111;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --surface: #f9fafb;
+  --accent: #111111; /* Placeholder — no color decision yet */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-neo-blue: var(--neo-blue);
-  --color-neo-pink: var(--neo-pink);
-  --color-neo-green: var(--neo-green);
-  --color-neo-yellow: var(--neo-yellow);
-  --color-slide-yellow: var(--slide-yellow);
-  --color-slide-blue: var(--slide-blue);
-  --color-slide-pink: var(--slide-pink);
-  --font-sans: 'Outfit', var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-surface: var(--surface);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
 }
 
-html,
-body {
+/* ── Base Reset ── */
+html, body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Outfit', sans-serif;
   overflow-x: hidden;
   max-width: 100vw;
-  position: relative;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-@utility neo-box {
-  border-width: 4px;
-  border-color: black;
-  box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 1);
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+/* ── Structural Utilities ── */
+
+/* Standard card container — layout only, no decoration */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
 }
 
-
-.neo-box-hover:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 12px 12px 0px 0px rgba(0, 0, 0, 1);
+/* Primary button — structural, no color opinion */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: 8px;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+  border: none;
 }
 
-@utility neo-btn {
-  border-width: 3px;
-  border-color: black;
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
-  padding-top: 0.625rem;
-  padding-bottom: 0.625rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  line-height: 1rem;
-  border-radius: 1.25rem; /* rounded-2xl */
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.btn:hover { opacity: 0.85; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  &:hover {
-    transform: translate(2px, 2px);
-    box-shadow: none;
-  }
-
-  &:active {
-    transform: translate(4px, 4px);
-  }
+.btn-primary {
+  background: var(--foreground);
+  color: var(--background);
 }
 
+.btn-secondary {
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
 
+.btn-secondary:hover {
+  background: var(--surface);
+}
 
-/* Hide Next.js Dev Indicators/Toolbar */
+/* ── Scrollbar ── */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── Hide Next.js Dev Indicators ── */
 body>[data-nextjs-toast],
 body>[data-nextjs-dialog-overlay],
 nextjs-portal {
@@ -87,126 +89,7 @@ nextjs-portal {
   pointer-events: none !important;
 }
 
-@keyframes infinite-scroll {
-  from {
-    transform: translateX(0);
-  }
-
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-.animate-infinite-scroll {
-  animation: infinite-scroll 40s linear infinite;
-}
-
-@keyframes sphere-glow {
-  0%, 100% { transform: scale(1); opacity: 0.3; }
-  50% { transform: scale(1.1); opacity: 0.5; }
-}
-
-@keyframes sphere-float {
-  0%, 100% { transform: translateY(0) translateX(0); }
-  50% { transform: translateY(-20px) translateX(10px); }
-}
-
-@keyframes orbit {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes orbit-reverse {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(-360deg); }
-}
-
-@keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fade-in {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes slide-in-right {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
-}
-
-.animate-sphere-glow { animation: sphere-glow 20s linear infinite; }
-.animate-sphere-float { animation: sphere-float 5s ease-in-out infinite; }
-.animate-orbit { animation: orbit 10s linear infinite; }
-.animate-orbit-reverse { animation: orbit-reverse 15s linear infinite; }
-.animate-fade-in-up { animation: fade-in-up 0.8s ease-out both; }
-.animate-fade-in { animation: fade-in 1s ease-out 0.5s both; }
-.animate-slide-in-right { animation: slide-in-right 0.3s ease-out both; }
-
-.bg-grid {
-  background-size: 40px 40px;
-  background-image: 
-    linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-}
-
-.neo-brutal-shadow {
-  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
-}
-
-.neo-brutal-shadow-lg {
-  box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 1);
-}
-
-@utility neo-brutal-btn {
-  @apply neo-btn;
-  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
-  border-radius: 1.25rem; /* rounded-2xl */
-  
-  &:hover {
-    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 1);
-    transform: translate(2px, 2px);
-  }
-
-  &:active {
-    box-shadow: none;
-    transform: translate(4px, 4px);
-  }
-}
-
-
-
-
-.outline-text {
-  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.2);
-  color: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-left: 2px solid black;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: black;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #333;
-}
-
-.neo-box-sm {
-  border-width: 2px;
-  border-color: black;
-  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
-}
-
-/* Hard Clerk Overrides for Supertime Premium Feel */
+/* ── Clerk: Strip to neutral defaults ── */
 .cl-footer,
 .cl-internal-footer,
 .cl-internal-ph6z3v,
@@ -214,105 +97,12 @@ nextjs-portal {
   display: none !important;
 }
 
-.cl-card {
-  border: 4px solid black !important;
-  box-shadow: 12px 12px 0px 0px rgba(0, 0, 0, 1) !important;
-  border-radius: 0px !important;
+/* ── Animation: Only functional ones ── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.cl-formButtonPrimary {
-  background-color: black !important;
-  border: 4px solid black !important;
-  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1) !important;
-  border-radius: 0px !important;
-  text-transform: uppercase !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.1em !important;
-}
-
-.cl-headerTitle {
-  text-transform: uppercase !important;
-  font-weight: 900 !important;
-  letter-spacing: -0.05em !important;
-  font-size: 1.875rem !important;
-}
-
-.cl-socialButtonsBlockButton {
-  border: 4px solid black !important;
-  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1) !important;
-  border-radius: 0px !important;
-  transition: all 0.2s ease !important;
-}
-
-.cl-socialButtonsBlockButton:active {
-  transform: translate(2px, 2px) !important;
-  box-shadow: none !important;
-}
-
-/* Organized Profile Redesign */
-.tiny-call-btn {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 9999px;
-  border: 2px solid black;
-  background-color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  box-shadow: 2px 2px 0px 0px black;
-}
-
-.tiny-call-btn:hover {
-  background-color: #f9f9f9;
-}
-
-.tiny-call-btn:active {
-  transform: translateY(1px);
-  box-shadow: 1px 1px 0px 0px black;
-}
-
-.monochrome-social {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 9999px;
-  border: 2px solid black;
-  background-color: black;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.monochrome-social:hover {
-  background-color: #333;
-  transform: scale(1.05);
-}
-
-.store-tab-btn {
-  padding: 0.5rem 1rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  font-size: 0.625rem;
-  /* 10px */
-  letter-spacing: 0.1em;
-  border-bottom-width: 4px;
-  transition: all 0.2s ease;
-}
-
-.store-tab-active {
-  border-color: black;
-  color: black;
-}
-
-.store-tab-inactive {
-  border-color: transparent;
-  color: #9ca3af;
-  /* zinc-400 */
-}
-
-.store-tab-inactive:hover {
-  color: #4b5563;
-  /* zinc-600 */
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
 }

@@ -735,365 +735,329 @@ export default function CreatorClient({
         </div>
       )}
 
-      <main className="max-w-4xl mx-auto px-4 md:px-6 pt-6 md:pt-10 relative">
+      <main className="max-w-2xl mx-auto px-5 pt-8 pb-20">
 
-        {/* ORGANIZED HEADER: TINY CALL ACTIONS AT TOP */}
-        <div className="flex justify-between items-center mb-10">
-          <div className="flex items-center gap-3">
-            <button onClick={() => handleStartCall('video')} className="tiny-call-btn" title="Video Call">
-              <Video className="w-5 h-5" />
-            </button>
-            <button onClick={() => handleStartCall('audio')} className="tiny-call-btn" title="Audio Call">
-              <Mic className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleJoinRoom}
-              className={`flex items-center gap-2 px-3 py-1 rounded-full border-2 transition-all group ${
-                isCreatorOnline 
-                  ? 'bg-neo-green/10 border-neo-green hover:bg-neo-green/20' 
-                  : 'bg-zinc-100 border-zinc-300 hover:bg-zinc-200 opacity-80'
-              }`}
-            >
-              <div className={`w-2 h-2 rounded-full ${isCreatorOnline ? 'bg-neo-green animate-pulse' : 'bg-zinc-400'}`} />
-              <span className={`text-[10px] font-black uppercase ${isCreatorOnline ? 'text-neo-green' : 'text-zinc-500'}`}>
-                {isCreatorOnline ? 'Live ' : 'Studio '}
-                <span className="opacity-40 group-hover:opacity-100 ml-1">• Enter Room</span>
-              </span>
-            </button>
+        {/* ── Profile Header ── */}
+        <div className="flex flex-col items-center text-center mb-10">
+          <div className="w-24 h-24 rounded-full overflow-hidden border border-gray-200 mb-4">
+            {profileImage ? (
+              <img src={profileImage} alt={username} className="w-full h-full object-cover" />
+            ) : (
+              <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`} alt={username} className="w-full h-full object-cover" />
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold mb-1">
+            {username}
+            {isVerified && <span className="ml-1.5 text-blue-500 text-sm">✓</span>}
+          </h1>
+
+          <p className="text-sm text-gray-500 max-w-sm mb-4">
+            Scaling human connection through time-based digital assets and elite calls.
+          </p>
+
+          {/* Social links */}
+          <div className="flex items-center gap-3 mb-6">
             {socials?.instagram && (
-              <a href={socials.instagram.startsWith('http') ? socials.instagram : `https://instagram.com/${socials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="monochrome-social">
+              <a href={socials.instagram.startsWith('http') ? socials.instagram : `https://instagram.com/${socials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600 transition-colors">
                 <Instagram className="w-4 h-4" />
               </a>
             )}
             {socials?.youtube && (
-              <a href={socials.youtube.startsWith('http') ? socials.youtube : `https://youtube.com/${socials.youtube.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="monochrome-social">
+              <a href={socials.youtube.startsWith('http') ? socials.youtube : `https://youtube.com/${socials.youtube.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600 transition-colors">
                 <Youtube className="w-4 h-4" />
               </a>
             )}
             {socials?.x && (
-              <a href={socials.x.startsWith('http') ? socials.x : `https://x.com/${socials.x.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="monochrome-social font-black text-xs">
+              <a href={socials.x.startsWith('http') ? socials.x : `https://x.com/${socials.x.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600 transition-colors text-xs font-medium">
                 𝕏
               </a>
             )}
             {socials?.website && (
-              <a href={socials.website.startsWith('http') ? socials.website : `https://${socials.website}`} target="_blank" rel="noopener noreferrer" className="monochrome-social">
+              <a href={socials.website.startsWith('http') ? socials.website : `https://${socials.website}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600 transition-colors">
                 <Globe className="w-4 h-4" />
               </a>
             )}
-            <a href={`/chat?to=${username}`} className="monochrome-social group relative">
+            <a href={`/chat?to=${username}`} className="text-gray-400 hover:text-gray-600 transition-colors">
               <MessageSquare className="w-4 h-4" />
-              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[8px] font-black px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap uppercase tracking-widest border border-white/20">
-                Direct Chat
-              </span>
             </a>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                showError("Link Copied!");
-              }}
-              className="monochrome-social"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+          </div>
+
+          {/* Admire button */}
+          <button onClick={toggleAdmire} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${isAdmiring ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+            <Heart className={`w-3.5 h-3.5 ${isAdmiring ? 'fill-red-500 text-red-500' : ''}`} /> {admirerCount}
+          </button>
+        </div>
+
+        {/* ── Primary CTAs: Book a Call ── */}
+        <div className="space-y-3 mb-10">
+          <button
+            onClick={() => handleStartCall('video')}
+            className="btn btn-primary w-full py-3.5 text-sm"
+          >
+            <Video className="w-4 h-4" /> Book a Video Call {videoRate ? `· ₹${videoRate}/min` : ''}
+          </button>
+
+          <button
+            onClick={() => handleStartCall('audio')}
+            className="btn btn-secondary w-full py-3.5 text-sm"
+          >
+            <Mic className="w-4 h-4" /> Book an Audio Call {audioRate ? `· ₹${audioRate}/min` : ''}
+          </button>
+
+          {/* Live status */}
+          <button
+            onClick={handleJoinRoom}
+            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-medium border transition-colors ${
+              isCreatorOnline
+                ? 'bg-green-50 border-green-200 text-green-700'
+                : 'bg-gray-50 border-gray-200 text-gray-400'
+            }`}
+          >
+            <div className={`w-2 h-2 rounded-full ${isCreatorOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
+            {isCreatorOnline ? 'Live Now · Join Room' : 'Studio Offline'}
+          </button>
+        </div>
+
+        {/* ── Tab Navigation ── */}
+        <div className="border-b border-gray-200 mb-6">
+          <div className="flex">
+            {['store', 'shows', 'courses', 'about'].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setProfileTab(tab as any)}
+                className={`flex-1 py-3 text-xs font-medium capitalize transition-colors border-b-2 ${
+                  profileTab === tab
+                    ? 'border-black text-black'
+                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                {tab}
+                {tab === 'shows' && shows.length > 0 && (
+                  <span className="ml-1 bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded-full">{shows.length}</span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* PROFILE HERO */}
-        <div className="flex flex-col items-center text-center mb-12">
-          <div className="relative mb-6">
-            <div className="w-32 h-32 md:w-40 md:h-40 bg-white border-4 border-black shadow-[8px_8px_0px_0px_black] overflow-hidden">
-              {profileImage ? (
-                <img src={profileImage} alt={username} className="w-full h-full object-cover" />
-              ) : (
-                <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`} alt={username} className="w-full h-full object-cover" />
-              )}
-            </div>
-          </div>
-          <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none mb-4">
-            {username}
-            {isVerified && <Zap className="w-8 h-8 md:w-10 md:h-10 text-neo-blue fill-neo-blue inline-block ml-2" />}
-          </h1>
-          <div className="flex items-center gap-2 mb-6">
-            <button onClick={toggleAdmire} className={`flex items-center gap-2 border-2 border-black px-3 py-1 font-black uppercase text-xs shadow-[2px_2px_0px_0px_black] ${isAdmiring ? 'bg-neo-pink text-white' : 'bg-white text-black'}`}>
-              <Heart className={`w-4 h-4 ${isAdmiring ? 'fill-white' : ''}`} /> {admirerCount}
-            </button>
-          </div>
-          <p className="max-w-xl text-sm font-bold text-zinc-500 uppercase tracking-widest leading-relaxed">
-            Scaling human connection through time-based digital assets and elite calls.
-          </p>
-        </div>
+        {/* ── Tab Content ── */}
+        <div className="min-h-[300px]">
 
-        {/* TAB SYSTEM */}
-        <div className="border-4 border-black bg-white shadow-[8px_8px_0px_0px_black] overflow-hidden flex flex-col min-h-[500px]">
-          <div className="flex border-b-4 border-black">
-            <button onClick={() => setProfileTab('store')} className={`flex-1 store-tab-btn ${profileTab === 'store' ? 'store-tab-active' : 'store-tab-inactive'}`}>Store</button>
-            <button onClick={() => setProfileTab('shows')} className={`flex-1 store-tab-btn ${profileTab === 'shows' ? 'store-tab-active' : 'store-tab-inactive'}`}>
-              Shows {shows.length > 0 && <span className="ml-1 bg-neo-pink text-white text-[9px] px-1.5 py-0.5 rounded-full">{shows.length}</span>}
-            </button>
-            <button onClick={() => setProfileTab('courses')} className={`flex-1 store-tab-btn ${profileTab === 'courses' ? 'store-tab-active' : 'store-tab-inactive'}`}>Courses</button>
-            <button onClick={() => setProfileTab('about')} className={`flex-1 store-tab-btn ${profileTab === 'about' ? 'store-tab-active' : 'store-tab-inactive'}`}>About</button>
-          </div>
-
-          <div className="p-6 md:p-10 flex-1">
-            {profileTab === 'store' && (
-              <div className="space-y-8">
-                {/* Product Grid */}
-                <div className="grid md:grid-cols-2 gap-6">
-                  {/* Real Products */}
-                  {products && products.length > 0 && products.map((prod: any) => {
-                    const typeConf = productTypeConfig[prod.type] || productTypeConfig.digital;
-                    const TypeIcon = typeConf.icon;
-                    return (
-                      <motion.div
-                        key={prod.id}
-                        whileHover={{ y: -2 }}
-                        className="neo-box bg-white border-4 border-black shadow-[6px_6px_0px_0px_black] group overflow-hidden"
-                      >
-                        {/* Thumbnail */}
-                        {prod.thumbnail ? (
-                          <div className="h-40 bg-zinc-100 border-b-4 border-black overflow-hidden">
-                            <img src={prod.thumbnail} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                          </div>
-                        ) : (
-                          <div className="h-20 bg-zinc-50 border-b-4 border-black flex items-center justify-center">
-                            <TypeIcon className="w-8 h-8 opacity-10" />
-                          </div>
-                        )}
-
-                        <div className="p-6">
-                          <div className="flex justify-between items-start mb-3">
-                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-black text-white">
-                              {typeConf.label}
-                            </span>
-                            {prod.type === 'booking' && prod.duration && (
-                              <span className="text-[8px] font-black uppercase text-zinc-400 flex items-center gap-1">
-                                <Clock className="w-3 h-3" /> {prod.duration}
-                              </span>
-                            )}
-                          </div>
-
-                          <h4 className="font-black uppercase tracking-tight text-lg mb-1 leading-tight">{prod.name}</h4>
-                          {prod.description && (
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase leading-relaxed mb-4 line-clamp-2">{prod.description}</p>
-                          )}
-
-                          <div className="mt-4 pt-4 border-t-2 border-zinc-100 flex justify-between items-center">
-                            <span className="text-xl font-black text-neo-green">₹{prod.price}</span>
-                            <button
-                              onClick={() => handleBuyProduct(prod)}
-                              disabled={buyingId === prod.id}
-                              className="neo-btn bg-black text-white px-5 py-2 font-black uppercase text-[10px] flex items-center gap-2 disabled:opacity-50"
-                            >
-                              {buyingId === prod.id ? (
-                                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing...</>
-                              ) : (
-                                <><ShoppingBag className="w-3.5 h-3.5" /> Buy Now</>
-                              )}
-                            </button>
-                          </div>
+          {/* STORE TAB */}
+          {profileTab === 'store' && (
+            <div className="space-y-6">
+              <div className="grid gap-4">
+                {/* Products */}
+                {products && products.length > 0 && products.map((prod: any) => {
+                  const typeConf = productTypeConfig[prod.type] || productTypeConfig.digital;
+                  const TypeIcon = typeConf.icon;
+                  return (
+                    <div key={prod.id} className="card">
+                      {prod.thumbnail && (
+                        <div className="h-36 -mx-6 -mt-6 mb-4 overflow-hidden rounded-t-xl">
+                          <img src={prod.thumbnail} alt={prod.name} className="w-full h-full object-cover" />
                         </div>
-                      </motion.div>
-                    );
-                  })}
-
-                  {/* Session Templates */}
-                  {templates && templates.length > 0 && templates.map((tpl: any) => (
-                    <div key={tpl.id} onClick={() => handleStartCall(tpl.type)} className="neo-box bg-white p-6 border-4 border-black shadow-[6px_6px_0px_0px_black] group hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all cursor-pointer">
-                      <div className="flex justify-between items-start mb-4">
-                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 border-2 border-black ${tpl.type === 'video' ? 'bg-neo-pink text-white' : 'bg-neo-blue text-white'}`}>{tpl.duration} Min {tpl.type}</span>
-                        <Zap className="w-4 h-4 text-zinc-300 group-hover:text-neo-pink transition-colors" />
-                      </div>
-                      <h4 className="font-black uppercase tracking-tight text-lg mb-1">{tpl.duration} Min Session</h4>
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase line-clamp-2">{tpl.description || 'Instant 1:1 access for high-value consulting.'}</p>
-                      <div className="mt-6 pt-4 border-t-2 border-zinc-50 flex justify-between items-center">
-                        <span className="font-black text-neo-green">{tpl.price} TKN</span>
-                        <span className="text-[8px] font-black uppercase text-neo-pink">Call Now</span>
-                      </div>
-                    </div>
-                  ))}
-
-                  {(!products || products.length === 0) && (!templates || templates.length === 0) && (
-                    <div className="col-span-2 py-20 bg-zinc-50 border-4 border-black border-dashed flex flex-col items-center justify-center opacity-50">
-                      <Clock className="w-10 h-10 mb-4" />
-                      <p className="text-[10px] font-black uppercase">Store items arriving soon...</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Tip Jar */}
-                <div className="neo-box bg-zinc-50 p-8 border-4 border-black shadow-[6px_6px_0px_0px_black]">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Coffee className="w-6 h-6" />
-                    <h4 className="text-xl font-black uppercase tracking-tighter italic">Support {username}</h4>
-                  </div>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-6">
-                    Show your appreciation with a tip — 100% goes to the creator
-                  </p>
-                  <div className="flex gap-3 mb-4">
-                    {[49, 99, 199, 499].map(amt => (
-                      <button
-                        key={amt}
-                        onClick={() => setTipAmount(String(amt))}
-                        className={`flex-1 py-3 border-4 border-black font-black text-sm transition-all ${tipAmount === String(amt)
-                            ? 'bg-black text-white shadow-none translate-x-[2px] translate-y-[2px]'
-                            : 'bg-white shadow-[4px_4px_0px_0px_black] hover:shadow-[2px_2px_0px_0px_black]'
-                          }`}
-                      >
-                        ₹{amt}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex gap-3">
-                    <input
-                      type="number"
-                      value={tipAmount}
-                      onChange={e => setTipAmount(e.target.value)}
-                      placeholder="Custom amount"
-                      min="1"
-                      className="flex-1 bg-white border-4 border-black p-3 font-bold text-sm focus:outline-none"
-                    />
-                    <button
-                      onClick={handleTip}
-                      disabled={tipping || !tipAmount || parseInt(tipAmount) < 1}
-                      className="neo-btn bg-black text-white px-8 py-3 font-black uppercase text-[10px] flex items-center gap-2 disabled:opacity-30"
-                    >
-                      {tipping ? (
-                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending...</>
-                      ) : tipSuccess ? (
-                        <><Check className="w-3.5 h-3.5" /> Sent! 🎉</>
-                      ) : (
-                        <><Heart className="w-3.5 h-3.5" /> Send Tip</>
                       )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {profileTab === 'shows' && (
-              <div className="space-y-8">
-                {loadingShows ? (
-                  <div className="py-20 flex flex-col items-center justify-center space-y-4">
-                    <Loader2 className="w-10 h-10 animate-spin text-zinc-200" />
-                    <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Scanning Transmission...</p>
-                  </div>
-                ) : shows.length === 0 ? (
-                  <div className="py-20 border-4 border-black border-dashed flex flex-col items-center justify-center space-y-4 text-zinc-300">
-                    <Sparkles className="w-12 h-12" />
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em]">No live shows scheduled yet</p>
-                  </div>
-                ) : (
-                  <div className="grid md:grid-cols-2 gap-8">
-                    {shows.map((show) => (
-                      <div key={show.id} className="neo-box bg-white overflow-hidden group border-4 border-black shadow-[6px_6px_0px_0px_black]">
-                        <div className="aspect-video bg-zinc-950 flex flex-col items-center justify-center p-6 border-b-4 border-black relative overflow-hidden">
-                          <div className="absolute inset-0 bg-neo-pink/5 animate-pulse" />
-                          <Sparkles className="w-10 h-10 text-white relative z-10 mb-4 opacity-20" />
-                          <div className="absolute top-4 left-4">
-                            <div className="flex items-center gap-1.5 px-3 py-1 bg-neo-green text-black border-2 border-black">
-                              <span className="font-black uppercase text-[10px] tracking-widest">₹{show.ticketPrice}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="p-6 space-y-4">
-                          <div>
-                            <h4 className="font-black uppercase text-xl leading-tight mb-2 tracking-tighter">{show.title}</h4>
-                            <p className="text-xs font-bold text-zinc-500 line-clamp-2 uppercase tracking-wide">{show.description}</p>
-                          </div>
-                          
-                          <div className="flex gap-4 border-y-2 border-zinc-100 py-3">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-3.5 h-3.5 text-neo-pink" />
-                              <span className="text-[10px] font-black uppercase text-black">{show.date}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-3.5 h-3.5 text-neo-blue" />
-                              <span className="text-[10px] font-black uppercase text-black">{show.time}</span>
-                            </div>
-                          </div>
-
-                          <button 
-                            onClick={() => alert("Ticket purchase coming soon! For now, just mark your calendar.")}
-                            className="w-full bg-black text-white py-3 border-4 border-black font-black uppercase text-xs shadow-[4px_4px_0px_0px_theme(colors.neo-pink)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-                          >
-                            Get Ticket
-                          </button>
-                        </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <TypeIcon className="w-3.5 h-3.5 text-gray-400" />
+                        <span className="text-[11px] text-gray-400 font-medium">{typeConf.label}</span>
+                        {prod.type === 'booking' && prod.duration && (
+                          <span className="text-[11px] text-gray-400 flex items-center gap-1 ml-auto">
+                            <Clock className="w-3 h-3" /> {prod.duration}
+                          </span>
+                        )}
                       </div>
-                    ))}
+                      <h4 className="font-semibold text-base mb-1">{prod.name}</h4>
+                      {prod.description && (
+                        <p className="text-xs text-gray-500 mb-4 line-clamp-2">{prod.description}</p>
+                      )}
+                      <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                        <span className="font-semibold">₹{prod.price}</span>
+                        <button
+                          onClick={() => handleBuyProduct(prod)}
+                          disabled={buyingId === prod.id}
+                          className="btn btn-primary text-xs px-4 py-2 disabled:opacity-50"
+                        >
+                          {buyingId === prod.id ? (
+                            <><Loader2 className="w-3 h-3 animate-spin" /> Processing</>
+                          ) : (
+                            <><ShoppingBag className="w-3 h-3" /> Buy</>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Session Templates */}
+                {templates && templates.length > 0 && templates.map((tpl: any) => (
+                  <div key={tpl.id} onClick={() => handleStartCall(tpl.type)} className="card cursor-pointer hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-2 mb-2">
+                      {tpl.type === 'video' ? <Video className="w-3.5 h-3.5 text-gray-400" /> : <Mic className="w-3.5 h-3.5 text-gray-400" />}
+                      <span className="text-[11px] text-gray-400 font-medium">{tpl.duration} min {tpl.type} call</span>
+                    </div>
+                    <h4 className="font-semibold text-base mb-1">{tpl.duration} Minute Session</h4>
+                    <p className="text-xs text-gray-500 mb-3">{tpl.description || 'Instant 1:1 access.'}</p>
+                    <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                      <span className="font-semibold">{tpl.price} TKN</span>
+                      <span className="text-xs text-gray-400">Call Now →</span>
+                    </div>
+                  </div>
+                ))}
+
+                {(!products || products.length === 0) && (!templates || templates.length === 0) && (
+                  <div className="py-16 text-center text-gray-300">
+                    <Clock className="w-8 h-8 mx-auto mb-3" />
+                    <p className="text-sm">No items yet</p>
                   </div>
                 )}
               </div>
-            )}
 
-            {profileTab === 'courses' && (
-              <div className="flex flex-col items-center justify-center h-64 border-4 border-black border-dashed bg-zinc-50 opacity-50">
-                <Sparkles className="w-12 h-12 mb-4 text-neo-blue" />
-                <h3 className="text-xl font-black uppercase italic">Workshops & Training</h3>
-                <p className="text-[10px] font-bold uppercase mt-2">Curating high-performance curriculum...</p>
-              </div>
-            )}
-
-            {profileTab === 'about' && (
-              <div className="space-y-10">
-                {faqs && faqs.length > 0 && <FAQSection faqs={faqs} />}
-                <div className="p-8 bg-zinc-50 border-4 border-black shadow-[4px_4px_0px_0px_black]">
-                  <h4 className="text-2xl font-black uppercase italic mb-4">The Vision</h4>
-                  <p className="text-sm font-bold text-zinc-600 uppercase leading-relaxed">
-                    Maximizing human potential through synchronized time. Every minute spent here is an investment in your evolution.
-                  </p>
+              {/* Tip Jar */}
+              <div className="card">
+                <div className="flex items-center gap-2 mb-1">
+                  <Coffee className="w-4 h-4 text-gray-400" />
+                  <h4 className="font-semibold text-sm">Support {username}</h4>
+                </div>
+                <p className="text-xs text-gray-400 mb-4">100% goes to the creator</p>
+                <div className="flex gap-2 mb-3">
+                  {[49, 99, 199, 499].map(amt => (
+                    <button
+                      key={amt}
+                      onClick={() => setTipAmount(String(amt))}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        tipAmount === String(amt)
+                          ? 'bg-black text-white border-black'
+                          : 'bg-white border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      ₹{amt}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={tipAmount}
+                    onChange={e => setTipAmount(e.target.value)}
+                    placeholder="Custom amount"
+                    min="1"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400"
+                  />
+                  <button
+                    onClick={handleTip}
+                    disabled={tipping || !tipAmount || parseInt(tipAmount) < 1}
+                    className="btn btn-primary px-5 py-2 text-xs disabled:opacity-30"
+                  >
+                    {tipping ? (
+                      <><Loader2 className="w-3 h-3 animate-spin" /> Sending</>
+                    ) : tipSuccess ? (
+                      <><Check className="w-3 h-3" /> Sent!</>
+                    ) : (
+                      <><Heart className="w-3 h-3" /> Send Tip</>
+                    )}
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* SHOWS TAB */}
+          {profileTab === 'shows' && (
+            <div className="space-y-4">
+              {loadingShows ? (
+                <div className="py-16 text-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-300 mx-auto mb-3" />
+                  <p className="text-sm text-gray-400">Loading shows...</p>
+                </div>
+              ) : shows.length === 0 ? (
+                <div className="py-16 text-center text-gray-300">
+                  <Sparkles className="w-8 h-8 mx-auto mb-3" />
+                  <p className="text-sm">No shows scheduled yet</p>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {shows.map((show) => (
+                    <div key={show.id} className="card">
+                      <h4 className="font-semibold text-base mb-1">{show.title}</h4>
+                      <p className="text-xs text-gray-500 mb-3 line-clamp-2">{show.description}</p>
+                      <div className="flex gap-4 text-xs text-gray-400 mb-4">
+                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {show.date}</span>
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {show.time}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                        <span className="font-semibold">₹{show.ticketPrice}</span>
+                        <button
+                          onClick={() => alert("Ticket purchase coming soon!")}
+                          className="btn btn-primary text-xs px-4 py-2"
+                        >
+                          Get Ticket
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* COURSES TAB */}
+          {profileTab === 'courses' && (
+            <div className="py-16 text-center text-gray-300">
+              <Sparkles className="w-8 h-8 mx-auto mb-3" />
+              <p className="text-sm">Courses coming soon</p>
+            </div>
+          )}
+
+          {/* ABOUT TAB */}
+          {profileTab === 'about' && (
+            <div className="space-y-6">
+              {faqs && faqs.length > 0 && <FAQSection faqs={faqs} />}
+              <div className="card">
+                <h4 className="font-semibold text-sm mb-2">About</h4>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  Maximizing human potential through synchronized time. Every minute spent here is an investment in your evolution.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
+      {/* ── Modals ── */}
+
+      {/* Admirers Modal */}
       <AnimatePresence>
         {showAdmirersModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[400] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white border-8 border-black shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-8 max-w-md w-full max-h-[80vh] flex flex-col">
-              <div className="flex justify-between items-start mb-8 text-black">
-                <h2 className="text-4xl font-black uppercase italic tracking-tighter">Admirers</h2>
-                <button onClick={() => setShowAdmirersModal(false)} className="w-8 h-8 border-2 border-black flex items-center justify-center font-black">✕</button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[400] bg-black/30 backdrop-blur-sm flex items-center justify-center p-6">
+            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className="bg-white rounded-xl border border-gray-200 shadow-lg p-6 max-w-md w-full max-h-[80vh] flex flex-col">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-lg font-semibold">Admirers</h2>
+                <button onClick={() => setShowAdmirersModal(false)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors">✕</button>
               </div>
-
-              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+              <div className="flex-1 overflow-y-auto space-y-2">
                 {isLoadingAdmirers ? (
-                  <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                    <div className="w-12 h-12 border-8 border-black border-t-neo-pink rounded-full animate-spin" />
-                    <p className="font-black uppercase text-xs tracking-widest">Finding Admirers...</p>
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-300 mb-3" />
+                    <p className="text-sm text-gray-400">Loading...</p>
                   </div>
                 ) : admirerList.length > 0 ? (
                   admirerList.map((admirer, idx) => (
-                    <div key={idx} className="flex items-center gap-4 p-4 border-4 border-black bg-zinc-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                      <div className="w-12 h-12 border-2 border-black bg-white overflow-hidden shrink-0">
-                        <img
-                          src={`https://api.dicebear.com/7.x/initials/svg?seed=${admirer.username || admirer.email}`}
-                          alt="avatar"
-                          className="w-full h-full object-cover"
-                        />
+                    <div key={idx} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50">
+                      <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200">
+                        <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${admirer.username || admirer.email}`} alt="avatar" className="w-full h-full object-cover" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-black uppercase truncate text-sm">{admirer.username || 'Anonymous Fan'}</p>
-                      </div>
+                      <span className="flex-1 text-sm font-medium truncate">{admirer.username || 'Anonymous'}</span>
                       {admirer.username && (
-                        <button
-                          onClick={() => window.location.href = `/${admirer.username}`}
-                          className="w-8 h-8 bg-black text-white flex items-center justify-center hover:bg-neo-pink transition-colors"
-                        >
+                        <button onClick={() => window.location.href = `/${admirer.username}`} className="text-gray-400 hover:text-black transition-colors">
                           <ArrowRight className="w-4 h-4" />
                         </button>
                       )}
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-20">
-                    <p className="font-black uppercase text-zinc-400">No admirers yet.</p>
-                  </div>
+                  <p className="text-center py-12 text-sm text-gray-400">No admirers yet</p>
                 )}
               </div>
             </motion.div>
@@ -1101,81 +1065,81 @@ export default function CreatorClient({
         )}
       </AnimatePresence>
 
+      {/* Booking Modal */}
       <AnimatePresence>
         {showBookingModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[400] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white border-8 border-black shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-8 max-w-md w-full">
-              <div className="flex justify-between items-start mb-8 text-black">
-                <h2 className="text-4xl font-black uppercase italic tracking-tighter">Book Session</h2>
-                <button onClick={() => setShowBookingModal(false)} className="w-8 h-8 border-2 border-black flex items-center justify-center font-black">✕</button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[400] bg-black/30 backdrop-blur-sm flex items-center justify-center p-6">
+            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className="bg-white rounded-xl border border-gray-200 shadow-lg p-6 max-w-md w-full">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-lg font-semibold">Book a Session</h2>
+                <button onClick={() => setShowBookingModal(false)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors">✕</button>
               </div>
-              <div className="space-y-6 text-black">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest block">Date</label>
-                    <input type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} className="w-full bg-zinc-50 border-4 border-black p-3 font-bold text-sm outline-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" />
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1.5 block">Date</label>
+                    <input type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:border-gray-400" />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest block">Time</label>
-                    <input type="time" value={bookingTime} onChange={(e) => setBookingTime(e.target.value)} className="w-full bg-zinc-50 border-4 border-black p-3 font-bold text-sm outline-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" />
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1.5 block">Time</label>
+                    <input type="time" value={bookingTime} onChange={(e) => setBookingTime(e.target.value)} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:border-gray-400" />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest block">Package</label>
-                  <div className="grid gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1.5 block">Package</label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
                     {templates.map((tpl: any) => (
-                      <button key={tpl.id} onClick={() => setBookingTemplate(tpl)} className={`w-full text-left p-3 border-4 border-black font-bold text-xs flex justify-between items-center ${bookingTemplate?.id === tpl.id ? 'bg-neo-yellow' : 'bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'}`}>
-                        <span>{tpl.duration} Min {tpl.type}</span>
-                        <span className="font-black">{tpl.price} TKN</span>
+                      <button key={tpl.id} onClick={() => setBookingTemplate(tpl)} className={`w-full text-left p-3 rounded-lg text-sm flex justify-between items-center border transition-colors ${bookingTemplate?.id === tpl.id ? 'bg-black text-white border-black' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
+                        <span>{tpl.duration} min {tpl.type}</span>
+                        <span className="font-semibold">{tpl.price} TKN</span>
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
-              <div className="mt-8 flex gap-4">
-                <button onClick={() => setShowBookingModal(false)} className="flex-1 font-black uppercase text-xs py-4 text-black">Cancel</button>
-                <button onClick={handleBookCall} disabled={isBooking || !bookingDate || !bookingTime || !bookingTemplate} className="flex-1 neo-btn bg-neo-green text-black py-4 disabled:opacity-50">{isBooking ? '...' : 'Reserve'}</button>
+              <div className="mt-6 flex gap-3">
+                <button onClick={() => setShowBookingModal(false)} className="btn btn-secondary flex-1 py-3">Cancel</button>
+                <button onClick={handleBookCall} disabled={isBooking || !bookingDate || !bookingTime || !bookingTemplate} className="btn btn-primary flex-1 py-3 disabled:opacity-50">{isBooking ? 'Booking...' : 'Confirm & Pay'}</button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Purchased Product Deliverable Modal */}
+      {/* Purchased Product Modal */}
       <AnimatePresence>
         {purchasedProduct && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[400] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white border-8 border-black shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] p-8 max-w-md w-full">
-              <div className="flex justify-between items-start mb-6">
-                <h2 className="text-3xl font-black uppercase italic tracking-tighter">Purchase Complete! 🎉</h2>
-                <button onClick={() => setPurchasedProduct(null)} className="w-8 h-8 border-2 border-black flex items-center justify-center font-black">✕</button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[400] bg-black/30 backdrop-blur-sm flex items-center justify-center p-6">
+            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className="bg-white rounded-xl border border-gray-200 shadow-lg p-6 max-w-md w-full">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">Purchase Complete ✓</h2>
+                <button onClick={() => setPurchasedProduct(null)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors">✕</button>
               </div>
-              <p className="text-sm font-bold text-zinc-600 uppercase mb-6">{purchasedProduct.name}</p>
-              {purchasedProduct.content && (
+              <p className="text-sm text-gray-500 mb-4">{purchasedProduct.name}</p>
+              {purchasedProduct.content ? (
                 <a
                   href={purchasedProduct.content}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full neo-btn bg-black text-white py-4 font-black uppercase text-sm flex items-center justify-center gap-2"
+                  className="btn btn-primary w-full py-3 text-sm"
                 >
                   {purchasedProduct.type === 'digital' && <><Download className="w-4 h-4" /> Download File</>}
                   {purchasedProduct.type === 'link' && <><ExternalLink className="w-4 h-4" /> Open Link</>}
-                  {purchasedProduct.type === 'booking' && <><Calendar className="w-4 h-4" /> Open Meeting Link</>}
+                  {purchasedProduct.type === 'booking' && <><Calendar className="w-4 h-4" /> Open Meeting</>}
                   {!['digital', 'link', 'booking'].includes(purchasedProduct.type) && <><Download className="w-4 h-4" /> Access Content</>}
                 </a>
-              )}
-              {!purchasedProduct.content && (
-                <p className="text-xs font-bold text-zinc-400 uppercase text-center">The creator will share the deliverable with you soon.</p>
+              ) : (
+                <p className="text-xs text-gray-400 text-center">The creator will share the deliverable with you soon.</p>
               )}
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <footer className="mt-20 py-12 border-t-4 border-black bg-zinc-50 text-black">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center gap-2 mb-6 opacity-30"><Zap className="w-5 h-5 fill-black" /><span className="font-black uppercase text-xs">Supertime</span></div>
-          <p className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.5em]">Blissful Art</p>
+      {/* Footer */}
+      <footer className="py-8 border-t border-gray-100">
+        <div className="text-center">
+          <p className="text-xs text-gray-300">Supertime</p>
         </div>
       </footer>
     </div>
