@@ -356,7 +356,14 @@ export default function LandingPageClient({ session, savedUsername }: { session:
                   </li>
                 ))}
               </ul>
-              <button className="w-full bg-black text-white border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,0.2)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 py-4 font-black uppercase transition-all">
+              <button
+                onClick={() => {
+                  const form = document.querySelector('form');
+                  form?.scrollIntoView({ behavior: 'smooth' });
+                  const input = form?.querySelector('input');
+                  input?.focus();
+                }}
+                className="w-full bg-black text-white border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,0.2)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 py-4 font-black uppercase transition-all">
                 Claim Free Store
               </button>
             </div>
@@ -388,7 +395,14 @@ export default function LandingPageClient({ session, savedUsername }: { session:
                   </li>
                 ))}
               </ul>
-              <button className="w-full bg-black text-white border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 py-4 font-black uppercase transition-all relative z-10">
+              <button
+                onClick={() => {
+                  const form = document.querySelector('form');
+                  form?.scrollIntoView({ behavior: 'smooth' });
+                  const input = form?.querySelector('input');
+                  input?.focus();
+                }}
+                className="w-full bg-black text-white border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 py-4 font-black uppercase transition-all relative z-10">
                 Upgrade to Enterprise
               </button>
             </div>

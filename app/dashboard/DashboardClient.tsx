@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import Script from 'next/script';
 import {
   Zap,
   Wallet,
@@ -326,6 +327,71 @@ export default function DashboardClient({ session, username, initialBalance, ini
     setProductForm({ name: '', description: '', price: '', type: 'digital', content: '', duration: '', thumbnail: '' });
     setShowProductForm(false);
     setEditingProduct(null);
+  };
+
+  const handleUpgrade = async () => {
+    try {
+      const response = await fetch('/api/payment/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount: 499 }),
+      });
+
+      const orderData = await response.json();
+
+      if (!orderData.orderId) {
+        throw new Error(orderData.error || 'Failed to create order');
+      }
+
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Supertime Creators Tier',
+        description: 'Upgrade to Creators Tier',
+        order_id: orderData.orderId,
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await fetch('/api/payment/verify', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(response),
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              alert('Successfully upgraded to Creators tier!');
+              // In a real app, you would parse the new token to reflect updated user state
+              window.location.reload();
+            } else {
+              alert('Payment verification failed.');
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Payment verification failed.');
+          }
+        },
+        prefill: {
+          name: session?.user?.fullName || '',
+          email: session?.user?.primaryEmailAddress?.emailAddress || '',
+        },
+        theme: {
+          color: '#000000',
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (response: any) {
+        alert(`Payment Failed: ${response.error.description}`);
+      });
+      rzp.open();
+    } catch (error) {
+      console.error('Upgrade Error:', error);
+      alert('Could not initiate upgrade. Please try again.');
+    }
   };
 
   const startEditProduct = (prod: any) => {
@@ -891,7 +957,7 @@ export default function DashboardClient({ session, username, initialBalance, ini
                   <div className="neo-box bg-white p-10 border-4 border-black shadow-[12px_12px_0px_0px_black] hover:shadow-[16px_16px_0px_0px_theme(colors.neo-yellow)] transition-all group">
                     <div className="flex justify-between items-start mb-8">
                       <div>
-                        <h4 className="text-4xl font-black uppercase italic tracking-tighter">Scale-Up Pro</h4>
+                        <h4 className="text-4xl font-black uppercase italic tracking-tighter">Creators</h4>
                         <p className="text-xs font-black uppercase tracking-widest text-neo-pink">Highly Recommended</p>
                       </div>
                       <div className="w-16 h-16 bg-neo-yellow border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_black] group-hover:rotate-12 transition-transform shrink-0">
@@ -901,19 +967,19 @@ export default function DashboardClient({ session, username, initialBalance, ini
 
                     <div className="mb-8">
                       <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-black">₹999</span>
+                        <span className="text-4xl font-black">₹499</span>
                         <span className="text-[10px] font-bold uppercase opacity-40 tracking-widest">/month</span>
                       </div>
                     </div>
 
                     <ul className="space-y-4 mb-10">
                       {[
-                        'Unlimited DMs & Automations',
-                        'Unlimited 1:1 Calls*',
-                        'Unlimited Digital Products',
-                        'Verified Creator Badge',
-                        'Premium Storefront Themes',
-                        'Deep Creator Analytics'
+                        'Everything in Free',
+                        'Zero Supertime transaction fees',
+                        'Unlimited Instagram Auto-DMs',
+                        'Custom Domain Support',
+                        'Deep Analytics & Conversion Tracking',
+                        'Priority Support Queue',
                       ].map((feat, i) => (
                         <li key={i} className="flex items-start gap-2 font-bold uppercase text-[10px] tracking-wide text-zinc-500">
                           <span className="text-black">•</span>
@@ -922,7 +988,9 @@ export default function DashboardClient({ session, username, initialBalance, ini
                       ))}
                     </ul>
 
-                    <button className="neo-btn bg-black text-white w-full py-5 text-xl font-black uppercase shadow-[8px_8px_0px_0px_theme(colors.neo-yellow)] hover:shadow-none translate-x-[-4px] translate-y-[-4px] active:translate-x-0 active:translate-y-0 transition-all">
+                    <button
+                      onClick={handleUpgrade}
+                      className="neo-btn bg-black text-white w-full py-5 text-xl font-black uppercase shadow-[8px_8px_0px_0px_theme(colors.neo-yellow)] hover:shadow-none translate-x-[-4px] translate-y-[-4px] active:translate-x-0 active:translate-y-0 transition-all">
                       Upgrade Now
                     </button>
                     <p className="mt-4 text-[8px] font-bold text-zinc-400 text-center uppercase tracking-widest">*Backed by call commissions</p>
