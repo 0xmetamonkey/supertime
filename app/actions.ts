@@ -71,4 +71,84 @@ export async function claimUsername(usernameRaw: string) {
   return { success: true };
 }
 
-// Auth actions (loginWithGoogle, logout) have been migrated to Clerk client-side components.
+export async function getFeaturedCreators() {
+  if (!process.env.KV_URL) return [];
+  try {
+    const keys = await kv.keys("owner:*");
+    // Slice up to 4 creators
+    const usernames = keys.slice(0, 4).map(k => k.replace("owner:", ""));
+
+    // Fetch emails in parallel
+    const emails = await Promise.all(usernames.map(username => kv.get<string>(`owner:${username}`)));
+
+    const validPairs = usernames
+      .map((username, i) => ({ username, email: emails[i] }))
+      .filter(pair => !!pair.email) as { username: string, email: string }[];
+
+    const featured = await Promise.all(validPairs.map(async ({ username, email }) => {
+      // Execute all 4 property queries in parallel for this creator
+      const [profileImage, vRate, bio, role] = await Promise.all([
+        kv.get<string>(`user:${email}:profileImage`),
+        kv.get<number>(`user:${email}:rate:video`),
+        kv.get<string>(`user:${email}:bio`),
+        kv.get<string>(`user:${email}:role`)
+      ]);
+
+      return {
+        name: username,
+        role: role || "Creator",
+        desc: bio || "Intentional human-first sessions",
+        time: "30 min",
+        price: `₹${vRate || 100}`,
+        image: profileImage || "",
+        isReal: true
+      };
+    }));
+
+    return featured;
+  } catch (err) {
+    console.error("Failed to fetch featured creators:", err);
+    return [];
+  }
+}
+
+export async function getAllCreators() {
+  if (!process.env.KV_URL) return [];
+  try {
+    const keys = await kv.keys("owner:*");
+    const usernames = keys.map(k => k.replace("owner:", ""));
+
+    // Fetch emails in parallel
+    const emails = await Promise.all(usernames.map(username => kv.get<string>(`owner:${username}`)));
+
+    const validPairs = usernames
+      .map((username, i) => ({ username, email: emails[i] }))
+      .filter(pair => !!pair.email) as { username: string, email: string }[];
+
+    const creators = await Promise.all(validPairs.map(async ({ username, email }) => {
+      // Execute all 4 property queries in parallel for this creator
+      const [profileImage, vRate, bio, role] = await Promise.all([
+        kv.get<string>(`user:${email}:profileImage`),
+        kv.get<number>(`user:${email}:rate:video`),
+        kv.get<string>(`user:${email}:bio`),
+        kv.get<string>(`user:${email}:role`)
+      ]);
+
+      return {
+        name: username,
+        role: role || "Creator",
+        desc: bio || "Intentional human-first sessions",
+        time: "30 min",
+        price: `₹${vRate || 100}`,
+        image: profileImage || "",
+        isReal: true
+      };
+    }));
+
+    return creators;
+  } catch (err) {
+    console.error("Failed to fetch all creators:", err);
+    return [];
+  }
+}
+

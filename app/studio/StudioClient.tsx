@@ -232,7 +232,19 @@ export default function StudioClient({ username, session, initialSettings }: { u
         setLoadingStats(false);
       }
     };
-    if (effectiveUsername) fetchStats();
+    const fetchBookings = async () => {
+      try {
+        const res = await fetch('/api/call/book?mode=received');
+        const data = await res.json();
+        if (data.bookings) setBookings(data.bookings);
+      } catch (e) {
+        console.error("Failed to fetch bookings:", e);
+      }
+    };
+    if (effectiveUsername) {
+      fetchStats();
+      fetchBookings();
+    }
   }, [effectiveUsername]);
 
   useEffect(() => {
@@ -321,59 +333,59 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
   if (!effectiveUsername) {
     return (
-      <main className="min-h-screen bg-white text-black font-sans selection:bg-neo-pink selection:text-white p-6 md:p-12">
-        <nav className="max-w-7xl mx-auto flex justify-between items-center mb-16 border-b-4 border-black pb-8">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-black flex items-center justify-center border-4 border-black shadow-[4px_4px_0px_0px_theme(colors.neo-pink)]">
-              <Zap className="text-neo-yellow w-6 h-6 fill-current" />
+      <main className="min-h-screen bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-foreground font-sans selection:bg-rose-500 selection:text-white p-6 md:p-12">
+        <nav className="max-w-7xl mx-auto flex justify-between items-center mb-16 border-b border-gray-200 dark:border-border pb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-gray-900 dark:bg-white text-white dark:text-black flex items-center justify-center rounded-xl shadow-sm">
+              <Zap className="w-4 h-4 text-yellow-500 fill-current" />
             </div>
-            <h1 className="text-2xl font-black uppercase tracking-tighter">Studio</h1>
+            <h1 className="text-xl font-medium tracking-tight">Studio</h1>
           </div>
           <div className="flex items-center gap-6">
             <WalletManager onBalanceChange={setBalance} />
-            <button onClick={() => signOut(() => { window.location.href = "/"; })} className="font-black uppercase text-xs hover:text-red-500 transition-colors">Logout</button>
+            <button onClick={() => signOut(() => { window.location.href = "/"; })} className="text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors">Logout</button>
           </div>
         </nav>
 
-        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-12">
-          <div className="neo-box bg-white p-8 space-y-6">
-            <h2 className="text-4xl font-black uppercase italic tracking-tighter">Enter the Engine</h2>
-            <p className="font-bold text-zinc-600 uppercase text-xs tracking-widest leading-relaxed">
+        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
+          <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-8 rounded-2xl shadow-sm space-y-6">
+            <h2 className="text-2xl font-medium text-gray-900 dark:text-foreground tracking-tight">Claim your Identity</h2>
+            <p className="text-xs text-gray-500 leading-relaxed">
               Claim your unique link and start exchanging energy for tokens. Pure monetized time.
             </p>
-            <form onSubmit={handleClaim} className="space-y-6 pt-4">
+            <form onSubmit={handleClaim} className="space-y-6 pt-2">
               <div className="w-full">
-                <label className="text-[10px] font-black uppercase tracking-widest block mb-2 text-zinc-400">Your Identity</label>
-                <div className="flex flex-col sm:flex-row items-stretch bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] focus-within:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transition-all overflow-hidden">
-                  <div className="flex-1 flex items-center px-4 py-4 border-b-4 sm:border-b-0 sm:border-r-4 border-black bg-zinc-50 min-w-0">
-                    <span className="text-black/30 font-black text-xs md:text-sm pr-1 shrink-0">supertime.wtf/</span>
+                <label className="text-xs font-medium text-gray-400 block mb-2">Your Username</label>
+                <div className="flex flex-col sm:flex-row items-stretch bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-border rounded-xl focus-within:bg-white dark:focus-within:bg-zinc-900 transition-all overflow-hidden">
+                  <div className="flex-1 flex items-center px-4 py-3 min-w-0">
+                    <span className="text-gray-400 text-sm pr-0.5 shrink-0">supertime.wtf/</span>
                     <input
                       type="text"
                       value={claimName}
                       onChange={(e) => setClaimName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                      placeholder="NAME"
-                      className="flex-1 bg-transparent border-none outline-none text-black font-black text-sm md:text-base uppercase placeholder:text-black/10 min-w-0"
+                      placeholder="username"
+                      className="flex-1 bg-transparent border-none outline-none text-gray-900 dark:text-foreground font-medium text-sm placeholder:text-gray-300 min-w-0"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={!claimName || claimLoading}
-                    className="bg-neo-pink text-white font-black px-6 py-4 sm:py-0 hover:bg-neo-pink/90 transition-colors disabled:opacity-50 uppercase text-sm md:text-base flex items-center justify-center shrink-0"
+                    className="bg-gray-900 dark:bg-foreground text-white dark:text-background font-medium px-6 py-3 sm:py-0 hover:opacity-90 transition-opacity disabled:opacity-50 text-sm flex items-center justify-center shrink-0"
                   >
-                    {claimLoading ? '...' : 'CLAIM'}
+                    {claimLoading ? '...' : 'Claim'}
                   </button>
                 </div>
               </div>
-              {claimError && <p className="text-red-500 text-[10px] uppercase font-bold text-center">{claimError}</p>}
+              {claimError && <p className="text-red-500 text-xs font-medium text-center">{claimError}</p>}
             </form>
           </div>
 
           <div className="flex flex-col gap-6">
-            <div className="bg-neo-yellow border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-              <h3 className="text-2xl font-black uppercase mb-2">Energy Wallet</h3>
-              <p className="font-black text-5xl mb-4 tabular-nums text-black">{balance ?? '0'} <span className="text-xl">TKN</span></p>
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-black/60">
-                <Sparkles className="w-4 h-4" />
+            <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-8 rounded-2xl shadow-sm">
+              <h3 className="text-sm font-medium text-gray-400 mb-2">Energy Wallet</h3>
+              <p className="font-semibold text-4xl mb-4 text-gray-900 dark:text-foreground tracking-tight">{balance ?? '0'} <span className="text-sm font-medium text-gray-400">TKN</span></p>
+              <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+                <Sparkles className="w-4 h-4 text-yellow-500" />
                 Ready to use
               </div>
             </div>
@@ -384,7 +396,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
   }
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans selection:bg-neo-pink selection:text-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-foreground font-sans selection:bg-rose-500 selection:text-white">
       {/* ACTIVE SESSION OVERLAY */}
       {isLive && activeChannelName && !isCalling && (
         <BroadcastHost
@@ -404,11 +416,11 @@ export default function StudioClient({ username, session, initialSettings }: { u
           {/* Status Bar for 1:1 calls - Standardized Premium Style */}
           <div className="absolute top-6 left-6 right-6 z-[510] flex items-center justify-start">
             <div className="flex items-center gap-2">
-              <div className="bg-neo-green/10 border border-neo-green/20 px-4 py-2 rounded-xl">
-                <span className="text-neo-green text-sm font-black tabular-nums">+{tokensEarned.toFixed(0)} TKN</span>
+              <div className="bg-green-500/10 border border-green-500/20 px-4 py-2 rounded-xl">
+                <span className="text-green-500 text-sm font-semibold tabular-nums">+{tokensEarned.toFixed(0)} TKN</span>
               </div>
               <div className="bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-xl">
-                <span className="text-white text-sm font-black tabular-nums">{formatTime(callDuration)}</span>
+                <span className="text-white text-sm font-semibold tabular-nums">{formatTime(callDuration)}</span>
               </div>
             </div>
           </div>
@@ -435,30 +447,30 @@ export default function StudioClient({ username, session, initialSettings }: { u
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-8">
             <a href="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 bg-white/5 flex items-center justify-center border border-white/10 rounded-lg shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-transform group-hover:rotate-12">
-                <Zap className="text-neo-yellow w-5 h-5 fill-current" />
+              <div className="w-8 h-8 bg-white/5 flex items-center justify-center border border-white/10 rounded-lg shadow-sm transition-transform group-hover:rotate-12">
+                <Zap className="text-yellow-500 w-5 h-5 fill-current" />
               </div>
-              <span className="text-xl font-extrabold uppercase tracking-tighter text-white">Studio</span>
+              <span className="text-xl font-bold tracking-tight text-white">Studio</span>
               {isLive && (
                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 rounded-full border border-red-500/20">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_theme(colors.red.500)]" />
-                  <span className="text-[8px] font-extrabold text-red-500 uppercase tracking-widest">Live</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                  <span className="text-[8px] font-bold text-red-500 uppercase tracking-widest">Live</span>
                 </div>
               )}
             </a>
 
             <div className="hidden md:flex items-center gap-6">
-              <a href={`/${username}`} className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-neo-pink transition-colors">Public Profile</a>
+              <a href={`/${username}`} className="text-xs text-white/60 hover:text-rose-500 transition-colors">Public Profile</a>
               <button
                 onClick={() => {
                   const el = document.getElementById('highlights-vault');
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-neo-pink transition-colors"
+                className="text-xs text-white/60 hover:text-rose-500 transition-colors"
               >
                 My Recordings
               </button>
-              <button onClick={() => router.push('/studio/settings')} className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-neo-pink transition-colors">Settings</button>
+              <button onClick={() => router.push('/studio/settings')} className="text-xs text-white/60 hover:text-rose-500 transition-colors">Settings</button>
             </div>
           </div>
 
@@ -476,7 +488,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
             {/* Hamburger Button */}
             <button
               onClick={() => setShowMobileMenu(true)}
-              className="md:hidden w-10 h-10 bg-white text-black rounded-xl flex items-center justify-center hover:scale-105 transition-all shadow-xl"
+              className="md:hidden w-10 h-10 bg-white text-black rounded-xl flex items-center justify-center hover:scale-105 transition-all shadow-md"
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -496,20 +508,20 @@ export default function StudioClient({ username, session, initialSettings }: { u
           >
             {/* Background Accents */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-neo-pink/10 blur-[120px] rounded-full" />
-              <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-neo-blue/10 blur-[120px] rounded-full" />
+              <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-rose-500/10 blur-[120px] rounded-full" />
+              <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[120px] rounded-full" />
             </div>
 
             <div className="relative z-10 flex justify-between items-center mb-16">
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 bg-white/5 flex items-center justify-center border border-white/10 rounded-xl">
-                  <Zap className="text-neo-yellow w-6 h-6 fill-current" />
+                  <Zap className="text-yellow-500 w-6 h-6 fill-current" />
                 </div>
-                <span className="text-2xl font-extrabold uppercase tracking-tighter text-white">Menu</span>
+                <span className="text-2xl font-bold tracking-tight text-white">Menu</span>
               </div>
               <button
                 onClick={() => setShowMobileMenu(false)}
-                className="w-12 h-12 bg-white text-black rounded-2xl flex items-center justify-center shadow-xl transition-all"
+                className="w-12 h-12 bg-white text-black rounded-2xl flex items-center justify-center shadow-md transition-all"
               >
                 <X className="w-8 h-8" />
               </button>
@@ -519,7 +531,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
               <a
                 href={`/${username}`}
                 onClick={() => setShowMobileMenu(false)}
-                className="text-4xl font-extrabold uppercase tracking-tighter text-white hover:text-neo-pink border-b border-white/10 pb-6 transition-colors"
+                className="text-3xl font-bold tracking-tight text-white hover:text-rose-500 border-b border-white/10 pb-6 transition-colors"
               >
                 Profile
               </a>
@@ -528,7 +540,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
                   setShowMobileMenu(false);
                   router.push('/dashboard?tab=tools');
                 }}
-                className="text-4xl font-extrabold uppercase tracking-tighter text-white hover:text-neo-blue text-left border-b border-white/10 pb-6 transition-colors"
+                className="text-3xl font-bold tracking-tight text-white hover:text-blue-500 text-left border-b border-white/10 pb-6 transition-colors"
               >
                 Tools
               </button>
@@ -537,7 +549,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
                   setShowMobileMenu(false);
                   router.push('/wallet');
                 }}
-                className="text-4xl font-extrabold uppercase tracking-tighter text-neo-green hover:text-neo-yellow text-left border-b border-white/10 pb-6 transition-colors"
+                className="text-3xl font-bold tracking-tight text-green-500 hover:text-yellow-500 text-left border-b border-white/10 pb-6 transition-colors"
               >
                 Vault
               </button>
@@ -546,7 +558,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
                   setShowMobileMenu(false);
                   router.push('/studio/settings');
                 }}
-                className="text-4xl font-extrabold uppercase tracking-tighter text-white hover:text-neo-pink text-left border-b border-white/10 pb-6 transition-colors"
+                className="text-3xl font-bold tracking-tight text-white hover:text-rose-500 text-left border-b border-white/10 pb-6 transition-colors"
               >
                 Settings
               </button>
@@ -555,9 +567,9 @@ export default function StudioClient({ username, session, initialSettings }: { u
             <div className="relative z-10 pt-8">
               <button
                 onClick={() => signOut(() => { window.location.href = "/"; })}
-                className="w-full bg-red-500 text-white py-6 rounded-3xl font-extrabold uppercase text-xl tracking-tight flex items-center justify-center gap-4 shadow-2xl transition-all"
+                className="w-full bg-red-600 text-white py-4 rounded-2xl font-bold tracking-tight flex items-center justify-center gap-4 shadow-md transition-all hover:bg-red-700"
               >
-                <LogOut className="w-8 h-8" />
+                <LogOut className="w-6 h-6" />
                 Logout
               </button>
             </div>
@@ -572,26 +584,26 @@ export default function StudioClient({ username, session, initialSettings }: { u
               {/* WAITLIST */}
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                  <h3 className="text-2xl font-black uppercase tracking-tighter italic text-black">Waitlist</h3>
-                  <div className="h-1 flex-1 bg-black" />
-                  <span className="text-[10px] font-black bg-black text-white px-2 py-0.5">{requests.length}</span>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-foreground tracking-tight">Waitlist</h3>
+                  <div className="h-px flex-1 bg-gray-200 dark:bg-border" />
+                  <span className="text-xs font-semibold bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 px-2.5 py-0.5 rounded-full">{requests.length}</span>
                 </div>
                 {requests.length === 0 ? (
-                  <div className="border-4 border-black border-dashed p-10 text-center text-black">
-                    <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">Queue Empty</p>
+                  <div className="border border-gray-200 dark:border-border border-dashed p-10 text-center rounded-2xl bg-white dark:bg-surface">
+                    <p className="text-xs text-gray-400 dark:text-zinc-500 font-medium">Queue is currently empty</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {requests.map((req, i) => (
-                      <div key={i} className="neo-box bg-white p-4 flex justify-between items-center group">
+                      <div key={i} className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-4 rounded-xl flex justify-between items-center group shadow-sm hover:shadow-md transition-all">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-neo-yellow border-2 border-black text-sm font-black italic text-black flex items-center justify-center">#{i + 1}</div>
+                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-zinc-800 text-xs font-medium text-gray-600 dark:text-gray-400 flex items-center justify-center">#{i + 1}</div>
                           <div>
-                            <p className="font-black uppercase text-sm text-black">{req.from || 'Guest'}</p>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{new Date(req.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            <p className="font-medium text-sm text-gray-900 dark:text-foreground">{req.from || 'Guest'}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{new Date(req.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                           </div>
                         </div>
-                        <button className="w-8 h-8 border-2 border-black flex items-center justify-center hover:bg-black hover:text-white transition-all text-black">
+                        <button className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-border flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
                           <ArrowRight className="w-4 h-4" />
                         </button>
                       </div>
@@ -603,26 +615,26 @@ export default function StudioClient({ username, session, initialSettings }: { u
               {/* SCHEDULE */}
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                  <h3 className="text-2xl font-black uppercase tracking-tighter italic text-black">Schedule</h3>
-                  <div className="h-1 flex-1 bg-black" />
-                  <span className="text-[10px] font-black bg-black text-white px-2 py-0.5">{bookings.length}</span>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-foreground tracking-tight">Schedule</h3>
+                  <div className="h-px flex-1 bg-gray-200 dark:bg-border" />
+                  <span className="text-xs font-semibold bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 px-2.5 py-0.5 rounded-full">{bookings.length}</span>
                 </div>
                 {bookings.length === 0 ? (
-                  <div className="border-4 border-black border-dashed p-10 text-center text-black">
-                    <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">No bookings</p>
+                  <div className="border border-gray-200 dark:border-border border-dashed p-10 text-center rounded-2xl bg-white dark:bg-surface">
+                    <p className="text-xs text-gray-400 dark:text-zinc-500 font-medium">No bookings scheduled today</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {bookings.map((booking, i) => (
-                      <div key={i} className="neo-box bg-white p-4 group">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-[#D652FF]">{booking.date} @ {booking.time}</span>
-                          <div className="w-2 h-2 rounded-full bg-neo-pink animate-pulse" />
+                      <div key={i} className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-4 rounded-xl shadow-sm hover:shadow-md transition-all group">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-medium text-indigo-500">{booking.date} @ {booking.time}</span>
+                          <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                         </div>
-                        <p className="font-black uppercase text-lg italic tracking-tight mb-1 text-black">{booking.visitorEmail.split('@')[0]}</p>
+                        <p className="font-medium text-base text-gray-900 dark:text-foreground mb-1">{booking.visitorEmail.split('@')[0]}</p>
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{booking.duration} Min {booking.type}</span>
-                          <button onClick={() => window.open(`mailto:${booking.visitorEmail}`)} className="text-[10px] font-black uppercase underline decoration-2 decoration-neo-blue underline-offset-4 text-black">Notify Client</button>
+                          <span className="text-xs text-gray-400">{booking.duration} Min {booking.type}</span>
+                          <button onClick={() => window.open(`mailto:${booking.visitorEmail}`)} className="text-xs font-medium text-blue-500 hover:text-blue-600 hover:underline transition-all">Notify Client</button>
                         </div>
                       </div>
                     ))}
@@ -635,7 +647,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
       </main>
 
       {/* BOTTOM ACTION BAR */}
-      <div className="fixed bottom-0 left-0 right-0 z-[100] bg-white border-t-4 border-black p-4 flex justify-between items-center gap-4">
+      <div className="fixed bottom-0 left-0 right-0 z-[100] bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-t border-gray-200 dark:border-border p-4 flex justify-between items-center gap-4">
         <div className="flex items-center gap-4 flex-1">
           <button
             onClick={() => {
@@ -643,13 +655,13 @@ export default function StudioClient({ username, session, initialSettings }: { u
               setIsLive(next);
               fetch('/api/studio/update', { method: 'POST', body: JSON.stringify({ isLive: next }) });
             }}
-            className={`flex-1 md:flex-none px-6 py-3 border-4 border-black font-black uppercase text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all ${isLive ? 'bg-red-500 text-white' : 'bg-neo-green text-black'}`}
+            className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${isLive ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-green-600 text-white hover:bg-green-700'}`}
           >
             {isLive ? 'End Stream' : 'Go Live'}
           </button>
           <button
             onClick={handleToggleCalls}
-            className={`flex-1 md:flex-none px-6 py-3 border-4 border-black font-black uppercase text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all ${isAcceptingCalls ? 'bg-neo-pink text-white' : 'bg-zinc-100 text-black'}`}
+            className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border ${isAcceptingCalls ? 'bg-zinc-900 dark:bg-foreground text-white dark:text-background border-transparent' : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-border hover:bg-gray-50 dark:hover:bg-zinc-700'}`}
           >
             {isAcceptingCalls ? 'Calls Ready' : 'Calls Off'}
           </button>
@@ -657,13 +669,13 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
         <button
           onClick={() => setShowDashboard(true)}
-          className="bg-neo-yellow text-black px-6 py-3 border-4 border-black font-black uppercase text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex items-center gap-2"
+          className="px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border border-gray-200 dark:border-border bg-white dark:bg-zinc-850 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-750 dark:text-gray-300 flex items-center gap-2"
         >
-          <LayoutDashboard className="w-4 h-4" /> Management
+          <LayoutDashboard className="w-4 h-4 text-gray-400" /> Management
         </button>
       </div>
 
-      {/* REFACTORED: BOTTOM DASHBOARD MODAL */}
+      {/* BOTTOM DASHBOARD MODAL */}
       <AnimatePresence>
         {
           showDashboard && (
@@ -672,52 +684,52 @@ export default function StudioClient({ username, session, initialSettings }: { u
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-x-0 bottom-0 z-[1000] bg-white border-t-8 border-black h-[85vh] flex flex-col overflow-hidden shadow-[0_-20px_50px_rgba(0,0,0,0.3)]"
+              className="fixed inset-x-0 bottom-0 z-[1000] bg-white dark:bg-zinc-950 border-t border-gray-200 dark:border-border h-[85vh] flex flex-col overflow-hidden shadow-2xl rounded-t-3xl"
             >
-              <div className="flex justify-between items-center p-6 border-b-4 border-black bg-zinc-50">
+              <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-border bg-gray-50 dark:bg-zinc-900">
                 <div className="flex items-center gap-3">
-                  <LayoutDashboard className="w-6 h-6" />
-                  <h3 className="text-2xl font-black uppercase tracking-tighter">Management Vault</h3>
+                  <LayoutDashboard className="w-5 h-5 text-gray-550 dark:text-gray-400" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-foreground tracking-tight">Management Vault</h3>
                 </div>
                 <button
                   onClick={() => setShowDashboard(false)}
-                  className="w-10 h-10 bg-black text-white border-2 border-black flex items-center justify-center font-black"
+                  className="w-8 h-8 rounded-full bg-gray-150 dark:bg-zinc-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-foreground flex items-center justify-center transition-colors"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 space-y-12 pb-32">
                 <div className="grid md:grid-cols-3 gap-6">
-                  <div className="bg-neo-yellow border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
-                    <h3 className="text-xl font-black uppercase mb-1">Energy Wallet</h3>
-                    <p className="font-black text-4xl mb-4 tabular-nums">{balance ?? '0'} <span className="text-lg">TKN</span></p>
+                  <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-6 rounded-2xl shadow-sm text-gray-900 dark:text-foreground">
+                    <h3 className="text-sm font-medium text-gray-400 mb-1">Energy Wallet</h3>
+                    <p className="font-semibold text-3xl mb-4 tracking-tight tabular-nums">{balance ?? '0'} <span className="text-sm font-medium text-gray-400">TKN</span></p>
                     <WalletManager onBalanceChange={setBalance} />
                   </div>
 
-                  <div className="bg-neo-pink border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-white">
-                    <h3 className="text-xl font-black uppercase mb-1">Earnings</h3>
-                    <p className="font-black text-4xl mb-4 tabular-nums">₹{withdrawable}</p>
+                  <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-6 rounded-2xl shadow-sm text-gray-900 dark:text-foreground">
+                    <h3 className="text-sm font-medium text-gray-400 mb-1">Earnings</h3>
+                    <p className="font-semibold text-3xl mb-4 tracking-tight tabular-nums">₹{withdrawable}</p>
                     <button
                       onClick={() => router.push('/wallet')}
-                      className="w-full bg-white text-black py-2 font-black uppercase text-[10px] border-2 border-black"
+                      className="w-full bg-zinc-900 dark:bg-foreground text-white dark:text-background py-2.5 font-medium text-xs rounded-xl shadow-sm hover:opacity-90 transition-opacity"
                     >
                       Withdraw Funds
                     </button>
                   </div>
 
-                  <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black">
-                    <h3 className="text-xl font-black uppercase mb-4 flex items-center gap-2">
-                      <Clock className="w-5 h-5" /> Session Log
+                  <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-6 rounded-2xl shadow-sm text-gray-900 dark:text-foreground">
+                    <h3 className="text-sm font-medium text-gray-400 mb-4 flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-gray-400" /> Session Log
                     </h3>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="font-black opacity-40">Earned</span>
-                        <span className="font-black">1.2k TKN</span>
+                        <span className="font-medium text-gray-400">Earned</span>
+                        <span className="font-medium text-gray-900 dark:text-foreground">1.2k TKN</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
-                        <span className="font-black opacity-40">Minutes</span>
-                        <span className="font-black">142 Min</span>
+                        <span className="font-medium text-gray-400">Minutes</span>
+                        <span className="font-medium text-gray-900 dark:text-foreground">142 Min</span>
                       </div>
                     </div>
                   </div>
@@ -725,33 +737,33 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
                 {/* ANALYTICS SECTION */}
                 <div className="space-y-6">
-                  <h3 className="text-2xl font-black uppercase tracking-tighter italic border-b-4 border-black pb-2">Insights</h3>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-foreground border-b border-gray-200 dark:border-border pb-2 tracking-tight">Insights</h3>
                   {!loadingStats && stats && (
                     <div className="grid md:grid-cols-2 gap-8">
-                      <div className="neo-box bg-white p-6">
-                        <h4 className="text-xl font-black uppercase mb-8">Performance History</h4>
+                      <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-6 rounded-2xl shadow-sm text-gray-900 dark:text-foreground">
+                        <h4 className="text-sm font-medium text-gray-400 mb-8">Performance History</h4>
                         <div className="flex items-end justify-between h-40 gap-2">
                           {stats.history.map((day: any, i: number) => (
                             <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-                              <div className="w-full bg-zinc-100 h-full flex flex-col justify-end">
+                              <div className="w-full bg-gray-100 dark:bg-zinc-800 h-full flex flex-col justify-end rounded-t-sm overflow-hidden">
                                 <div
                                   style={{ height: `${Math.min(100, (day.earnings / (Math.max(...stats.history.map((d: any) => d.earnings)) || 1)) * 100)}%` }}
-                                  className="bg-neo-green w-full"
+                                  className="bg-green-500 w-full"
                                 />
                               </div>
-                              <span className="text-[8px] font-black uppercase text-zinc-400 rotate-45 mt-2">{day.date.split('-').slice(1).join('/')}</span>
+                              <span className="text-[9px] font-medium text-gray-400 dark:text-gray-500 mt-2">{day.date.split('-').slice(1).join('/')}</span>
                             </div>
                           ))}
                         </div>
                       </div>
                       <div className="grid grid-rows-2 gap-4">
-                        <div className="neo-box bg-white p-4 flex justify-between items-center">
-                          <span className="text-[10px] font-black uppercase opacity-40">Profile Views</span>
-                          <span className="text-3xl font-black italic">{stats.total.view || 0}</span>
+                        <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-4 rounded-xl flex justify-between items-center shadow-sm text-gray-900 dark:text-foreground">
+                          <span className="text-xs font-medium text-gray-400">Profile Views</span>
+                          <span className="text-2xl font-semibold tracking-tight">{stats.total.view || 0}</span>
                         </div>
-                        <div className="neo-box bg-white p-4 flex justify-between items-center">
-                          <span className="text-[10px] font-black uppercase opacity-40">Total Calls</span>
-                          <span className="text-3xl font-black italic">{stats.total.call_start || 0}</span>
+                        <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-4 rounded-xl flex justify-between items-center shadow-sm text-gray-900 dark:text-foreground">
+                          <span className="text-xs font-medium text-gray-400">Total Calls</span>
+                          <span className="text-2xl font-semibold tracking-tight">{stats.total.call_start || 0}</span>
                         </div>
                       </div>
                     </div>
@@ -760,36 +772,36 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
                 {/* HIGHLIGHTS SECTION */}
                 <div id="highlights-vault" className="space-y-6 scroll-mt-32">
-                  <div className="border-b-4 border-black pb-2 flex justify-between items-end">
-                    <h3 className="text-2xl font-black uppercase tracking-tighter italic">Highlights</h3>
-                    <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Secure Cloud Vault</span>
+                  <div className="border-b border-gray-200 dark:border-border pb-2 flex justify-between items-end">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-foreground tracking-tight">Highlights</h3>
+                    <span className="text-[10px] text-gray-400 mb-1">Secure Cloud Vault</span>
                   </div>
 
                   {artifacts.length === 0 ? (
-                    <div className="neo-box bg-white p-12 text-center border-dashed border-zinc-200">
-                      <p className="text-[10px] font-black uppercase text-zinc-300 tracking-[0.2em]">No recordings yet. Hit record during your next session!</p>
+                    <div className="border border-gray-200 dark:border-border border-dashed p-12 text-center rounded-2xl bg-white dark:bg-surface">
+                      <p className="text-xs text-gray-450 dark:text-zinc-500 font-medium">No recordings yet. Hit record during your next session!</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {artifacts.map((art: any) => (
-                        <div key={art.id} className="neo-box bg-white overflow-hidden group">
-                          <div className="relative aspect-video bg-zinc-100 border-b-2 border-black">
+                        <div key={art.id} className="bg-white dark:bg-surface border border-gray-200 dark:border-border rounded-xl overflow-hidden group shadow-sm hover:shadow-md transition-all">
+                          <div className="relative aspect-video bg-gray-50 dark:bg-zinc-900 border-b border-gray-200 dark:border-border">
                             <video src={art.url} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300" />
                             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                              <button onClick={() => window.open(art.url, '_blank')} className="neo-btn bg-white text-black px-4 py-1 text-[8px] font-black">WATCH</button>
+                              <button onClick={() => window.open(art.url, '_blank')} className="px-3 py-1.5 rounded-lg bg-white/90 text-gray-800 backdrop-blur-sm text-[10px] font-medium shadow-sm hover:bg-white transition-all">WATCH</button>
                             </div>
                           </div>
-                          <div className="p-2 flex justify-between items-center text-[8px] font-black uppercase text-zinc-400">
+                          <div className="p-2.5 flex justify-between items-center text-[10px] text-gray-400 font-medium">
                             {new Date(art.timestamp).toLocaleDateString()}
                             <button
                               onClick={() => {
-                                if (confirm('Delete this highlight forever?')) {
-                                  handleDeleteArtifact(art.id);
-                                }
+                                  if (confirm('Delete this highlight forever?')) {
+                                    handleDeleteArtifact(art.id);
+                                  }
                               }}
                               className="hover:text-red-500 transition-colors p-1"
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>

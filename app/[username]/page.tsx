@@ -1,4 +1,4 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import CreatorWrapper from "./CreatorWrapper";
 import { kv } from "@vercel/kv";
 import { Metadata } from 'next';
@@ -36,8 +36,19 @@ export default async function CreatorPage({ params }: Props) {
     return notFound();
   }
 
-  const user = await currentUser();
-  const email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase(); // normalize session email
+  const { userId, sessionClaims } = await auth();
+  let email = (sessionClaims as any)?.email?.toLowerCase(); // normalize session email
+
+  // Fallback in case Clerk claim is lagging
+  if (userId && !email) {
+    try {
+      const user = await currentUser();
+      email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase();
+    } catch (e) {
+      console.error("[Creator Profile Page] Clerk currentUser fallback failed:", e);
+    }
+  }
+
   const visitorUsername = email ? await resolveUsername(email) : null;
 
   let isOwner = false;
@@ -147,7 +158,7 @@ export default async function CreatorPage({ params }: Props) {
   return (
     <CreatorWrapper
       username={username}
-      user={user ? { id: user.id, email: email, username: visitorUsername, imageUrl: user.imageUrl } : null}
+      user={userId ? { id: userId, email: email, username: visitorUsername, imageUrl: "" } : null}
       isOwner={isOwner}
       ownerEmail={ownerEmail || ""}
       isVerified={isVerified}

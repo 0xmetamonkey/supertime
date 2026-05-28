@@ -15,14 +15,13 @@ export async function sendEmail({
   }
 
   try {
-    const res = await fetch('https://api.resend.com/emails', {
+    let res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        // Use the domain the user configured previously
         from: 'Supertime <hello@supertime.wtf>',
         to: Array.isArray(to) ? to : [to],
         subject,
@@ -30,10 +29,29 @@ export async function sendEmail({
       }),
     });
 
-    const data = await res.json();
+    let data = await res.json();
+
+    // If custom domain fails (e.g. unverified sandbox account), try onboarding@resend.dev fallback
+    if (!res.ok) {
+      console.warn('[Resend API] Custom domain send failed. Retrying with onboarding@resend.dev sandbox fallback...', data);
+      res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'Supertime <onboarding@resend.dev>',
+          to: Array.isArray(to) ? to : [to],
+          subject,
+          html,
+        }),
+      });
+      data = await res.json();
+    }
 
     if (!res.ok) {
-      console.error('[Resend API] Error sending email:', data);
+      console.error('[Resend API] Both attempts failed:', data);
       return { success: false, error: data.message || 'Error sending email' };
     }
 

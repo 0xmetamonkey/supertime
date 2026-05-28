@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { AblyProvider, useCallSignaling } from '@/app/lib/ably';
 import StudioClient from './StudioClient';
 import { IncomingCallRing } from '@/app/components/IncomingCallRing';
-import { PushNotificationManager } from '@/app/components/PushNotificationManager';
 
 interface StudioWrapperProps {
   username: string | null;
@@ -47,7 +46,6 @@ function StudioWithSignaling({ username, session, initialSettings }: StudioWrapp
           await signaling.rejectCall();
         }}
       />
-      <PushNotificationManager userId={username} />
       <StudioClient
         username={username}
         session={session}

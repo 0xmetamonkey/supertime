@@ -63,20 +63,19 @@ function FAQSection({ faqs }: { faqs: { id: string; question: string; answer: st
   const [openId, setOpenId] = useState<string | null>(null);
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <HelpCircle className="w-7 h-7" />
-        <h3 className="text-3xl font-black uppercase tracking-tighter text-black">FAQ</h3>
-        <div className="h-2 flex-1 bg-black" />
+      <div className="flex items-center gap-3 mb-4">
+        <HelpCircle className="w-5 h-5 text-gray-400" />
+        <h3 className="text-lg font-medium text-gray-900">FAQ</h3>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-1">
         {faqs.map((faq) => (
-          <div key={faq.id} className="bg-white border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+          <div key={faq.id} className="border-b border-gray-100 last:border-0 overflow-hidden">
             <button
               onClick={() => setOpenId(openId === faq.id ? null : faq.id)}
-              className="w-full flex items-center justify-between p-5 text-left hover:bg-zinc-50 transition-colors"
+              className="w-full flex items-center justify-between py-4 text-left group"
             >
-              <span className="font-black text-sm uppercase tracking-tight pr-4">{faq.question}</span>
-              <ChevronDown className={`w-5 h-5 shrink-0 transition-transform duration-300 ${openId === faq.id ? 'rotate-180' : ''}`} />
+              <span className="font-medium text-sm text-gray-900 group-hover:text-gray-600 transition-colors pr-4">{faq.question}</span>
+              <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-300 ${openId === faq.id ? 'rotate-180' : ''}`} />
             </button>
             <AnimatePresence>
               {openId === faq.id && (
@@ -87,8 +86,8 @@ function FAQSection({ faqs }: { faqs: { id: string; question: string; answer: st
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
-                  <div className="px-5 pb-5 pt-0 border-t-4 border-black">
-                    <p className="text-sm font-bold text-zinc-600 leading-relaxed pt-4">{faq.answer}</p>
+                  <div className="pb-4">
+                    <p className="text-sm text-gray-500 leading-relaxed">{faq.answer}</p>
                   </div>
                 </motion.div>
               )}
@@ -671,7 +670,7 @@ export default function CreatorClient({
             initial={{ y: -100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -100, opacity: 0 }}
-            className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] px-6 py-4 bg-red-500 text-white font-black border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] uppercase text-sm"
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] px-4 py-2 bg-gray-900 text-white rounded-lg text-sm shadow-sm font-medium"
           >
             {errorMsg}
           </motion.div>
@@ -1116,7 +1115,20 @@ export default function CreatorClient({
                 <button onClick={() => setPurchasedProduct(null)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors">✕</button>
               </div>
               <p className="text-sm text-gray-500 mb-4">{purchasedProduct.name}</p>
-              {purchasedProduct.content ? (
+              {purchasedProduct.type === 'booking' ? (
+                <>
+                  <p className="text-xs text-gray-500 mb-4 text-center">Your 1:1 session is confirmed. Use the link below to join at the scheduled time:</p>
+                  <a
+                    href={purchasedProduct.meetingUrl || purchasedProduct.content || `/${username}`}
+                    target={purchasedProduct.meetingUrl || purchasedProduct.content?.startsWith('http') ? '_blank' : undefined}
+                    rel="noopener noreferrer"
+                    className="btn btn-primary w-full py-3 text-sm"
+                  >
+                    <Video className="w-4 h-4" /> Join Video Stage
+                  </a>
+                  <p className="text-[11px] text-gray-400 text-center mt-3">A confirmation email with this link has also been sent to your inbox.</p>
+                </>
+              ) : purchasedProduct.content && purchasedProduct.content.startsWith('http') ? (
                 <a
                   href={purchasedProduct.content}
                   target="_blank"
@@ -1125,7 +1137,6 @@ export default function CreatorClient({
                 >
                   {purchasedProduct.type === 'digital' && <><Download className="w-4 h-4" /> Download File</>}
                   {purchasedProduct.type === 'link' && <><ExternalLink className="w-4 h-4" /> Open Link</>}
-                  {purchasedProduct.type === 'booking' && <><Calendar className="w-4 h-4" /> Open Meeting</>}
                   {!['digital', 'link', 'booking'].includes(purchasedProduct.type) && <><Download className="w-4 h-4" /> Access Content</>}
                 </a>
               ) : (

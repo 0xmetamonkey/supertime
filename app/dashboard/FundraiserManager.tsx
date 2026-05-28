@@ -133,9 +133,9 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
 
   if (isLoading) {
     return (
-      <div className="bg-white border-4 border-black p-12 shadow-[8px_8px_0px_0px_black] text-center">
-        <div className="w-10 h-10 border-4 border-black border-t-neo-pink rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Loading fundraiser status...</p>
+      <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-12 rounded-2xl shadow-sm text-center">
+        <div className="w-8 h-8 border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-xs text-gray-400">Loading fundraiser status...</p>
       </div>
     );
   }
@@ -143,14 +143,14 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
   return (
     <div className="space-y-8">
       {/* WARNING BANNER */}
-      <div className="bg-neo-yellow/20 border-4 border-neo-yellow p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 p-6 rounded-2xl">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 bg-neo-yellow border-4 border-black flex items-center justify-center shrink-0 shadow-[3px_3px_0px_0px_black]">
-            <AlertTriangle className="w-6 h-6 text-black" />
+          <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/50 rounded-xl flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-5 h-5 text-amber-850 dark:text-amber-300" />
           </div>
           <div>
-            <h3 className="font-black uppercase text-sm tracking-tight mb-2">Emergency Fundraiser Only</h3>
-            <p className="text-[10px] font-bold text-zinc-600 leading-relaxed">
+            <h3 className="font-medium text-sm text-amber-900 dark:text-amber-300 mb-1">Emergency Fundraiser Only</h3>
+            <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
               This feature is strictly for <strong>genuine emergencies</strong> — medical bills, disaster relief, urgent personal crises.
               When activated, your regular profile (products, calls, store) will be replaced with the fundraiser page.
               You must upload verification documents (medical bills, hospital letters, etc.) which our team will review.
@@ -162,13 +162,13 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
 
       {/* ACTIVE STATUS */}
       {hasExisting && isActive && (
-        <div className="bg-neo-green/10 border-4 border-neo-green p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+        <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 p-6 rounded-2xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-3 h-3 rounded-full bg-neo-green animate-pulse" />
+              <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
               <div>
-                <h3 className="font-black uppercase text-sm tracking-tight">Fundraiser is LIVE</h3>
-                <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-0.5">
+                <h3 className="font-medium text-sm text-green-900 dark:text-green-300">Fundraiser is LIVE</h3>
+                <p className="text-xs text-green-700 dark:text-green-400 mt-1">
                   Your profile now shows the fundraiser page · ₹{raisedAmount.toLocaleString()} raised from {donorCount} supporters
                 </p>
               </div>
@@ -180,16 +180,16 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
                   setCopiedLink(true);
                   setTimeout(() => setCopiedLink(false), 2000);
                 }}
-                className="px-3 py-2 border-2 border-black font-black uppercase text-[9px] bg-white shadow-[2px_2px_0px_0px_black] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] flex items-center gap-1"
+                className="px-3.5 py-2 border border-gray-200 dark:border-border rounded-lg font-medium text-xs bg-white dark:bg-surface hover:bg-gray-50 flex items-center gap-1.5 transition-colors shadow-sm"
               >
-                {copiedLink ? <><CheckCircle className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Share</>}
+                {copiedLink ? <><CheckCircle className="w-3.5 h-3.5 text-green-500" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Share</>}
               </button>
               <a
                 href={`/fundraise/${username}`}
                 target="_blank"
-                className="px-3 py-2 border-2 border-black font-black uppercase text-[9px] bg-black text-white shadow-[2px_2px_0px_0px_black] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] flex items-center gap-1"
+                className="px-3.5 py-2 rounded-lg font-medium text-xs bg-gray-900 dark:bg-foreground text-white dark:text-background hover:opacity-90 flex items-center gap-1.5 transition-opacity shadow-sm"
               >
-                <Eye className="w-3 h-3" /> View
+                <Eye className="w-3.5 h-3.5" /> View
               </a>
             </div>
           </div>
@@ -201,17 +201,17 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white border-4 border-black p-12 shadow-[8px_8px_0px_0px_black] text-center"
+          className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-12 rounded-2xl shadow-sm text-center"
         >
-          <Heart className="w-16 h-16 text-neo-pink mx-auto mb-6" />
-          <h3 className="text-3xl font-black uppercase tracking-tighter mb-3 italic">Need Urgent Help?</h3>
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-8 max-w-md mx-auto">
+          <Heart className="w-12 h-12 text-rose-500 mx-auto mb-6" />
+          <h3 className="text-xl font-medium text-gray-900 dark:text-foreground mb-2">Need Urgent Help?</h3>
+          <p className="text-xs text-gray-500 mb-8 max-w-md mx-auto leading-relaxed">
             Start a fundraiser to receive financial support directly from your community.
             Your profile will show the fundraiser page until you deactivate it.
           </p>
           <button
             onClick={() => setShowForm(true)}
-            className="px-10 py-4 bg-neo-pink text-white border-4 border-black font-black uppercase text-sm shadow-[6px_6px_0px_0px_black] hover:shadow-[3px_3px_0px_0px_black] hover:translate-x-[1.5px] hover:translate-y-[1.5px] transition-all"
+            className="px-6 py-3 bg-rose-600 text-white rounded-xl font-medium text-sm hover:bg-rose-700 transition-colors shadow-sm"
           >
             Start a Fundraiser
           </button>
@@ -219,44 +219,44 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
       ) : (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
           {/* TITLE */}
-          <div className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            <div className="border-b-4 border-black pb-2 mb-6">
-              <h3 className="text-lg font-black uppercase tracking-tighter flex items-center gap-3">
-                <Target className="w-5 h-5" /> Fundraiser Details
+          <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-8 rounded-2xl shadow-sm">
+            <div className="border-b border-gray-150 dark:border-border pb-4 mb-6">
+              <h3 className="text-base font-medium text-gray-900 dark:text-foreground flex items-center gap-2.5">
+                <Target className="w-5 h-5 text-gray-400" /> Fundraiser Details
               </h3>
             </div>
 
             <div className="space-y-5">
               <div>
-                <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Title</label>
+                <label className="text-xs font-medium text-gray-450 block mb-1.5">Title</label>
                 <input
                   type="text"
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder="e.g. Help My Mother Fight Her Battle"
-                  className="w-full border-4 border-black p-3 font-bold text-sm outline-none shadow-[4px_4px_0px_0px_black] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] transition-all"
+                  className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-border rounded-xl p-3 font-medium text-sm focus:outline-none focus:bg-white transition-colors"
                 />
               </div>
 
               <div>
-                <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Goal Amount (₹)</label>
+                <label className="text-xs font-medium text-gray-450 block mb-1.5">Goal Amount (₹)</label>
                 <input
                   type="number"
                   value={goalAmount}
                   onChange={e => setGoalAmount(e.target.value)}
                   placeholder="e.g. 500000"
                   min="1000"
-                  className="w-full border-4 border-black p-3 font-black text-xl outline-none shadow-[4px_4px_0px_0px_black] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] transition-all"
+                  className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-border rounded-xl p-3 font-medium text-base focus:outline-none focus:bg-white transition-colors"
                 />
               </div>
             </div>
           </div>
 
           {/* STORY */}
-          <div className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            <div className="border-b-4 border-black pb-2 mb-6">
-              <h3 className="text-lg font-black uppercase tracking-tighter flex items-center gap-3">
-                <MessageSquare className="w-5 h-5" /> Your Story
+          <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-8 rounded-2xl shadow-sm">
+            <div className="border-b border-gray-150 dark:border-border pb-4 mb-6">
+              <h3 className="text-base font-medium text-gray-900 dark:text-foreground flex items-center gap-2.5">
+                <MessageSquare className="w-5 h-5 text-gray-400" /> Your Story
               </h3>
             </div>
             <textarea
@@ -264,69 +264,69 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
               onChange={e => setStory(e.target.value)}
               placeholder="Tell your story here. Be genuine — share what happened, why you need help, and how the funds will be used. People connect with real, honest stories."
               rows={8}
-              className="w-full border-4 border-black p-4 font-medium text-sm outline-none shadow-[4px_4px_0px_0px_black] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] transition-all resize-none leading-relaxed"
+              className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-border rounded-xl p-4 font-medium text-sm focus:outline-none focus:bg-white transition-colors resize-none leading-relaxed"
             />
-            <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mt-2">Use separate lines for paragraphs. Be honest and specific.</p>
+            <p className="text-xs text-gray-400 mt-2">Use separate lines for paragraphs. Be honest and specific.</p>
           </div>
 
           {/* MEDIA */}
-          <div className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            <div className="border-b-4 border-black pb-2 mb-6">
-              <h3 className="text-lg font-black uppercase tracking-tighter flex items-center gap-3">
-                <Image className="w-5 h-5" /> Photos & Video
+          <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-8 rounded-2xl shadow-sm">
+            <div className="border-b border-gray-150 dark:border-border pb-4 mb-6">
+              <h3 className="text-base font-medium text-gray-900 dark:text-foreground flex items-center gap-2.5">
+                <Image className="w-5 h-5 text-gray-400" /> Photos & Video
               </h3>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-6">
               {/* Image */}
-              <div className="border-4 border-black border-dashed p-6 text-center bg-zinc-50">
+              <div className="border border-dashed border-gray-300 dark:border-border rounded-2xl p-6 text-center bg-gray-50 dark:bg-zinc-900/50">
                 {imageUrl ? (
                   <div className="space-y-3">
-                    <img src={imageUrl} className="w-full h-32 object-cover border-2 border-black" alt="" />
+                    <img src={imageUrl} className="w-full h-32 object-cover border border-gray-200 dark:border-border rounded-xl" alt="" />
                     <div className="flex gap-2">
-                      <label className="flex-1 py-2 bg-zinc-200 border-2 border-black font-black uppercase text-[9px] cursor-pointer text-center">
+                      <label className="flex-1 py-2 bg-gray-100 dark:bg-zinc-850 hover:bg-gray-200 dark:hover:bg-zinc-800 border border-gray-200 dark:border-border rounded-lg font-medium text-xs cursor-pointer text-center transition-colors">
                         Replace
                         <input type="file" accept="image/*" onChange={e => handleUpload(e, 'image')} className="hidden" />
                       </label>
-                      <button onClick={() => setImageUrl('')} className="px-3 py-2 bg-red-500 text-white border-2 border-black font-black uppercase text-[9px]">
-                        <Trash2 className="w-3 h-3" />
+                      <button onClick={() => setImageUrl('')} className="px-3.5 py-2 bg-red-650 text-white rounded-lg font-medium text-xs hover:bg-red-705 transition-colors">
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 ) : (
                   <label className="cursor-pointer block">
-                    <Image className="w-8 h-8 text-zinc-300 mx-auto mb-3" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">
+                    <Image className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+                    <p className="text-xs font-medium text-gray-400 mb-1">
                       {isUploading === 'image' ? 'Uploading...' : 'Upload Cover Photo'}
                     </p>
-                    <p className="text-[8px] font-bold text-zinc-300 uppercase">JPG, PNG, WebP</p>
+                    <p className="text-[10px] text-gray-400">JPG, PNG, WebP</p>
                     <input type="file" accept="image/*" onChange={e => handleUpload(e, 'image')} className="hidden" />
                   </label>
                 )}
               </div>
 
               {/* Video */}
-              <div className="border-4 border-black border-dashed p-6 text-center bg-zinc-50">
+              <div className="border border-dashed border-gray-300 dark:border-border rounded-2xl p-6 text-center bg-gray-50 dark:bg-zinc-900/50">
                 {videoUrl ? (
                   <div className="space-y-3">
-                    <video src={videoUrl} className="w-full h-32 object-cover border-2 border-black" />
+                    <video src={videoUrl} className="w-full h-32 object-cover border border-gray-200 dark:border-border rounded-xl" />
                     <div className="flex gap-2">
-                      <label className="flex-1 py-2 bg-zinc-200 border-2 border-black font-black uppercase text-[9px] cursor-pointer text-center">
+                      <label className="flex-1 py-2 bg-gray-100 dark:bg-zinc-850 hover:bg-gray-200 dark:hover:bg-zinc-800 border border-gray-200 dark:border-border rounded-lg font-medium text-xs cursor-pointer text-center transition-colors">
                         Replace
                         <input type="file" accept="video/*" onChange={e => handleUpload(e, 'video')} className="hidden" />
                       </label>
-                      <button onClick={() => setVideoUrl('')} className="px-3 py-2 bg-red-500 text-white border-2 border-black font-black uppercase text-[9px]">
-                        <Trash2 className="w-3 h-3" />
+                      <button onClick={() => setVideoUrl('')} className="px-3.5 py-2 bg-red-650 text-white rounded-lg font-medium text-xs hover:bg-red-705 transition-colors">
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 ) : (
                   <label className="cursor-pointer block">
-                    <Video className="w-8 h-8 text-zinc-300 mx-auto mb-3" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">
+                    <Video className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+                    <p className="text-xs font-medium text-gray-400 mb-1">
                       {isUploading === 'video' ? 'Uploading...' : 'Upload Video'}
                     </p>
-                    <p className="text-[8px] font-bold text-zinc-300 uppercase">MP4, WebM</p>
+                    <p className="text-[10px] text-gray-400">MP4, WebM</p>
                     <input type="file" accept="video/*" onChange={e => handleUpload(e, 'video')} className="hidden" />
                   </label>
                 )}
@@ -335,36 +335,36 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
           </div>
 
           {/* VERIFICATION */}
-          <div className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            <div className="border-b-4 border-black pb-2 mb-6">
-              <h3 className="text-lg font-black uppercase tracking-tighter flex items-center gap-3">
-                <Shield className="w-5 h-5" /> Verification Documents
+          <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-8 rounded-2xl shadow-sm">
+            <div className="border-b border-gray-150 dark:border-border pb-4 mb-6">
+              <h3 className="text-base font-medium text-gray-900 dark:text-foreground flex items-center gap-2.5">
+                <Shield className="w-5 h-5 text-gray-400" /> Verification Documents
               </h3>
             </div>
-            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-4">
+            <p className="text-xs text-gray-505 mb-4">
               Upload medical bills, hospital letters, or any proof of emergency. Our team will review within 24 hours.
             </p>
 
-            <div className="border-4 border-black border-dashed p-6 bg-zinc-50 text-center">
+            <div className="border border-dashed border-gray-300 dark:border-border rounded-2xl p-6 bg-gray-50 dark:bg-zinc-900/50 text-center">
               {verificationDoc ? (
                 <div className="flex items-center gap-4 justify-center">
-                  <FileText className="w-8 h-8 text-neo-green" />
+                  <FileText className="w-8 h-8 text-green-500" />
                   <div className="text-left">
-                    <p className="text-[10px] font-black uppercase text-neo-green">Document uploaded ✓</p>
-                    <p className="text-[8px] font-bold text-zinc-400 uppercase">Pending review</p>
+                    <p className="text-xs font-medium text-green-600 dark:text-green-400">Document uploaded ✓</p>
+                    <p className="text-[10px] text-gray-400">Pending review</p>
                   </div>
-                  <label className="px-3 py-2 bg-zinc-200 border-2 border-black font-black uppercase text-[9px] cursor-pointer">
+                  <label className="px-3.5 py-2 bg-gray-100 dark:bg-zinc-850 hover:bg-gray-200 dark:hover:bg-zinc-800 border border-gray-200 dark:border-border rounded-lg font-medium text-xs cursor-pointer transition-colors">
                     Replace
                     <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={e => handleUpload(e, 'doc')} className="hidden" />
                   </label>
                 </div>
               ) : (
                 <label className="cursor-pointer block">
-                  <Upload className="w-8 h-8 text-zinc-300 mx-auto mb-3" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">
+                  <Upload className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+                  <p className="text-xs font-medium text-gray-400 mb-1">
                     {isUploading === 'doc' ? 'Uploading...' : 'Upload Verification Document'}
                   </p>
-                  <p className="text-[8px] font-bold text-zinc-300 uppercase">PDF, JPG, PNG</p>
+                  <p className="text-[10px] text-gray-400">PDF, JPG, PNG</p>
                   <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={e => handleUpload(e, 'doc')} className="hidden" />
                 </label>
               )}
@@ -377,7 +377,7 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
             <button
               onClick={() => handleSave()}
               disabled={isSaving}
-              className={`flex-1 flex items-center justify-center gap-2 px-8 py-4 border-4 border-black font-black uppercase text-sm shadow-[4px_4px_0px_0px_black] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all disabled:opacity-50 ${saveSuccess ? 'bg-neo-green text-black' : 'bg-black text-white'}`}
+              className={`flex-1 flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-medium text-sm transition-all disabled:opacity-55 shadow-sm ${saveSuccess ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-900 dark:bg-foreground text-white dark:text-background hover:opacity-90'}`}
             >
               {saveSuccess ? <><Check className="w-5 h-5" /> Saved</> : isSaving ? 'Saving...' : <><Save className="w-5 h-5" /> Save Draft</>}
             </button>
@@ -387,7 +387,7 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
               <button
                 onClick={() => handleSave(true)}
                 disabled={isSaving || !title.trim() || !story.trim() || !goalAmount}
-                className="flex-1 flex items-center justify-center gap-2 px-8 py-4 border-4 border-black font-black uppercase text-sm bg-neo-pink text-white shadow-[4px_4px_0px_0px_black] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-medium text-sm bg-rose-600 text-white hover:bg-rose-700 transition-colors shadow-sm disabled:opacity-50"
               >
                 <Power className="w-5 h-5" /> Activate Fundraiser
               </button>
@@ -395,7 +395,7 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
               <button
                 onClick={handleDeactivate}
                 disabled={isSaving}
-                className="flex items-center justify-center gap-2 px-6 py-4 border-4 border-black font-black uppercase text-xs bg-zinc-100 text-zinc-600 shadow-[4px_4px_0px_0px_black] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all disabled:opacity-50 hover:bg-red-50 hover:text-red-500 hover:border-red-500"
+                className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-medium text-xs bg-gray-100 hover:bg-red-50 text-red-650 hover:text-red-600 border border-transparent hover:border-red-205 transition-all shadow-sm"
               >
                 <PowerOff className="w-4 h-4" /> Deactivate
               </button>
@@ -403,7 +403,7 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
           </div>
 
           {isActive && (
-            <p className="text-[8px] font-black uppercase tracking-widest text-zinc-400 text-center">
+            <p className="text-[10px] text-gray-400 text-center">
               ⚠️ While active, your regular profile is replaced with the fundraiser page.
               Deactivate to restore your normal profile with products, calls, and store.
             </p>

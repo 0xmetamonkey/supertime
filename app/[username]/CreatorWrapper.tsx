@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { AblyProvider, useCallSignaling } from '@/app/lib/ably';
 import CreatorClient from './CreatorClient';
 import { IncomingCallRing } from '@/app/components/IncomingCallRing';
-import { PushNotificationManager } from '@/app/components/PushNotificationManager';
 
 interface CreatorWrapperProps {
   username: string;
@@ -41,7 +40,6 @@ function CreatorWithSignaling(props: CreatorWrapperProps & { clientId: string })
           await signaling.rejectCall();
         }}
       />
-      <PushNotificationManager userId={props.clientId} />
       <CreatorClient
         {...props}
         // Inject Ably signaling for call initiation

@@ -1,21 +1,49 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { kv } from "@vercel/kv";
 import { redirect } from "next/navigation";
 import { resolveUsername } from "../actions";
 import { getDetailedWallet } from "../lib/economics";
 import DashboardClient from "./DashboardClient";
 
-export default async function DashboardPage() {
-  const user = await currentUser();
+export default async function DashboardPage({ searchParams }: { searchParams: any }) {
+  const { userId, sessionClaims } = await auth();
+  let email = (sessionClaims as any)?.email?.toLowerCase();
 
-  if (!user || !user.emailAddresses?.[0]?.emailAddress) {
+  // Fallback in case Clerk claim is lagging
+  if (userId && !email) {
+    try {
+      const user = await currentUser();
+      email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase();
+    } catch (e) {
+      console.error("[Dashboard Page] Clerk currentUser fallback failed:", e);
+    }
+  }
+
+  if (!userId || !email) {
     redirect("/"); // Not logged in? Go home.
   }
 
-  const email = user.emailAddresses[0].emailAddress.toLowerCase();
-
   // 1. Resolve Username
-  const username = await resolveUsername(email);
+  let username = await resolveUsername(email);
+
+  // Auto-claim username from searchParams if they don't have one yet
+  const claimParam = searchParams?.claim;
+  if (!username && claimParam) {
+    const cleanClaim = claimParam.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    if (cleanClaim && process.env.KV_URL) {
+      try {
+        const isTaken = await kv.get(`owner:${cleanClaim}`);
+        if (!isTaken) {
+          await kv.set(`owner:${cleanClaim}`, email);
+          await kv.set(`user:${email}:username`, cleanClaim);
+          username = cleanClaim;
+          console.log(`[Dashboard] 🎉 Automatically claimed username: @${cleanClaim} for ${email}`);
+        }
+      } catch (err) {
+        console.error("[Dashboard] Auto claim error:", err);
+      }
+    }
+  }
 
   // 2. Fetch Wallet Stats
   const { balance, withdrawable } = await getDetailedWallet(email);
@@ -60,7 +88,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardClient
-      session={user ? { user: { id: user.id, email: email } } : null}
+      session={userId ? { user: { id: userId, email: email } } : null}
       username={username}
       initialBalance={balance}
       initialWithdrawable={withdrawable}

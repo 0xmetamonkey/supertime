@@ -1,4 +1,4 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { kv } from "@vercel/kv";
 import { redirect } from "next/navigation";
 import StudioWrapper from "./StudioWrapper";
@@ -9,8 +9,19 @@ export const dynamic = 'force-dynamic';
 export default async function StudioPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const params = await searchParams;
   const isSimulated = params.sim === 'true';
-  const user = await currentUser();
-  const email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase(); // Normalize email
+
+  const { userId, sessionClaims } = await auth();
+  let email = (sessionClaims as any)?.email?.toLowerCase(); // Normalize email
+
+  // Fallback in case Clerk claim is lagging
+  if (userId && !email) {
+    try {
+      const user = await currentUser();
+      email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase();
+    } catch (e) {
+      console.error("[Studio Page] Clerk currentUser fallback failed:", e);
+    }
+  }
 
   if (!email && !isSimulated) return redirect("/");
 
@@ -77,7 +88,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   return (
     <StudioWrapper
       username={username || null}
-      session={user ? { user: { id: user.id, email: email } } : null}
+      session={userId ? { user: { id: userId, email: email } } : null}
       initialSettings={settings}
     />
   );

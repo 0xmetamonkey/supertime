@@ -1,18 +1,27 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { kv } from "@vercel/kv";
 import ChatClient from "./ChatClient";
 
 export default async function ChatPage({ searchParams }: { searchParams: { to?: string } }) {
-  const user = await currentUser();
+  const { userId, sessionClaims } = await auth();
+  let email = (sessionClaims as any)?.email || '';
 
-  if (!user) {
+  // Fallback in case Clerk claim is lagging
+  if (userId && !email) {
+    try {
+      const user = await currentUser();
+      email = user?.emailAddresses?.[0]?.emailAddress || '';
+    } catch (e) {
+      console.error("[Chat Page] Clerk currentUser fallback failed:", e);
+    }
+  }
+
+  if (!userId) {
     redirect(`/sign-in?forceRedirectUrl=/chat${searchParams.to ? `?to=${searchParams.to}` : ''}`);
   }
 
   const recipient = searchParams.to;
-
-  const email = user.emailAddresses?.[0]?.emailAddress || '';
 
   // Resolve username from KV
   let username = '';
@@ -26,7 +35,7 @@ export default async function ChatPage({ searchParams }: { searchParams: { to?: 
   return (
     <ChatClient
       user={{
-        id: user.id,
+        id: userId,
         username,
         email,
       }}

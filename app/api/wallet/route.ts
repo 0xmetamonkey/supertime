@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser, auth } from "@clerk/nextjs/server";
 import {
   getDetailedWallet,
   processSplitPayment,
@@ -32,9 +32,24 @@ async function setBalance(email: string, value: number) {
 
 
 export async function GET(req: NextRequest) {
-  const user = await currentUser();
-  const email = user?.emailAddresses?.[0]?.emailAddress;
-  if (!user || !email) {
+  const { sessionClaims } = await auth();
+  console.log('[Wallet API] 🔑 Session Claims received from Clerk JWT:', JSON.stringify(sessionClaims, null, 2));
+
+  let email = (sessionClaims as any)?.email;
+  
+  if (email) {
+    console.log('[Wallet API] 🎉 Success! Custom claim active. Offline resolved email:', email);
+  } else {
+    console.log('[Wallet API] ⚠️ Custom claim not detected in JWT yet. Falling back to currentUser() fetch...');
+    try {
+      const user = await currentUser();
+      email = user?.emailAddresses?.[0]?.emailAddress;
+    } catch (e) {
+      console.error('[Wallet API] Clerk currentUser fetch failed:', e);
+    }
+  }
+
+  if (!email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const normalizedEmail = email.toLowerCase();
@@ -56,9 +71,20 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await currentUser();
-  const email = user?.emailAddresses?.[0]?.emailAddress;
-  if (!user || !email) {
+  const { sessionClaims } = await auth();
+  let email = (sessionClaims as any)?.email;
+
+  if (!email) {
+    // Fallback in case of custom claim lag/misconfiguration during transaction
+    try {
+      const user = await currentUser();
+      email = user?.emailAddresses?.[0]?.emailAddress;
+    } catch (e) {
+      console.error('[Wallet API] Clerk currentUser fallback failed in POST:', e);
+    }
+  }
+
+  if (!email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
