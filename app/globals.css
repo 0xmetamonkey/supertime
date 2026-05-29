@@ -38,6 +38,8 @@ body {
   color: var(--foreground);
   overflow-x: hidden;
   max-width: 100vw;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

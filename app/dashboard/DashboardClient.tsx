@@ -1700,6 +1700,7 @@ export default function DashboardClient({ session, username, initialBalance, ini
           socials: initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' },
           faqs: initialSettings?.faqs || [],
           templates: initialSettings?.templates || [],
+          displayName: initialSettings?.displayName || '',
         }} />
       </div>
       <div className="w-full h-1 bg-black/10 rounded-full my-8" />

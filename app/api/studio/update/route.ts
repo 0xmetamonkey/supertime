@@ -11,10 +11,11 @@ export async function POST(req: NextRequest) {
 
   const email = emailAddr.toLowerCase();
   const requestData = await req.json();
-  const { socials, videoRate, audioRate, isLive, isAcceptingCalls, templates, availability, artifact, roomType, isRoomFree, mode, faqs, upiId } = requestData;
+  const { socials, videoRate, audioRate, isLive, isAcceptingCalls, templates, availability, artifact, roomType, isRoomFree, mode, faqs, upiId, displayName } = requestData;
 
   try {
     if (process.env.KV_URL) {
+      if (displayName !== undefined) await kv.set(`user:${email}:displayName`, displayName);
       if (mode !== undefined) await kv.set(`user:${email}:mode`, mode);
       if (socials) await kv.set(`user:${email}:socials`, socials);
       if (videoRate !== undefined) await kv.set(`user:${email}:rate:video`, videoRate);

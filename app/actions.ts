@@ -86,16 +86,18 @@ export async function getFeaturedCreators() {
       .filter(pair => !!pair.email) as { username: string, email: string }[];
 
     const featured = await Promise.all(validPairs.map(async ({ username, email }) => {
-      // Execute all 4 property queries in parallel for this creator
-      const [profileImage, vRate, bio, role] = await Promise.all([
+      // Execute all 5 property queries in parallel for this creator
+      const [profileImage, vRate, bio, role, displayName] = await Promise.all([
         kv.get<string>(`user:${email}:profileImage`),
         kv.get<number>(`user:${email}:rate:video`),
         kv.get<string>(`user:${email}:bio`),
-        kv.get<string>(`user:${email}:role`)
+        kv.get<string>(`user:${email}:role`),
+        kv.get<string>(`user:${email}:displayName`)
       ]);
 
       return {
-        name: username,
+        name: displayName || (username.charAt(0).toUpperCase() + username.slice(1)),
+        username: username,
         role: role || "Creator",
         desc: bio || "Intentional human-first sessions",
         time: "30 min",
@@ -126,16 +128,18 @@ export async function getAllCreators() {
       .filter(pair => !!pair.email) as { username: string, email: string }[];
 
     const creators = await Promise.all(validPairs.map(async ({ username, email }) => {
-      // Execute all 4 property queries in parallel for this creator
-      const [profileImage, vRate, bio, role] = await Promise.all([
+      // Execute all 5 property queries in parallel for this creator
+      const [profileImage, vRate, bio, role, displayName] = await Promise.all([
         kv.get<string>(`user:${email}:profileImage`),
         kv.get<number>(`user:${email}:rate:video`),
         kv.get<string>(`user:${email}:bio`),
-        kv.get<string>(`user:${email}:role`)
+        kv.get<string>(`user:${email}:role`),
+        kv.get<string>(`user:${email}:displayName`)
       ]);
 
       return {
-        name: username,
+        name: displayName || (username.charAt(0).toUpperCase() + username.slice(1)),
+        username: username,
         role: role || "Creator",
         desc: bio || "Intentional human-first sessions",
         time: "30 min",

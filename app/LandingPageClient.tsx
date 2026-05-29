@@ -121,7 +121,7 @@ export default function LandingPageClient({
     <div className="min-h-screen bg-[#F8F8F6] text-[#111111] font-sans selection:bg-[#111111] selection:text-white antialiased">
       {/* Navigation */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[#F8F8F6]/90 backdrop-blur-md border-b border-[#E8E8E8] py-4' : 'bg-transparent py-6'}`}>
-        <div className="max-w-6xl mx-auto px-6 flex justify-between items-center">
+        <div className="w-full px-6 sm:px-8 md:px-12 flex justify-between items-center">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push('/')}>
             <span className="text-xl font-bold tracking-tight">supertime</span>
           </div>
@@ -129,10 +129,8 @@ export default function LandingPageClient({
           <div className="flex items-center gap-8">
             <div className="hidden md:flex gap-8 text-sm font-medium text-[#6B6B6B]">
               <a href="/explore" className="hover:text-[#111111] transition-colors">Explore</a>
-              <a href="#creators" className="hover:text-[#111111] transition-colors">Creators</a>
-              <a href="#pricing" className="hover:text-[#111111] transition-colors">Pricing</a>
-              <a href="#about" className="hover:text-[#111111] transition-colors">About</a>
-              <a href="#roadmap" className="hover:text-[#111111] transition-colors">Roadmap</a>
+              <a href="/about" className="hover:text-[#111111] transition-colors">About</a>
+              <a href="/roadmap" className="hover:text-[#111111] transition-colors">Roadmap</a>
             </div>
 
             <button
@@ -140,7 +138,7 @@ export default function LandingPageClient({
                 if (isLoggedIn) window.location.href = '/dashboard';
                 else router.push('/sign-in?forceRedirectUrl=/dashboard');
               }}
-              className="hidden md:block text-sm font-medium text-[#111111] hover:text-[#6B6B6B] transition-colors"
+              className="hidden md:block text-sm font-semibold text-[#111111] border border-[#111111] px-5 py-2.5 rounded-xl hover:bg-[#111111] hover:text-white transition-all"
             >
               {isLoggedIn ? 'Dashboard' : 'Sign in'}
             </button>
@@ -167,10 +165,8 @@ export default function LandingPageClient({
 
           <div className="flex flex-col gap-6 flex-1 text-lg font-medium text-[#6B6B6B]">
             <a href="/explore" onClick={() => setShowMobileMenu(false)} className="hover:text-[#111111] transition-colors">Explore</a>
-            <a href="#creators" onClick={() => setShowMobileMenu(false)} className="hover:text-[#111111] transition-colors">Creators</a>
-            <a href="#pricing" onClick={() => setShowMobileMenu(false)} className="hover:text-[#111111] transition-colors">Pricing</a>
-            <a href="#about" onClick={() => setShowMobileMenu(false)} className="hover:text-[#111111] transition-colors">About</a>
-            <a href="#roadmap" onClick={() => setShowMobileMenu(false)} className="hover:text-[#111111] transition-colors">Roadmap</a>
+            <a href="/about" onClick={() => setShowMobileMenu(false)} className="hover:text-[#111111] transition-colors">About</a>
+            <a href="/roadmap" onClick={() => setShowMobileMenu(false)} className="hover:text-[#111111] transition-colors">Roadmap</a>
           </div>
 
           <div className="pt-8 border-t border-[#E8E8E8]">
@@ -188,59 +184,81 @@ export default function LandingPageClient({
       )}
 
       {/* Hero Section */}
-      <section className="pt-32 md:pt-48 pb-20 md:pb-32 px-6">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-12 gap-12 md:gap-16 items-start">
+      <section className="pt-32 md:pt-48 pb-20 md:pb-32">
+        <div className="w-full px-6 sm:px-8 md:px-12 grid md:grid-cols-12 gap-12 md:gap-16 items-start">
           <div className="md:col-span-8 space-y-8">
-            <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-[#111111] leading-[1.05]">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight text-[#111111] leading-[1.05]">
               Intentional<br />time with humans.
             </h1>
             <p className="text-lg md:text-xl text-[#6B6B6B] leading-relaxed max-w-xl">
               Supertime is a calm space to connect with creators, thinkers, artists and experts. Real conversations. Not endless content.
             </p>
 
-            {/* Claim Box */}
-            <div className="max-w-lg pt-4">
-              <form onSubmit={handleSubmit} className="relative w-full">
-                <div className="flex flex-col sm:flex-row items-stretch bg-white border border-[#E8E8E8] rounded-xl overflow-hidden shadow-sm hover:border-[#111111] transition-all">
-                  <div className="flex-1 flex items-center px-4 py-3.5 bg-white">
-                    <span className="text-[#6B6B6B] font-medium mr-0.5 select-none text-base">supertime.com/</span>
+            {/* Claim Box & Explore Duality */}
+            <div className="max-w-lg pt-4 space-y-4">
+              <form onSubmit={handleSubmit} className="w-full">
+                <div className="flex flex-col sm:flex-row items-stretch gap-3 sm:gap-0 bg-transparent sm:bg-white sm:border sm:border-[#E8E8E8] sm:rounded-xl sm:overflow-hidden sm:shadow-sm sm:hover:border-[#111111] sm:focus-within:border-[#111111] transition-all">
+                  <div className="flex-1 flex items-center px-4 py-3.5 bg-white border border-[#E8E8E8] sm:border-none rounded-xl sm:rounded-none shadow-sm sm:shadow-none hover:border-[#111111] focus-within:border-[#111111] sm:hover:border-transparent sm:focus-within:border-transparent transition-all">
+                    <span className="text-[#6B6B6B] font-medium mr-0.5 select-none text-sm sm:text-base">supertime.wtf/</span>
                     <input
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                       placeholder="username"
-                      className="flex-1 bg-transparent border-none outline-none text-[#111111] font-medium text-base placeholder:text-[#B5B5B5] lowercase min-w-0"
+                      className="flex-1 bg-transparent border-none outline-none text-[#111111] font-medium text-sm sm:text-base placeholder:text-[#B5B5B5] lowercase min-w-0"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={!username || loading}
-                    className="bg-[#111111] text-white font-medium px-6 py-3.5 sm:py-0 hover:bg-zinc-800 transition-colors disabled:opacity-50 text-sm flex items-center justify-center gap-1 shrink-0"
+                    className="bg-[#111111] text-white font-semibold px-6 py-3.5 sm:py-0 rounded-xl sm:rounded-none hover:bg-zinc-800 transition-colors disabled:opacity-50 text-sm flex items-center justify-center gap-1 shrink-0"
                   >
-                    {loading ? '...' : (
-                      <>
-                        Claim name <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
+                    {loading ? '...' : 'Claim'}
                   </button>
                 </div>
                 {error && (
-                  <div className="mt-3 text-sm font-medium text-red-500">
+                  <div className="text-sm font-medium text-red-500 pl-1 mt-2">
                     {error}
                   </div>
                 )}
               </form>
+              <div className="flex items-center gap-2 pl-1 pt-1">
+                <span className="text-[#6B6B6B] text-sm">Want to search instead?</span>
+                <button
+                  type="button"
+                  onClick={() => router.push('/explore')}
+                  className="text-[#111111] hover:text-[#6B6B6B] font-semibold text-sm underline decoration-1 underline-offset-4 flex items-center gap-1 transition-colors"
+                >
+                  explore humans <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="md:col-span-4 md:pt-4 space-y-6">
-            <h4 className="font-semibold text-sm uppercase tracking-wider text-[#111111]">A better way to connect</h4>
-            <ul className="space-y-3 text-base text-[#6B6B6B] font-normal leading-relaxed">
-              <li>No feeds.</li>
-              <li>No algorithms.</li>
-              <li>Just people.</li>
-              <li>Real time.</li>
-              <li>Real conversations.</li>
+          {/* Features Column (Aligned with subtle left border) */}
+          <div className="md:col-span-4 md:border-l md:border-[#E8E8E8] md:pl-10 space-y-6 self-start pt-2">
+            <h4 className="font-semibold text-xs uppercase tracking-wider text-[#111111]">A better way to connect</h4>
+            <ul className="space-y-4 text-base text-[#6B6B6B] font-medium leading-relaxed">
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#111111]" />
+                <span>No feeds.</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#111111]" />
+                <span>No algorithms.</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#111111]" />
+                <span>Just people.</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#111111]" />
+                <span>Real time.</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#111111]" />
+                <span>Real conversations.</span>
+              </li>
             </ul>
           </div>
         </div>
@@ -248,7 +266,7 @@ export default function LandingPageClient({
 
       {/* Creator Grid Section */}
       <section id="creators" className="py-20 md:py-32 border-t border-[#E8E8E8]/60 bg-white">
-        <div className="max-w-6xl mx-auto px-6">
+        <div className="w-full px-6 sm:px-8 md:px-12">
           <div className="flex justify-between items-end mb-12">
             <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-[#111111]">Meet some humans</h2>
             <a href="/explore" className="text-sm font-medium text-[#111111] hover:text-[#6B6B6B] flex items-center gap-1 transition-colors">
@@ -259,12 +277,13 @@ export default function LandingPageClient({
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {displayCreators.map((creator, i) => {
               const imageSrc = creator.image || fallbackAvatars[i % fallbackAvatars.length];
+              const handle = creator.username || creator.name.toLowerCase();
               return (
                 <div 
                   key={i} 
                   onClick={() => {
                     if (creator.isReal) {
-                      router.push(`/${creator.name}`);
+                      router.push(`/${handle}`);
                     }
                   }}
                   className={`flex flex-col space-y-4 group ${creator.isReal ? 'cursor-pointer' : ''}`}
@@ -277,13 +296,22 @@ export default function LandingPageClient({
                     />
                   </div>
                   <div className="space-y-1.5 px-1">
-                    <div className="flex justify-between items-baseline">
-                      <span className="font-semibold text-lg text-[#111111] group-hover:underline decoration-1 underline-offset-4">
-                        {creator.isReal ? `@${creator.name}` : creator.name}
-                      </span>
-                      <span className="text-[#6B6B6B] text-sm font-medium">{creator.role}</span>
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between items-baseline">
+                        <span className="font-semibold text-lg text-[#111111] group-hover:underline decoration-1 underline-offset-4">
+                          {creator.name}
+                        </span>
+                        <span className="text-[#6B6B6B] text-sm font-medium">
+                          {creator.role}
+                        </span>
+                      </div>
+                      <div className="text-xs text-[#6B6B6B] font-medium">
+                        @{handle}
+                      </div>
                     </div>
-                    <p className="text-sm text-[#6B6B6B] leading-relaxed line-clamp-2">{creator.desc}</p>
+                    <p className="text-sm text-[#6B6B6B] leading-relaxed line-clamp-2">
+                      {creator.desc}
+                    </p>
                     <div className="flex gap-2 text-xs font-semibold text-[#111111] pt-1 items-center">
                       <span>{creator.time}</span>
                       <span className="text-[#E8E8E8]">•</span>
@@ -305,7 +333,7 @@ export default function LandingPageClient({
 
       {/* Mission / Belief Section */}
       <section id="about" className="py-20 md:py-32 border-t border-[#E8E8E8]/60">
-        <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-12 gap-12 md:gap-16 items-start">
+        <div className="w-full px-6 sm:px-8 md:px-12 grid md:grid-cols-12 gap-12 md:gap-16 items-start">
           <div className="md:col-span-7">
             <h2 className="text-3xl md:text-5xl font-semibold tracking-tight text-[#111111] leading-tight max-w-lg">
               We believe the internet can be calm, intentional and human.
@@ -315,11 +343,8 @@ export default function LandingPageClient({
             <p className="text-base text-[#6B6B6B] leading-relaxed">
               Supertime is building the infrastructure for meaningful conversations. A place where time, attention and compensation are aligned.
             </p>
-            <p className="text-base text-[#6B6B6B] leading-relaxed">
-              We're here for the long term and we're building in the open. Follow our roadmap and grow with us.
-            </p>
             <div className="pt-2">
-              <a href="#roadmap" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#111111] hover:text-[#6B6B6B] transition-colors">
+              <a href="/about" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#111111] hover:text-[#6B6B6B] transition-colors">
                 Read our thoughts <ArrowRight className="w-4 h-4" />
               </a>
             </div>
@@ -329,7 +354,7 @@ export default function LandingPageClient({
 
       {/* Simple Pricing (Are.na style) */}
       <section id="pricing" className="py-20 md:py-32 border-t border-[#E8E8E8]/60 bg-white">
-        <div className="max-w-6xl mx-auto px-6">
+        <div className="w-full px-6 sm:px-8 md:px-12">
           <div className="text-center max-w-xl mx-auto mb-16 space-y-4">
             <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-[#111111]">Simple, straightforward pricing</h2>
             <p className="text-base text-[#6B6B6B] leading-relaxed">
@@ -348,19 +373,15 @@ export default function LandingPageClient({
               <ul className="space-y-3.5 text-sm text-[#6B6B6B] pt-4 border-t border-[#E8E8E8]">
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-[#111111] shrink-0" />
-                  <span>Unlimited storefront products</span>
+                  <span>No monthly subscriptions</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-[#111111] shrink-0" />
-                  <span>Unlimited calendar bookings</span>
+                  <span>Pay only for the exact live slot you book</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-[#111111] shrink-0" />
-                  <span>Secure 1:1 call hosting</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-[#111111] shrink-0" />
-                  <span>Standard transaction fees apply</span>
+                  <span>Direct access to incredible creators</span>
                 </li>
               </ul>
             </div>
@@ -375,19 +396,15 @@ export default function LandingPageClient({
               <ul className="space-y-3.5 text-sm text-[#6B6B6B] pt-4 border-t border-[#E8E8E8]">
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-[#111111] shrink-0" />
-                  <span>Everything in Free</span>
+                  <span>Keep 90% of your earnings</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-[#111111] shrink-0" />
-                  <span>Zero transaction fees from our end</span>
+                  <span>Ultra-low latency live video calling</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-[#111111] shrink-0" />
-                  <span>Custom domains & branding removal</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-[#111111] shrink-0" />
-                  <span>Priority support infrastructure</span>
+                  <span>Secure global micro-payments</span>
                 </li>
               </ul>
             </div>
@@ -397,10 +414,10 @@ export default function LandingPageClient({
 
       {/* Roadmap Section */}
       <section id="roadmap" className="py-20 md:py-32 border-t border-[#E8E8E8]/60 bg-[#F8F8F6]">
-        <div className="max-w-6xl mx-auto px-6">
+        <div className="w-full px-6 sm:px-8 md:px-12">
           <div className="flex justify-between items-end mb-16">
             <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-[#111111]">On our roadmap</h2>
-            <a href="#roadmap" className="text-sm font-medium text-[#111111] hover:text-[#6B6B6B] flex items-center gap-1 transition-colors">
+            <a href="/roadmap" className="text-sm font-medium text-[#111111] hover:text-[#6B6B6B] flex items-center gap-1 transition-colors">
               View roadmap <ArrowRight className="w-4 h-4" />
             </a>
           </div>
@@ -443,11 +460,11 @@ export default function LandingPageClient({
 
       {/* Footer */}
       <footer className="border-t border-[#E8E8E8] py-8 bg-[#F8F8F6]">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-medium text-[#6B6B6B]">
-          <span>© 2024 Supertime</span>
+        <div className="w-full px-6 sm:px-8 md:px-12 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-medium text-[#6B6B6B]">
+          <span>© 2026 Supertime</span>
           <div className="flex gap-6 text-[#6B6B6B]">
-            <a href="#about" className="hover:text-[#111111] transition-colors">About</a>
-            <a href="#roadmap" className="hover:text-[#111111] transition-colors">Roadmap</a>
+            <a href="/about" className="hover:text-[#111111] transition-colors">About</a>
+            <a href="/roadmap" className="hover:text-[#111111] transition-colors">Roadmap</a>
             <a href="/privacy" className="hover:text-[#111111] transition-colors">Privacy</a>
             <a href="/terms" className="hover:text-[#111111] transition-colors">Terms</a>
           </div>

@@ -31,6 +31,7 @@ export const metadata: Metadata = {
 
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { LanguageProvider } from "./components/LanguageContext";
 
 export default function RootLayout({
   children,
@@ -94,7 +95,9 @@ export default function RootLayout({
           className={`${inter.variable} font-sans antialiased bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-200`}
         >
           <ThemeProvider>
-            {children}
+            <LanguageProvider>
+              {children}
+            </LanguageProvider>
           </ThemeProvider>
         </body>
       </html>

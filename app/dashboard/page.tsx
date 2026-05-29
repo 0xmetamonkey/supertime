@@ -69,6 +69,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     const isRoomFree = await kv.get(`user:${email}:isRoomFree`);
     const templates = await kv.get(`user:${email}:templates`) as any[];
     const faqs = await kv.get(`user:${email}:faqs`) as any[];
+    const displayName = await kv.get(`user:${email}:displayName`) as string;
 
     if (vRate !== null) initialSettings.videoRate = Number(vRate);
     if (aRate !== null) initialSettings.audioRate = Number(aRate);
@@ -84,6 +85,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     if (isRoomFree !== null) initialSettings.isRoomFree = !!isRoomFree;
     if (templates) initialSettings.templates = templates;
     if (faqs) initialSettings.faqs = faqs;
+    if (displayName) initialSettings.displayName = displayName;
   }
 
   return (

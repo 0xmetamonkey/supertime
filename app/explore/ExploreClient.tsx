@@ -3,9 +3,11 @@
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Search, ArrowRight } from 'lucide-react';
+import { useUser } from "@clerk/nextjs";
 
 export default function ExploreClient({ initialCreators = [] }: { initialCreators: any[] }) {
   const router = useRouter();
+  const { isSignedIn } = useUser();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
 
@@ -112,34 +114,47 @@ export default function ExploreClient({ initialCreators = [] }: { initialCreator
   return (
     <div className="min-h-screen bg-[#F8F8F6] text-[#111111] font-sans selection:bg-[#111111] selection:text-white antialiased">
       {/* Top Header Navigation */}
-      <header className="border-b border-[#E8E8E8] py-6 bg-[#F8F8F6]/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-6 flex justify-between items-center">
-          <button
-            onClick={() => router.push('/')}
-            className="flex items-center gap-2 text-sm font-semibold text-[#6B6B6B] hover:text-[#111111] transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to supertime
-          </button>
+      <header className="border-b border-[#E8E8E8]/60 py-4 bg-[#F8F8F6]/90 backdrop-blur-md sticky top-0 z-40">
+        <div className="w-full px-6 sm:px-8 md:px-12 flex justify-between items-center">
           <span className="text-lg font-bold tracking-tight cursor-pointer" onClick={() => router.push('/')}>
             supertime
           </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                router.push('/#claim');
+              }}
+              className="bg-[#111111] hover:bg-zinc-800 text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200"
+            >
+              Claim profile
+            </button>
+            <button
+              onClick={() => {
+                if (isSignedIn) router.push('/dashboard');
+                else router.push('/sign-in?forceRedirectUrl=/dashboard');
+              }}
+              className="border border-[#111111] text-[#111111] hover:bg-[#111111] hover:text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200"
+            >
+              {isSignedIn ? 'Dashboard' : 'Sign in'}
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <main className="max-w-6xl mx-auto px-6 py-16 md:py-24 space-y-12">
-        <div className="space-y-4">
+      <main className="w-full px-6 sm:px-8 md:px-12 py-16 md:py-24 space-y-16">
+        <div className="text-center max-w-2xl mx-auto space-y-4">
           <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-[#111111] leading-tight">
             Discover humans.
           </h1>
-          <p className="text-lg text-[#6B6B6B] max-w-xl leading-relaxed">
+          <p className="text-base sm:text-lg text-[#6B6B6B] leading-relaxed">
             Browse through active writers, musicians, artists, and creators hosting real conversations in real time.
           </p>
         </div>
 
         {/* Search and Category Filtering UI */}
-        <div className="space-y-6">
-          <div className="relative max-w-xl">
+        <div className="flex flex-col items-center max-w-2xl mx-auto w-full space-y-6">
+          <div className="relative w-full">
             <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
               <Search className="w-5 h-5" />
             </span>
@@ -153,7 +168,7 @@ export default function ExploreClient({ initialCreators = [] }: { initialCreator
           </div>
 
           {/* Categories Horizontal Tabs */}
-          <div className="flex gap-2 flex-wrap pb-2">
+          <div className="flex gap-2 flex-wrap justify-center pb-2">
             {categories.map((category) => (
               <button
                 key={category}
@@ -175,12 +190,13 @@ export default function ExploreClient({ initialCreators = [] }: { initialCreator
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 pt-6">
             {filteredCreators.map((creator, i) => {
               const imageSrc = creator.image || fallbackAvatars[i % fallbackAvatars.length];
+              const handle = creator.username || creator.name.toLowerCase();
               return (
                 <div
                   key={i}
                   onClick={() => {
                     if (creator.isReal) {
-                      router.push(`/${creator.name}`);
+                      router.push(`/${handle}`);
                     }
                   }}
                   className={`flex flex-col space-y-4 group ${creator.isReal ? 'cursor-pointer' : ''}`}
@@ -193,11 +209,16 @@ export default function ExploreClient({ initialCreators = [] }: { initialCreator
                     />
                   </div>
                   <div className="space-y-1.5 px-1">
-                    <div className="flex justify-between items-baseline">
-                      <span className="font-semibold text-lg text-[#111111] group-hover:underline decoration-1 underline-offset-4">
-                        {creator.isReal ? `@${creator.name}` : creator.name}
-                      </span>
-                      <span className="text-[#6B6B6B] text-sm font-medium">{creator.role}</span>
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between items-baseline">
+                        <span className="font-semibold text-lg text-[#111111] group-hover:underline decoration-1 underline-offset-4">
+                          {creator.name}
+                        </span>
+                        <span className="text-[#6B6B6B] text-sm font-medium">{creator.role}</span>
+                      </div>
+                      <div className="text-xs text-[#6B6B6B] font-medium">
+                        @{handle}
+                      </div>
                     </div>
                     <p className="text-sm text-[#6B6B6B] leading-relaxed line-clamp-2">{creator.desc}</p>
                     <div className="flex gap-2 text-xs font-semibold text-[#111111] pt-1 items-center">
@@ -240,11 +261,11 @@ export default function ExploreClient({ initialCreators = [] }: { initialCreator
 
       {/* Footer */}
       <footer className="border-t border-[#E8E8E8] py-8 bg-[#F8F8F6] mt-24">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-medium text-[#6B6B6B]">
-          <span>© 2024 Supertime</span>
+        <div className="w-full px-6 sm:px-8 md:px-12 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-medium text-[#6B6B6B]">
+          <span>© 2026 Supertime</span>
           <div className="flex gap-6 text-[#6B6B6B]">
-            <a href="/#about" className="hover:text-[#111111] transition-colors">About</a>
-            <a href="/#roadmap" className="hover:text-[#111111] transition-colors">Roadmap</a>
+            <a href="/about" className="hover:text-[#111111] transition-colors">About</a>
+            <a href="/roadmap" className="hover:text-[#111111] transition-colors">Roadmap</a>
             <a href="/privacy" className="hover:text-[#111111] transition-colors">Privacy</a>
             <a href="/terms" className="hover:text-[#111111] transition-colors">Terms</a>
           </div>

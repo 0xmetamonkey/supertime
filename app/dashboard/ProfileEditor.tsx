@@ -28,11 +28,13 @@ interface ProfileEditorProps {
     faqs?: { id: string; question: string; answer: string }[];
     templates?: any[];
     products?: any[];
+    displayName?: string;
   };
 }
 
 export default function ProfileEditor({ username, initialSettings }: ProfileEditorProps) {
   const [profileImage, setProfileImage] = useState(initialSettings.profileImage || '');
+  const [displayName, setDisplayName] = useState(initialSettings.displayName || '');
   const [socials, setSocials] = useState(initialSettings.socials || { instagram: '', x: '', youtube: '', website: '' });
   const [faqs, setFaqs] = useState<{ id: string; question: string; answer: string }[]>(initialSettings.faqs || []);
   const [isUploading, setIsUploading] = useState(false);
@@ -86,7 +88,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
     try {
       await fetch('/api/studio/update', {
         method: 'POST',
-        body: JSON.stringify({ socials, profileImage, faqs })
+        body: JSON.stringify({ socials, profileImage, faqs, displayName })
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -127,6 +129,25 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
               )}
               <p className="text-xs text-gray-500">Max 5MB · JPG, PNG, WebP</p>
             </div>
+          </div>
+        </div>
+
+        {/* DISPLAY NAME */}
+        <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
+          <div className="mb-4">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-foreground flex items-center gap-2">
+              <User className="w-4 h-4 text-gray-400" /> Display Name
+            </h3>
+          </div>
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="e.g. Aman Gupta"
+              className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border text-gray-900 dark:text-foreground px-4 py-3 rounded-xl text-sm font-medium outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+            />
+            <p className="text-xs text-gray-500">Your full name displayed on explore cards and profile headers.</p>
           </div>
         </div>
 
