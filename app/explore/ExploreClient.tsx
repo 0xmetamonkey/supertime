@@ -4,6 +4,8 @@ import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Search, ArrowRight } from 'lucide-react';
 import { useUser } from "@clerk/nextjs";
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 
 export default function ExploreClient({ initialCreators = [] }: { initialCreators: any[] }) {
   const router = useRouter();
@@ -112,42 +114,17 @@ export default function ExploreClient({ initialCreators = [] }: { initialCreator
   }, [allCreators, activeCategory, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-[#F8F8F6] text-[#111111] font-sans selection:bg-[#111111] selection:text-white antialiased">
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-foreground selection:text-background antialiased transition-colors duration-300">
       {/* Top Header Navigation */}
-      <header className="border-b border-[#E8E8E8]/60 py-4 bg-[#F8F8F6]/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="w-full px-6 sm:px-8 md:px-12 flex justify-between items-center">
-          <span className="text-lg font-bold tracking-tight cursor-pointer" onClick={() => router.push('/')}>
-            supertime
-          </span>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                router.push('/#claim');
-              }}
-              className="bg-[#111111] hover:bg-zinc-800 text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200"
-            >
-              Claim profile
-            </button>
-            <button
-              onClick={() => {
-                if (isSignedIn) router.push('/dashboard');
-                else router.push('/sign-in?forceRedirectUrl=/dashboard');
-              }}
-              className="border border-[#111111] text-[#111111] hover:bg-[#111111] hover:text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200"
-            >
-              {isSignedIn ? 'Dashboard' : 'Sign in'}
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero Section */}
       <main className="w-full px-6 sm:px-8 md:px-12 py-16 md:py-24 space-y-16">
         <div className="text-center max-w-2xl mx-auto space-y-4">
-          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-[#111111] leading-tight">
+          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-foreground leading-tight">
             Discover humans.
           </h1>
-          <p className="text-base sm:text-lg text-[#6B6B6B] leading-relaxed">
+          <p className="text-base sm:text-lg text-muted leading-relaxed">
             Browse through active writers, musicians, artists, and creators hosting real conversations in real time.
           </p>
         </div>
@@ -155,7 +132,7 @@ export default function ExploreClient({ initialCreators = [] }: { initialCreator
         {/* Search and Category Filtering UI */}
         <div className="flex flex-col items-center max-w-2xl mx-auto w-full space-y-6">
           <div className="relative w-full">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-muted">
               <Search className="w-5 h-5" />
             </span>
             <input
@@ -163,7 +140,7 @@ export default function ExploreClient({ initialCreators = [] }: { initialCreator
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, bio, or creative field..."
-              className="w-full pl-12 pr-6 py-4 bg-white border border-[#E8E8E8] rounded-xl outline-none text-[#111111] font-medium text-base shadow-sm hover:border-[#111111] focus:border-[#111111] transition-all"
+              className="w-full pl-12 pr-6 py-4 bg-surface border border-border rounded-xl outline-none text-foreground font-medium text-base shadow-sm hover:border-foreground focus:border-foreground transition-all"
             />
           </div>
 
@@ -175,8 +152,8 @@ export default function ExploreClient({ initialCreators = [] }: { initialCreator
                 onClick={() => setActiveCategory(category)}
                 className={`px-4 py-2 rounded-full text-sm font-semibold transition-all border ${
                   activeCategory === category
-                    ? 'bg-[#111111] text-white border-[#111111]'
-                    : 'bg-white text-[#6B6B6B] border-[#E8E8E8] hover:border-[#111111] hover:text-[#111111]'
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'bg-surface text-muted border-border hover:border-foreground hover:text-foreground'
                 }`}
               >
                 {category}
@@ -201,7 +178,7 @@ export default function ExploreClient({ initialCreators = [] }: { initialCreator
                   }}
                   className={`flex flex-col space-y-4 group ${creator.isReal ? 'cursor-pointer' : ''}`}
                 >
-                  <div className="aspect-[4/5] bg-zinc-100 rounded-xl overflow-hidden relative border border-[#E8E8E8] shadow-sm transition-all duration-300 group-hover:border-[#111111]/30">
+                  <div className="aspect-[4/5] bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden relative border border-border shadow-sm transition-all duration-300 group-hover:border-foreground/30">
                     <img
                       src={imageSrc}
                       alt={creator.name}
@@ -211,24 +188,22 @@ export default function ExploreClient({ initialCreators = [] }: { initialCreator
                   <div className="space-y-1.5 px-1">
                     <div className="space-y-0.5">
                       <div className="flex justify-between items-baseline">
-                        <span className="font-semibold text-lg text-[#111111] group-hover:underline decoration-1 underline-offset-4">
+                        <span className="font-semibold text-lg text-foreground group-hover:underline decoration-1 underline-offset-4">
                           {creator.name}
                         </span>
-                        <span className="text-[#6B6B6B] text-sm font-medium">{creator.role}</span>
+                        <span className="text-muted text-sm font-medium">{creator.role}</span>
                       </div>
-                      <div className="text-xs text-[#6B6B6B] font-medium">
+                      <div className="text-xs text-muted font-medium">
                         @{handle}
                       </div>
                     </div>
-                    <p className="text-sm text-[#6B6B6B] leading-relaxed line-clamp-2">{creator.desc}</p>
-                    <div className="flex gap-2 text-xs font-semibold text-[#111111] pt-1 items-center">
+                    <p className="text-sm text-muted leading-relaxed line-clamp-2">{creator.desc}</p>
+                    <div className="flex gap-2 text-xs font-semibold text-foreground pt-1 items-center">
                       <span>{creator.time}</span>
-                      <span className="text-[#E8E8E8]">•</span>
-                      <span>{creator.price}</span>
                       {creator.isReal && (
                         <>
-                          <span className="text-[#E8E8E8]">•</span>
-                          <span className="text-[10px] bg-[#111111] text-white px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">Active</span>
+                          <span className="text-border">•</span>
+                          <span className="text-[10px] bg-foreground text-background px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">Active</span>
                         </>
                       )}
                     </div>
@@ -238,9 +213,9 @@ export default function ExploreClient({ initialCreators = [] }: { initialCreator
             })}
           </div>
         ) : (
-          <div className="text-center py-20 bg-white border border-[#E8E8E8] rounded-2xl p-8 max-w-xl mx-auto space-y-4 shadow-sm">
-            <h3 className="text-xl font-bold text-[#111111]">No humans found</h3>
-            <p className="text-sm text-[#6B6B6B] leading-relaxed">
+          <div className="text-center py-20 bg-surface border border-border rounded-2xl p-8 max-w-xl mx-auto space-y-4 shadow-sm">
+            <h3 className="text-xl font-bold text-foreground">No humans found</h3>
+            <p className="text-sm text-muted leading-relaxed">
               We couldn't find any creator matching "{searchQuery}" under the category "{activeCategory}".
             </p>
             {searchQuery && (
@@ -249,7 +224,7 @@ export default function ExploreClient({ initialCreators = [] }: { initialCreator
                   onClick={() => {
                     router.push(`/?claim=${searchQuery}`);
                   }}
-                  className="inline-flex items-center gap-1.5 bg-[#111111] text-white font-semibold px-5 py-3 rounded-xl hover:bg-zinc-800 transition-colors text-sm"
+                  className="inline-flex items-center gap-1.5 bg-foreground text-background font-semibold px-5 py-3 rounded-xl hover:opacity-95 transition-all text-sm"
                 >
                   Claim name @{searchQuery.toLowerCase().replace(/[^a-z0-9_]/g, '')} <ArrowRight className="w-4 h-4" />
                 </button>
@@ -260,17 +235,7 @@ export default function ExploreClient({ initialCreators = [] }: { initialCreator
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#E8E8E8] py-8 bg-[#F8F8F6] mt-24">
-        <div className="w-full px-6 sm:px-8 md:px-12 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-medium text-[#6B6B6B]">
-          <span>© 2026 Supertime</span>
-          <div className="flex gap-6 text-[#6B6B6B]">
-            <a href="/about" className="hover:text-[#111111] transition-colors">About</a>
-            <a href="/roadmap" className="hover:text-[#111111] transition-colors">Roadmap</a>
-            <a href="/privacy" className="hover:text-[#111111] transition-colors">Privacy</a>
-            <a href="/terms" className="hover:text-[#111111] transition-colors">Terms</a>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

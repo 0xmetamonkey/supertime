@@ -3,11 +3,11 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Clock, Zap, CheckCircle2 } from 'lucide-react';
-import { useUser } from "@clerk/nextjs";
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 
 export default function RoadmapPage() {
   const router = useRouter();
-  const { isSignedIn } = useUser();
 
   const roadmapItems = [
     {
@@ -63,63 +63,38 @@ export default function RoadmapPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8F8F6] text-[#111111] font-sans selection:bg-[#111111] selection:text-white antialiased">
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-foreground selection:text-background antialiased transition-colors duration-300">
       {/* Top Header Navigation */}
-      <header className="border-b border-[#E8E8E8]/60 py-4 bg-[#F8F8F6]/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="w-full px-6 sm:px-8 md:px-12 flex justify-between items-center">
-          <span className="text-lg font-bold tracking-tight cursor-pointer" onClick={() => router.push('/')}>
-            supertime
-          </span>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                router.push('/#claim');
-              }}
-              className="bg-[#111111] hover:bg-zinc-800 text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200"
-            >
-              Claim profile
-            </button>
-            <button
-              onClick={() => {
-                if (isSignedIn) router.push('/dashboard');
-                else router.push('/sign-in?forceRedirectUrl=/dashboard');
-              }}
-              className="border border-[#111111] text-[#111111] hover:bg-[#111111] hover:text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200"
-            >
-              {isSignedIn ? 'Dashboard' : 'Sign in'}
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Content Area */}
       <main className="w-full px-6 sm:px-8 md:px-12 py-16 md:py-24 max-w-4xl mx-auto space-y-16">
         {/* Intro */}
         <div className="space-y-6">
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight text-[#111111] leading-[1.05]">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight text-foreground leading-[1.05]">
             Our roadmap.
           </h1>
-          <p className="text-xl md:text-2xl text-[#6B6B6B] leading-relaxed font-normal pt-2">
+          <p className="text-xl md:text-2xl text-muted leading-relaxed font-normal pt-2">
             We are building in public. Here is a live, transparent look at what we are building, what is planned next, and what has recently landed.
           </p>
         </div>
 
         {/* Timeline List */}
-        <div className="space-y-16 pt-8 border-t border-[#E8E8E8]">
+        <div className="space-y-16 pt-8 border-t border-border">
           {roadmapItems.map((group, index) => (
             <div key={index} className="space-y-8">
               <div className="flex items-center gap-3">
                 {group.icon}
-                <h2 className="text-2xl font-bold uppercase tracking-wider text-[#111111] text-sm">
+                <h2 className="text-2xl font-bold uppercase tracking-wider text-foreground text-sm">
                   {group.phase}
                 </h2>
               </div>
 
               <div className="grid gap-6">
                 {group.items.map((item, itemIdx) => (
-                  <div key={itemIdx} className="bg-white border border-[#E8E8E8] rounded-xl p-6 md:p-8 space-y-3 shadow-sm hover:border-[#111111] transition-colors duration-300">
-                    <h3 className="text-lg font-bold text-[#111111]">{item.title}</h3>
-                    <p className="text-sm text-[#6B6B6B] leading-relaxed">{item.desc}</p>
+                  <div key={itemIdx} className="bg-surface border border-border rounded-xl p-6 md:p-8 space-y-3 shadow-sm hover:border-foreground transition-colors duration-300">
+                    <h3 className="text-lg font-bold text-foreground">{item.title}</h3>
+                    <p className="text-sm text-muted leading-relaxed">{item.desc}</p>
                   </div>
                 ))}
               </div>
@@ -129,17 +104,7 @@ export default function RoadmapPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#E8E8E8] py-8 bg-[#F8F8F6] mt-24">
-        <div className="w-full px-6 sm:px-8 md:px-12 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-medium text-[#6B6B6B]">
-          <span>© 2026 Supertime</span>
-          <div className="flex gap-6 text-[#6B6B6B]">
-            <a href="/about" className="hover:text-[#111111] transition-colors">About</a>
-            <a href="/roadmap" className="hover:text-[#111111] transition-colors">Roadmap</a>
-            <a href="/privacy" className="hover:text-[#111111] transition-colors">Privacy</a>
-            <a href="/terms" className="hover:text-[#111111] transition-colors">Terms</a>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

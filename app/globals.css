@@ -14,11 +14,11 @@
 }
 
 :root {
-  --background: #ffffff;
+  --background: #F8F8F6;
   --foreground: #111111;
   --muted: #6b7280;
   --border: #e5e7eb;
-  --surface: #f9fafb;
+  --surface: #ffffff;
   --accent: #111111;
 }
 
