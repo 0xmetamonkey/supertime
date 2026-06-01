@@ -15,16 +15,16 @@ export default function RoadmapPage() {
       icon: <Zap className="w-5 h-5 text-amber-500" />,
       items: [
         {
+          title: "The Persistent Audio Studio",
+          desc: "Floating global recording widget enabling creators to instantly capture audio 'Feasts' while navigating the dashboard, powered by 100% free browser-native SpeechRecognition."
+        },
+        {
           title: "Supabase & WhatsApp/Truecaller Migration",
           desc: "Moving away from Clerk to self-hosted Supabase Auth combined with WhatsApp OTP and Truecaller 1-tap verification for seamless, global, and highly scalable user onboarding."
         },
         {
           title: "Native Mobile Apps (Capacitor)",
           desc: "Dedicated Android and iOS apps designed to make booking, presence notifications, and 1:1 call streams fully portable and smooth on mobile devices."
-        },
-        {
-          title: "Instant Video Call Presences",
-          desc: "Allowing creators to toggle their 'active status' online, enabling users to launch instant micro-calls directly from the profile without prior calendar booking."
         }
       ]
     },
@@ -33,12 +33,16 @@ export default function RoadmapPage() {
       icon: <Clock className="w-5 h-5 text-zinc-400" />,
       items: [
         {
-          title: "Group Circles & Gathering Rooms",
-          desc: "Expanding the 1:1 video structure to support micro-workshops, group mentorship panels, and structured town halls with up to 10 participants."
+          title: "The Supertime NFT Engine",
+          desc: "Every moment recorded is an asset. Allowing creators to mint their audio/text Feasts as NFTs, and introducing on-chain reputation badges for top subscribers."
         },
         {
-          title: "Ultra-low Latency WebRTC Presence Core",
-          desc: "Developing custom WebRTC media servers to route high-fidelity audio/video streams with ultra-low delay globally."
+          title: "DAO Governance Portals",
+          desc: "Decentralized voting for human DAO members to standardize terminology (Patrons vs Kadradan) and vote on feature prioritization using $TIME tokens."
+        },
+        {
+          title: "Group Circles & Gathering Rooms",
+          desc: "Expanding the 1:1 video structure to support micro-workshops, group mentorship panels, and structured town halls with up to 10 participants."
         }
       ]
     },
@@ -47,16 +51,16 @@ export default function RoadmapPage() {
       icon: <CheckCircle2 className="w-5 h-5 text-green-500" />,
       items: [
         {
+          title: "Inner Circle Subscriptions",
+          desc: "Launched 30-day recurring-style access passes powered by Razorpay, unlocking exclusive creator content and generating stable revenue."
+        },
+        {
+          title: "The Feast Editorial Hub",
+          desc: "A beautifully styled, markdown-powered timeline where creators can publish locked articles and audio snippets directly to their subscribers."
+        },
+        {
           title: "0ms Local Authentication",
           desc: "Optimized server-side route guards using local cryptographic session validation, reducing network-bound Clerk middleware lag to absolute zero."
-        },
-        {
-          title: "Parallel Database KV Engines",
-          desc: "Refactored creator listings and search feeds to fetch data concurrently via parallel promise executions, boosting page load speeds by 10x."
-        },
-        {
-          title: "Liquid Wide Design Alignment",
-          desc: "Fully expanded the application and discovery pages to wide liquid layouts, removing legacy borders to deliver an open, edge-to-edge luxury aesthetic."
         }
       ]
     }

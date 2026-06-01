@@ -77,13 +77,16 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
     setIsUploading(type);
     const file = event.target.files[0];
     try {
-      const response = await fetch(`/api/upload?filename=${file.name}`, { method: 'POST', body: file });
+      const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
+      if (!response.ok) throw new Error('Upload failed');
       const blob = await response.json();
+      if (!blob.url) throw new Error('Upload response is missing url');
       if (type === 'image') setImageUrl(blob.url);
       else if (type === 'video') setVideoUrl(blob.url);
       else setVerificationDoc(blob.url);
     } catch (e) {
-      alert('Upload failed');
+      console.error('Fundraiser upload failed:', e);
+      alert('Upload failed. Please try again.');
     } finally {
       setIsUploading(null);
     }
@@ -127,6 +130,33 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
   const handleDeactivate = async () => {
     if (!confirm('This will deactivate your fundraiser and restore your regular profile. Continue?')) return;
     await handleSave(false);
+  };
+
+  const handleReset = async () => {
+    if (!confirm('Are you sure you want to completely delete this fundraiser and start fresh? All data will be lost. This cannot be undone.')) return;
+    setIsSaving(true);
+    try {
+      await fetch('/api/fundraise', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete' }),
+      });
+      setTitle('');
+      setStory('');
+      setGoalAmount('');
+      setImageUrl('');
+      setVideoUrl('');
+      setVerificationDoc('');
+      setIsActive(false);
+      setRaisedAmount(0);
+      setDonorCount(0);
+      setHasExisting(false);
+      setShowForm(false);
+    } catch (e) {
+      alert('Failed to reset fundraiser');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const fundraiseUrl = `supertime.wtf/fundraise/${username}`;
@@ -395,11 +425,21 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
               <button
                 onClick={handleDeactivate}
                 disabled={isSaving}
-                className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-medium text-xs bg-gray-100 hover:bg-red-50 text-red-650 hover:text-red-600 border border-transparent hover:border-red-205 transition-all shadow-sm"
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-medium text-sm bg-gray-100 hover:bg-red-50 text-red-650 hover:text-red-600 border border-transparent hover:border-red-205 transition-all shadow-sm"
               >
                 <PowerOff className="w-4 h-4" /> Deactivate
               </button>
             )}
+
+            {/* Reset / Delete */}
+            <button
+              onClick={handleReset}
+              disabled={isSaving}
+              className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-medium text-sm bg-white dark:bg-surface border border-gray-200 dark:border-border text-gray-400 hover:text-red-500 hover:border-red-200 transition-all shadow-sm"
+              title="Delete this fundraiser completely to start a new one"
+            >
+              <Trash2 className="w-4 h-4" /> Reset
+            </button>
           </div>
 
           {isActive && (

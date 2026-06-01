@@ -55,11 +55,14 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
     setIsUploading(true);
     const file = event.target.files[0];
     try {
-      const response = await fetch(`/api/upload?filename=${file.name}`, { method: 'POST', body: file });
+      const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
+      if (!response.ok) throw new Error("Upload failed");
       const newBlob = await response.json();
+      if (!newBlob.url) throw new Error("Upload response is missing url");
       setProfileImage(newBlob.url);
     } catch (e) {
-      alert("Upload failed");
+      console.error("Profile photo upload failed:", e);
+      alert("Upload failed. Please try again.");
     } finally {
       setIsUploading(false);
     }

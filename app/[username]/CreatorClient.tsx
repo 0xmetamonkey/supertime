@@ -11,6 +11,7 @@ import {
   Clock,
   Sparkles,
   ArrowRight,
+  ArrowLeft,
   Mic,
   Video,
   Instagram,
@@ -29,6 +30,9 @@ import {
   Youtube,
   Twitter,
   MessageSquare,
+  X,
+  Lock,
+  FileText,
 } from 'lucide-react';
 import WalletManager from '../components/WalletManager';
 import dynamic from 'next/dynamic';
@@ -145,6 +149,8 @@ export default function CreatorClient({
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
   const [bookingTemplate, setBookingTemplate] = useState<any>(null);
+  const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
   const [isBooking, setIsBooking] = useState(false);
   const [isPeerConnected, setIsPeerConnected] = useState(false);
 
@@ -152,9 +158,16 @@ export default function CreatorClient({
   const [showAdmirersModal, setShowAdmirersModal] = useState(false);
   const [isLoadingAdmirers, setIsLoadingAdmirers] = useState(false);
 
-  const [profileTab, setProfileTab] = useState<'store' | 'shows' | 'courses' | 'about'>('store');
+  const [profileTab, setProfileTab] = useState<'sessions' | 'products' | 'feast' | 'about'>('sessions');
   const [shows, setShows] = useState<any[]>([]);
+  const [posts, setPosts] = useState<any[]>([]);
   const [loadingShows, setLoadingShows] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/user/posts?username=${username}`)
+      .then(res => res.json())
+      .then(data => setPosts(data.posts || []));
+  }, [username]);
 
   useEffect(() => {
     const fetchShows = async () => {
@@ -184,11 +197,82 @@ export default function CreatorClient({
       .then(data => setProducts(data.products || []));
   }, [username]);
 
-  const handleBuyProduct = async (product: any) => {
-    if (!isLoggedIn) {
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+
+  useEffect(() => {
+    if (isLoggedIn && username) {
+      fetch(`/api/user/subscription?creatorUsername=${username}`)
+        .then(res => res.json())
+        .then(data => setIsSubscribed(data.isSubscribed || false))
+        .catch(console.error);
+    }
+  }, [isLoggedIn, username]);
+
+  const handleSubscribe = async () => {
+    if (!isLoggedIn && !isSimulated) {
       openSignIn({ forceRedirectUrl: window.location.pathname });
       return;
     }
+    
+    setIsSubscribing(true);
+    try {
+      const res = await fetch('/api/payment/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ creatorUsername: username }),
+      });
+      const order = await res.json();
+      if (!order.orderId) { setIsSubscribing(false); return; }
+
+      const options = {
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency,
+        order_id: order.orderId,
+        name: `Inner Circle: @${username}`,
+        description: `30-Day Access Pass`,
+        prefill: {
+          email: clerkUser?.emailAddresses?.[0]?.emailAddress || '',
+          name: clerkUser?.firstName || clerkUser?.username || '',
+        },
+        handler: async (response: any) => {
+          const verifyRes = await fetch('/api/payment/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'verify',
+              creatorUsername: username,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }),
+          });
+          const result = await verifyRes.json();
+          if (result.success) {
+            setIsSubscribed(true);
+            alert("Welcome to the Inner Circle!");
+          }
+          setIsSubscribing(false);
+        },
+        modal: { ondismiss: () => setIsSubscribing(false) },
+        theme: { color: '#000000' },
+      };
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      console.error('Subscribe error:', err);
+      setIsSubscribing(false);
+    }
+  };
+
+  const handleBuyProduct = async (product: any, bookingDetails?: { date: string, time: string, guestEmail: string, guestName: string }) => {
+    if (product.type === 'booking' && !bookingDetails) {
+      setBookingTemplate(product);
+      setShowBookingModal(true);
+      return;
+    }
+
     setBuyingId(product.id);
     try {
       const res = await fetch('/api/payment/purchase', {
@@ -210,6 +294,10 @@ export default function CreatorClient({
         order_id: order.orderId,
         name: `Buy: ${product.name}`,
         description: `From @${username}`,
+        prefill: {
+          email: bookingDetails?.guestEmail || clerkUser?.emailAddresses?.[0]?.emailAddress || '',
+          name: bookingDetails?.guestName || clerkUser?.firstName || '',
+        },
         handler: async (response: any) => {
           const verifyRes = await fetch('/api/payment/purchase', {
             method: 'POST',
@@ -222,13 +310,22 @@ export default function CreatorClient({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
+              bookingDetails,
+              buyerEmail: bookingDetails?.guestEmail,
+              buyerName: bookingDetails?.guestName,
             }),
           });
           const result = await verifyRes.json();
-          if (result.success && result.deliverable) {
-            setPurchasedProduct(result.deliverable);
-          } else if (result.success) {
-            setPurchasedProduct({ type: product.type, content: product.content, name: product.name });
+          if (result.success) {
+            if (result.deliverable) {
+              setPurchasedProduct(result.deliverable);
+            } else {
+              setPurchasedProduct({ type: product.type, content: product.content, name: product.name });
+            }
+            if (product.type === 'booking') {
+              setShowBookingModal(false);
+              alert("Booking Confirmed & Calendar Invite Sent!");
+            }
           }
           setBuyingId(null);
         },
@@ -244,10 +341,6 @@ export default function CreatorClient({
   };
 
   const handleTip = async () => {
-    if (!isLoggedIn) {
-      openSignIn({ forceRedirectUrl: window.location.pathname });
-      return;
-    }
     const amount = parseInt(tipAmount);
     if (!amount || amount < 1) return;
     setTipping(true);
@@ -300,6 +393,7 @@ export default function CreatorClient({
     digital: { icon: Package, label: 'Digital Product', color: 'neo-green' },
     link: { icon: LinkIcon, label: 'Link / Course', color: 'neo-blue' },
     booking: { icon: Calendar, label: 'Booking / Call', color: 'neo-pink' },
+    recording: { icon: Video, label: 'Video Recording', color: 'neo-yellow' },
   };
 
   // Reactive sync with unified signaling
@@ -662,7 +756,7 @@ export default function CreatorClient({
   };
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans selection:bg-neo-pink selection:text-white pb-20">
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-neo-pink selection:text-white pb-20">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <AnimatePresence>
         {errorMsg && (
@@ -733,202 +827,376 @@ export default function CreatorClient({
           />
         </div>
       )}
+      {/* Booking Modal (For Guests & Users) */}
+      {showBookingModal && bookingTemplate && (
+        <div className="fixed inset-0 z-[600] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative">
+            <button onClick={() => setShowBookingModal(false)} className="absolute top-4 right-4 p-2 bg-background rounded-full hover:bg-surface transition-colors">
+              <X className="w-5 h-5 text-muted" />
+            </button>
+            <div className="p-6 md:p-8">
+              <div className="w-12 h-12 bg-neo-pink/10 rounded-2xl flex items-center justify-center mb-6">
+                <Calendar className="w-6 h-6 text-neo-pink" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2 text-foreground">Book 1:1 Session</h2>
+              <p className="text-sm text-muted mb-8">{bookingTemplate.name}</p>
 
-      <main className="max-w-2xl mx-auto px-5 pt-8 pb-20">
+              <div className="space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 block">Date</label>
+                    <input
+                      type="date"
+                      min={new Date().toISOString().split('T')[0]}
+                      value={bookingDate}
+                      onChange={(e) => setBookingDate(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-3 font-medium text-foreground outline-none focus:border-foreground transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 block">Time</label>
+                    <select
+                      value={bookingTime}
+                      onChange={(e) => setBookingTime(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-3 font-medium text-foreground outline-none focus:border-foreground transition-colors appearance-none"
+                    >
+                      <option value="" disabled>Select Time</option>
+                      {Array.from({ length: 48 }).map((_, i) => {
+                        const h = Math.floor(i / 2);
+                        const m = i % 2 === 0 ? '00' : '30';
+                        const val = `${h.toString().padStart(2, '0')}:${m}`;
+                        const isPM = h >= 12;
+                        const displayH = h % 12 === 0 ? 12 : h % 12;
+                        const label = `${displayH}:${m} ${isPM ? 'PM' : 'AM'}`;
+                        return <option key={val} value={val}>{label}</option>;
+                      })}
+                    </select>
+                  </div>
+                </div>
+                {!isLoggedIn && (
+                  <>
+                    <div>
+                      <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 block">Your Name</label>
+                      <input
+                        type="text"
+                        placeholder="John Doe"
+                        value={guestName}
+                        onChange={(e) => setGuestName(e.target.value)}
+                        className="w-full bg-background border border-border rounded-xl px-4 py-3 font-medium text-foreground outline-none focus:border-foreground transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 block">Your Email</label>
+                      <input
+                        type="email"
+                        placeholder="john@example.com"
+                        value={guestEmail}
+                        onChange={(e) => setGuestEmail(e.target.value)}
+                        className="w-full bg-background border border-border rounded-xl px-4 py-3 font-medium text-foreground outline-none focus:border-foreground transition-colors"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <button
+                  onClick={() => {
+                    if (!bookingDate || !bookingTime) {
+                      alert("Please select a date and time.");
+                      return;
+                    }
+                    if (!isLoggedIn && (!guestName || !guestEmail)) {
+                      alert("Please enter your name and email.");
+                      return;
+                    }
+                    handleBuyProduct(bookingTemplate, { date: bookingDate, time: bookingTime, guestEmail, guestName });
+                  }}
+                  disabled={buyingId === bookingTemplate.id}
+                  className="w-full bg-foreground text-background font-semibold py-4 rounded-xl mt-4 hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {buyingId === bookingTemplate.id ? <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</> : <><ShoppingBag className="w-4 h-4" /> Continue to Payment (₹{bookingTemplate.price})</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="max-w-2xl mx-auto px-5 pt-12 pb-24 relative">
+        {isOwner && (
+          <div className="absolute top-0 left-5">
+            <a href="/dashboard" className="flex items-center gap-2 text-xs font-semibold text-muted hover:text-foreground transition-colors bg-surface border border-border px-3 py-1.5 rounded-lg shadow-sm">
+              <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
+            </a>
+          </div>
+        )}
 
         {/* ── Profile Header ── */}
         <div className="flex flex-col items-center text-center mb-10">
-          <div className="w-24 h-24 rounded-full overflow-hidden border border-gray-200 mb-4">
+          <div className="w-28 h-28 rounded-full overflow-hidden mb-5 shadow-sm">
             {profileImage ? (
               <img src={profileImage} alt={username} className="w-full h-full object-cover" />
             ) : (
-              <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`} alt={username} className="w-full h-full object-cover" />
+              <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`} alt={username} className="w-full h-full object-cover bg-surface" />
             )}
           </div>
 
-          <h1 className="text-2xl font-semibold mb-1">
+          <h1 className="text-3xl font-semibold mb-2 flex items-center gap-1.5 text-foreground">
             {username}
-            {isVerified && <span className="ml-1.5 text-blue-500 text-sm">✓</span>}
+            {isVerified && <span className="text-foreground"><Check className="w-5 h-5 bg-foreground text-background rounded-full p-0.5" /></span>}
           </h1>
 
-          <p className="text-sm text-gray-500 max-w-sm mb-4">
-            Scaling human connection through time-based digital assets and elite calls.
+          <p className="text-sm text-muted max-w-sm mb-6 leading-relaxed">
+            Actor. Builder. Musician.<br/>
+            Conversations about acting, creativity and building things.
           </p>
 
           {/* Social links */}
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-5 mb-2">
             {socials?.instagram && (
-              <a href={socials.instagram.startsWith('http') ? socials.instagram : `https://instagram.com/${socials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600 transition-colors">
-                <Instagram className="w-4 h-4" />
+              <a href={socials.instagram.startsWith('http') ? socials.instagram : `https://instagram.com/${socials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-muted hover:text-foreground transition-colors">
+                <Instagram className="w-5 h-5" />
               </a>
             )}
             {socials?.youtube && (
-              <a href={socials.youtube.startsWith('http') ? socials.youtube : `https://youtube.com/${socials.youtube.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600 transition-colors">
-                <Youtube className="w-4 h-4" />
+              <a href={socials.youtube.startsWith('http') ? socials.youtube : `https://youtube.com/${socials.youtube.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-muted hover:text-foreground transition-colors">
+                <Youtube className="w-5 h-5" />
               </a>
             )}
             {socials?.x && (
-              <a href={socials.x.startsWith('http') ? socials.x : `https://x.com/${socials.x.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600 transition-colors text-xs font-medium">
-                𝕏
+              <a href={socials.x.startsWith('http') ? socials.x : `https://x.com/${socials.x.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-muted hover:text-foreground transition-colors font-serif text-xl leading-none flex items-center justify-center">
+                <span className="mb-0.5">𝕏</span>
               </a>
             )}
             {socials?.website && (
-              <a href={socials.website.startsWith('http') ? socials.website : `https://${socials.website}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600 transition-colors">
-                <Globe className="w-4 h-4" />
+              <a href={socials.website.startsWith('http') ? socials.website : `https://${socials.website}`} target="_blank" rel="noopener noreferrer" className="text-muted hover:text-foreground transition-colors">
+                <Globe className="w-5 h-5" />
               </a>
             )}
-            <a href={`/chat?to=${username}`} className="text-gray-400 hover:text-gray-600 transition-colors">
-              <MessageSquare className="w-4 h-4" />
-            </a>
           </div>
-
-          {/* Admire button */}
-          <button onClick={toggleAdmire} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${isAdmiring ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-            <Heart className={`w-3.5 h-3.5 ${isAdmiring ? 'fill-red-500 text-red-500' : ''}`} /> {admirerCount}
-          </button>
         </div>
 
-        {/* ── Primary CTAs: Book a Call ── */}
+        {/* ── Quick Actions ── */}
         <div className="space-y-3 mb-10">
-          <button
-            onClick={() => handleStartCall('video')}
-            className="btn btn-primary w-full py-3.5 text-sm"
-          >
-            <Video className="w-4 h-4" /> Book a Video Call {videoRate ? `· ₹${videoRate}/min` : ''}
-          </button>
+          
+          {/* Inner Circle / Membership */}
+          <div className="bg-surface border border-border rounded-2xl p-5 flex items-center justify-between shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="mt-1"><Sparkles className="w-5 h-5 text-muted" /></div>
+              <div className="text-left">
+                <h3 className="font-semibold text-foreground text-sm mb-1">Join my inner circle</h3>
+                <p className="text-[11px] text-muted max-w-[180px] leading-tight">Monthly updates, behind the scenes, early access and more.</p>
+              </div>
+            </div>
+            {isSubscribed ? (
+              <button disabled className="bg-background text-foreground border border-border text-xs font-semibold px-4 py-2.5 rounded-lg shrink-0 flex items-center gap-1.5 opacity-70">
+                <Check className="w-3.5 h-3.5 text-green-500" /> Member
+              </button>
+            ) : (
+              <button onClick={handleSubscribe} disabled={isSubscribing} className="bg-foreground text-background text-xs font-semibold px-4 py-2.5 rounded-lg shrink-0 hover:opacity-90 transition-opacity disabled:opacity-50">
+                {isSubscribing ? <><Loader2 className="w-3.5 h-3.5 animate-spin inline mr-1" /> Loading...</> : 'Subscribe · ₹199 / 30 Days'}
+              </button>
+            )}
+          </div>
 
-          <button
-            onClick={() => handleStartCall('audio')}
-            className="btn btn-secondary w-full py-3.5 text-sm"
-          >
-            <Mic className="w-4 h-4" /> Book an Audio Call {audioRate ? `· ₹${audioRate}/min` : ''}
-          </button>
+          {/* Action Stack */}
+          <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-sm flex flex-col">
+            <button
+              onClick={() => handleStartCall('video')}
+              className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-background transition-colors text-left group"
+            >
+              <div className="flex items-center gap-3">
+                <Video className="w-5 h-5 text-foreground" />
+                <div>
+                  <h4 className="font-semibold text-sm text-foreground">Book a Video Call</h4>
+                  {videoRate ? <p className="text-xs text-muted">₹{videoRate} / min</p> : null}
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted group-hover:text-foreground transition-colors" />
+            </button>
+            
+            <button
+              onClick={() => handleStartCall('audio')}
+              className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-background transition-colors text-left group"
+            >
+              <div className="flex items-center gap-3">
+                <Mic className="w-5 h-5 text-foreground" />
+                <div>
+                  <h4 className="font-semibold text-sm text-foreground">Book an Audio Call</h4>
+                  {audioRate ? <p className="text-xs text-muted">₹{audioRate} / min</p> : null}
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted group-hover:text-foreground transition-colors" />
+            </button>
 
-          {/* Live status */}
-          <button
-            onClick={handleJoinRoom}
-            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-medium border transition-colors ${
-              isCreatorOnline
-                ? 'bg-green-50 border-green-200 text-green-700'
-                : 'bg-gray-50 border-gray-200 text-gray-400'
-            }`}
-          >
-            <div className={`w-2 h-2 rounded-full ${isCreatorOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
-            {isCreatorOnline ? 'Live Now · Join Room' : 'Studio Offline'}
+            <button
+              onClick={handleJoinRoom}
+              className="w-full flex items-center justify-between p-4 hover:bg-background transition-colors text-left group"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${isCreatorOnline ? 'bg-green-500 animate-pulse' : 'bg-muted'}`} />
+                <div>
+                  <h4 className="font-semibold text-sm text-foreground">Join Live Room</h4>
+                  <p className="text-xs text-muted">{isCreatorOnline ? "I'm live now!" : "See if I'm live now"}</p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted group-hover:text-foreground transition-colors" />
+            </button>
+          </div>
+
+          <button onClick={() => alert('Messaging coming soon!')} className="w-full bg-surface border border-border rounded-2xl py-3.5 flex items-center justify-center gap-2 hover:bg-background transition-colors font-medium text-sm text-foreground shadow-sm">
+            <MessageSquare className="w-4 h-4" /> Message
           </button>
         </div>
 
         {/* ── Tab Navigation ── */}
-        <div className="border-b border-gray-200 mb-6">
+        <div className="border-b border-border mb-8 sticky top-0 bg-background/80 backdrop-blur-md z-40">
           <div className="flex">
-            {['store', 'shows', 'courses', 'about'].map(tab => (
+            {['sessions', 'products', 'feast', 'about'].map(tab => (
               <button
                 key={tab}
                 onClick={() => setProfileTab(tab as any)}
-                className={`flex-1 py-3 text-xs font-medium capitalize transition-colors border-b-2 ${
+                className={`flex-1 py-4 text-sm font-semibold capitalize transition-colors border-b-2 ${
                   profileTab === tab
-                    ? 'border-black text-black'
-                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                    ? 'border-foreground text-foreground'
+                    : 'border-transparent text-muted hover:text-foreground'
                 }`}
               >
-                {tab}
-                {tab === 'shows' && shows.length > 0 && (
-                  <span className="ml-1 bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded-full">{shows.length}</span>
-                )}
+                {tab === 'products' ? 'Art & Products' : tab}
               </button>
             ))}
           </div>
         </div>
 
         {/* ── Tab Content ── */}
+        {/* ── Tab Content ── */}
         <div className="min-h-[300px]">
 
-          {/* STORE TAB */}
-          {profileTab === 'store' && (
+          {/* SESSIONS TAB */}
+          {profileTab === 'sessions' && (
             <div className="space-y-6">
-              <div className="grid gap-4">
-                {/* Products */}
-                {products && products.length > 0 && products.map((prod: any) => {
-                  const typeConf = productTypeConfig[prod.type] || productTypeConfig.digital;
-                  const TypeIcon = typeConf.icon;
-                  return (
-                    <div key={prod.id} className="card">
-                      {prod.thumbnail && (
-                        <div className="h-36 -mx-6 -mt-6 mb-4 overflow-hidden rounded-t-xl">
-                          <img src={prod.thumbnail} alt={prod.name} className="w-full h-full object-cover" />
+              <div className="mb-2">
+                <h2 className="text-xl font-semibold text-foreground">Sessions</h2>
+                <p className="text-sm text-muted">Book a one-on-one session with me.</p>
+              </div>
+
+              {/* Filtering Pills (Visual Only for now) */}
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <button className="px-4 py-1.5 rounded-full bg-foreground text-background text-sm font-medium whitespace-nowrap">All</button>
+                <button className="px-4 py-1.5 rounded-full border border-border text-foreground hover:bg-background text-sm font-medium whitespace-nowrap">Audio</button>
+                <button className="px-4 py-1.5 rounded-full border border-border text-foreground hover:bg-background text-sm font-medium whitespace-nowrap">Video</button>
+                <button className="px-4 py-1.5 rounded-full border border-border text-foreground hover:bg-background text-sm font-medium whitespace-nowrap">Mentorship</button>
+              </div>
+
+              <div className="space-y-3">
+                {(() => {
+                  const sessionItems = [
+                    ...(templates || []),
+                    ...(products || []).filter((p: any) => p.type === 'booking')
+                  ];
+                  
+                  return sessionItems.length > 0 ? sessionItems.map((item: any) => (
+                    <div key={item.id} className="bg-surface border border-border p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-foreground/5 rounded-full flex items-center justify-center shrink-0">
+                          {item.type === 'video' ? <Video className="w-5 h-5 text-foreground" /> : item.type === 'audio' ? <Mic className="w-5 h-5 text-foreground" /> : <Sparkles className="w-5 h-5 text-foreground" />}
                         </div>
-                      )}
-                      <div className="flex items-center gap-2 mb-2">
-                        <TypeIcon className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="text-[11px] text-gray-400 font-medium">{typeConf.label}</span>
-                        {prod.type === 'booking' && prod.duration && (
-                          <span className="text-[11px] text-gray-400 flex items-center gap-1 ml-auto">
-                            <Clock className="w-3 h-3" /> {prod.duration}
-                          </span>
-                        )}
+                        <div>
+                          <h4 className="font-semibold text-foreground">{item.name || `${item.duration} Minute ${item.type === 'video' ? 'Video' : 'Audio'} Call`}</h4>
+                          <p className="text-xs text-muted mb-1.5">{item.description || 'Instant 1:1 access.'}</p>
+                          <div className="flex items-center gap-1 text-[11px] text-muted font-medium">
+                            <Clock className="w-3 h-3" /> {item.duration || 30} mins
+                          </div>
+                        </div>
                       </div>
-                      <h4 className="font-semibold text-base mb-1">{prod.name}</h4>
-                      {prod.description && (
-                        <p className="text-xs text-gray-500 mb-4 line-clamp-2">{prod.description}</p>
-                      )}
-                      <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                        <span className="font-semibold">₹{prod.price}</span>
-                        <button
-                          onClick={() => handleBuyProduct(prod)}
-                          disabled={buyingId === prod.id}
-                          className="btn btn-primary text-xs px-4 py-2 disabled:opacity-50"
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto border-t sm:border-0 border-border pt-3 sm:pt-0 mt-1 sm:mt-0">
+                        <div className="font-semibold text-lg text-foreground sm:mb-1">₹{item.price}</div>
+                        <button 
+                          onClick={() => item.type === 'booking' ? handleBuyProduct(item) : handleStartCall(item.type)}
+                          disabled={buyingId === item.id}
+                          className="bg-foreground text-background text-xs font-semibold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
                         >
-                          {buyingId === prod.id ? (
-                            <><Loader2 className="w-3 h-3 animate-spin" /> Processing</>
-                          ) : (
-                            <><ShoppingBag className="w-3 h-3" /> Buy</>
-                          )}
+                          {buyingId === item.id ? <Loader2 className="w-3 h-3 animate-spin inline" /> : 'Book Now'}
                         </button>
                       </div>
                     </div>
+                  )) : (
+                    <div className="py-12 text-center text-muted border border-border border-dashed rounded-2xl">
+                      <Clock className="w-8 h-8 mx-auto mb-3 opacity-50 text-muted" />
+                      <p className="text-sm">No sessions available.</p>
+                    </div>
                   );
-                })}
+                })()}
+              </div>
+            </div>
+          )}
 
-                {/* Session Templates */}
-                {templates && templates.length > 0 && templates.map((tpl: any) => (
-                  <div key={tpl.id} onClick={() => handleStartCall(tpl.type)} className="card cursor-pointer hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center gap-2 mb-2">
-                      {tpl.type === 'video' ? <Video className="w-3.5 h-3.5 text-gray-400" /> : <Mic className="w-3.5 h-3.5 text-gray-400" />}
-                      <span className="text-[11px] text-gray-400 font-medium">{tpl.duration} min {tpl.type} call</span>
-                    </div>
-                    <h4 className="font-semibold text-base mb-1">{tpl.duration} Minute Session</h4>
-                    <p className="text-xs text-gray-500 mb-3">{tpl.description || 'Instant 1:1 access.'}</p>
-                    <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                      <span className="font-semibold">{tpl.price} TKN</span>
-                      <span className="text-xs text-gray-400">Call Now →</span>
-                    </div>
-                  </div>
-                ))}
-
-                {(!products || products.length === 0) && (!templates || templates.length === 0) && (
-                  <div className="py-16 text-center text-gray-300">
-                    <Clock className="w-8 h-8 mx-auto mb-3" />
-                    <p className="text-sm">No items yet</p>
-                  </div>
-                )}
+          {/* PRODUCTS TAB */}
+          {profileTab === 'products' && (
+            <div className="space-y-6">
+              <div className="mb-2">
+                <h2 className="text-xl font-semibold text-foreground">Art & Products</h2>
+                <p className="text-sm text-muted">Digital products, art & more.</p>
               </div>
 
-              {/* Tip Jar */}
-              <div className="card">
+              <div className="space-y-3">
+                {(() => {
+                  const artProducts = (products || []).filter((p: any) => p.type !== 'booking');
+                  return artProducts.length > 0 ? artProducts.map((prod: any) => {
+                  const isUnlocked = prod.price === 0 || purchasedProduct?.id === prod.id || (purchasedProduct && purchasedProduct.name === prod.name);
+                  
+                  return (
+                    <div key={prod.id} className="bg-surface border border-border p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 group cursor-pointer hover:bg-background transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-foreground/5 rounded-xl flex items-center justify-center shrink-0">
+                          {prod.type === 'recording' ? <Video className="w-6 h-6 text-foreground" /> : <Package className="w-6 h-6 text-foreground" />}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-foreground text-sm">{prod.name}</h4>
+                          <p className="text-xs text-muted mb-1.5 line-clamp-2 pr-4">{prod.description || 'Exclusive digital content.'}</p>
+                          <div className="font-semibold text-foreground">
+                            {prod.price === 0 ? <span className="text-green-600 dark:text-green-400 text-xs">FREE</span> : `₹${prod.price}`}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <button 
+                        onClick={() => isUnlocked && prod.type === 'recording' ? undefined : handleBuyProduct(prod)}
+                        disabled={buyingId === prod.id || (isUnlocked && prod.type === 'recording')}
+                        className="w-full sm:w-auto bg-background border border-border text-foreground text-xs font-semibold px-4 py-2 rounded-lg group-hover:bg-foreground group-hover:text-background transition-colors disabled:opacity-50 shrink-0"
+                      >
+                        {buyingId === prod.id ? (
+                           <><Loader2 className="w-3 h-3 animate-spin inline mr-1" /> Processing</>
+                        ) : (isUnlocked && prod.type === 'recording' ? (
+                          <><Check className="w-3 h-3 inline mr-1" /> Unlocked</>
+                        ) : 'View / Buy')}
+                      </button>
+                    </div>
+                  );
+                }) : (
+                  <div className="py-12 text-center text-muted border border-border border-dashed rounded-2xl">
+                    <Package className="w-8 h-8 mx-auto mb-3 opacity-50 text-muted" />
+                    <p className="text-sm">No products available.</p>
+                  </div>
+                );
+                })()}
+              </div>
+
+              {/* Tip Jar integrated into Products Tab as per design */}
+              <div className="bg-surface border border-border rounded-2xl p-6 mt-8">
                 <div className="flex items-center gap-2 mb-1">
-                  <Coffee className="w-4 h-4 text-gray-400" />
-                  <h4 className="font-semibold text-sm">Support {username}</h4>
+                  <Coffee className="w-4 h-4 text-muted" />
+                  <h4 className="font-semibold text-sm text-foreground">Support {username}</h4>
                 </div>
-                <p className="text-xs text-gray-400 mb-4">100% goes to the creator</p>
+                <p className="text-[11px] text-muted mb-4">Love what I do? Support & help me create more.</p>
                 <div className="flex gap-2 mb-3">
                   {[49, 99, 199, 499].map(amt => (
                     <button
                       key={amt}
                       onClick={() => setTipAmount(String(amt))}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border transition-colors ${
                         tipAmount === String(amt)
-                          ? 'bg-black text-white border-black'
-                          : 'bg-white border-gray-200 hover:bg-gray-50'
+                          ? 'bg-foreground text-background border-foreground'
+                          : 'bg-background border-border hover:bg-surface text-foreground'
                       }`}
                     >
                       ₹{amt}
@@ -942,85 +1210,243 @@ export default function CreatorClient({
                     onChange={e => setTipAmount(e.target.value)}
                     placeholder="Custom amount"
                     min="1"
-                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400"
+                    className="flex-1 bg-background text-foreground border border-border rounded-lg px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-foreground"
                   />
                   <button
                     onClick={handleTip}
                     disabled={tipping || !tipAmount || parseInt(tipAmount) < 1}
-                    className="btn btn-primary px-5 py-2 text-xs disabled:opacity-30"
+                    className="bg-neo-pink text-white font-semibold px-6 py-2.5 rounded-lg text-sm disabled:opacity-50 hover:opacity-90 flex items-center gap-2 shrink-0 transition-opacity"
                   >
                     {tipping ? (
-                      <><Loader2 className="w-3 h-3 animate-spin" /> Sending</>
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Sending</>
                     ) : tipSuccess ? (
-                      <><Check className="w-3 h-3" /> Sent!</>
+                      <><Check className="w-4 h-4" /> Sent!</>
                     ) : (
-                      <><Heart className="w-3 h-3" /> Send Tip</>
+                      <><Heart className="w-4 h-4" /> Send Tip</>
                     )}
                   </button>
                 </div>
               </div>
+
             </div>
           )}
 
-          {/* SHOWS TAB */}
-          {profileTab === 'shows' && (
-            <div className="space-y-4">
-              {loadingShows ? (
-                <div className="py-16 text-center">
-                  <Loader2 className="w-6 h-6 animate-spin text-gray-300 mx-auto mb-3" />
-                  <p className="text-sm text-gray-400">Loading shows...</p>
-                </div>
-              ) : shows.length === 0 ? (
-                <div className="py-16 text-center text-gray-300">
-                  <Sparkles className="w-8 h-8 mx-auto mb-3" />
-                  <p className="text-sm">No shows scheduled yet</p>
-                </div>
-              ) : (
-                <div className="grid gap-4">
-                  {shows.map((show) => (
-                    <div key={show.id} className="card">
-                      <h4 className="font-semibold text-base mb-1">{show.title}</h4>
-                      <p className="text-xs text-gray-500 mb-3 line-clamp-2">{show.description}</p>
-                      <div className="flex gap-4 text-xs text-gray-400 mb-4">
-                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {show.date}</span>
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {show.time}</span>
-                      </div>
-                      <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                        <span className="font-semibold">₹{show.ticketPrice}</span>
-                        <button
-                          onClick={() => alert("Ticket purchase coming soon!")}
-                          className="btn btn-primary text-xs px-4 py-2"
-                        >
-                          Get Ticket
-                        </button>
+          {/* FEAST TAB */}
+          {profileTab === 'feast' && (
+            <div className="space-y-6">
+              <div className="mb-2">
+                <h2 className="text-xl font-semibold text-foreground">The Feast</h2>
+                <p className="text-sm text-muted">Exclusive articles, thoughts, and updates.</p>
+              </div>
+              
+              <div className="space-y-6">
+                {posts.length > 0 ? posts.map(post => {
+                  const isLockedAndNotSubscribed = post.isLocked && !isSubscribed && !isOwner;
+                  
+                  return (
+                    <div key={post.id} className="bg-surface border border-border rounded-2xl overflow-hidden shadow-sm">
+                      {post.imageUrl && (
+                        <div className="w-full h-48 md:h-64 relative">
+                          <img src={post.imageUrl} alt="" className={`w-full h-full object-cover ${isLockedAndNotSubscribed ? 'blur-md opacity-80' : ''}`} />
+                          {isLockedAndNotSubscribed && (
+                            <div className="absolute inset-0 bg-background/40 flex items-center justify-center">
+                              <Lock className="w-8 h-8 text-white drop-shadow-md" />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className="p-6">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-[11px] font-semibold tracking-wide text-muted bg-background border border-border px-2.5 py-1 rounded-md">
+                            {new Date(post.createdAt || parseInt(post.id) || Date.now()).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          </span>
+                          {post.isLocked && (
+                            <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-500 bg-amber-500/10 px-2 py-1 rounded-md">
+                              <Sparkles className="w-3 h-3" /> Exclusive
+                            </span>
+                          )}
+                        </div>
+                        
+                        <h3 className="text-xl font-bold text-foreground mb-4">{post.title}</h3>
+
+                        {post.audioUrl && (
+                          <div className="mb-6">
+                            <audio 
+                              controls 
+                              src={post.audioUrl} 
+                              className="w-full h-10 rounded-lg outline-none"
+                              onTimeUpdate={(e) => {
+                                if (isLockedAndNotSubscribed && e.currentTarget.currentTime >= 60) {
+                                  e.currentTarget.pause();
+                                  e.currentTarget.currentTime = 60;
+                                }
+                              }}
+                            />
+                            {isLockedAndNotSubscribed && (
+                              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1.5 font-medium">Free preview limited to 60 seconds.</p>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="relative">
+                          {isLockedAndNotSubscribed && (
+                            <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center rounded-xl border border-border">
+                              <div className="w-12 h-12 bg-amber-500/10 rounded-full flex items-center justify-center mb-3">
+                                <Lock className="w-6 h-6 text-amber-500" />
+                              </div>
+                              <h4 className="font-semibold text-foreground mb-1">Subscriber Exclusive</h4>
+                              <p className="text-xs text-muted mb-4 max-w-[200px]">Join the Inner Circle to read and listen to the rest of this Feast.</p>
+                              <button onClick={handleSubscribe} disabled={isSubscribing} className="bg-foreground text-background text-xs font-semibold px-5 py-2.5 rounded-lg hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50">
+                                {isSubscribing ? <><Loader2 className="w-3 h-3 animate-spin inline mr-1" /> Processing...</> : 'Join Inner Circle'}
+                              </button>
+                            </div>
+                          )}
+                          
+                          <div className={`prose prose-sm dark:prose-invert max-w-none text-muted whitespace-pre-wrap ${isLockedAndNotSubscribed ? 'opacity-30 blur-[2px] select-none pointer-events-none min-h-[150px] overflow-hidden' : ''}`}>
+                            {post.audioUrl ? (
+                              <div className="bg-surface border border-border/50 rounded-xl p-5 shadow-sm relative">
+                                <div className="absolute top-0 left-6 -mt-3 bg-background border border-border px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase text-muted shadow-sm">
+                                  Transcript
+                                </div>
+                                <p className="leading-relaxed text-foreground/90 mt-1">{post.content}</p>
+                              </div>
+                            ) : (
+                              post.content
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* COURSES TAB */}
-          {profileTab === 'courses' && (
-            <div className="py-16 text-center text-gray-300">
-              <Sparkles className="w-8 h-8 mx-auto mb-3" />
-              <p className="text-sm">Courses coming soon</p>
+                  );
+                }) : (
+                  <div className="py-12 text-center text-muted border border-border border-dashed rounded-2xl">
+                    <FileText className="w-8 h-8 mx-auto mb-3 opacity-50 text-muted" />
+                    <p className="text-sm">No feasts published yet.</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
           {/* ABOUT TAB */}
           {profileTab === 'about' && (
-            <div className="space-y-6">
-              {faqs && faqs.length > 0 && <FAQSection faqs={faqs} />}
-              <div className="card">
-                <h4 className="font-semibold text-sm mb-2">About</h4>
-                <p className="text-sm text-gray-500 leading-relaxed">
-                  Maximizing human potential through synchronized time. Every minute spent here is an investment in your evolution.
+            <div className="space-y-8">
+              <div>
+                <h2 className="text-xl font-semibold text-foreground mb-4">About Me</h2>
+                <p className="text-sm text-muted leading-relaxed mb-6">
+                  I'm an actor, builder and a musician. I love meaningful conversations about creativity, life and everything in between.<br/><br/>
+                  Let's spend some time together.
                 </p>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 text-sm text-muted">
+                    <Globe className="w-4 h-4" /> Mumbai, India
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-muted">
+                    <MessageSquare className="w-4 h-4" /> speaks English, Hindi
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-muted">
+                    <Clock className="w-4 h-4" /> Usually responds in a few hours
+                  </div>
+                </div>
               </div>
+
+              <div>
+                <h3 className="font-semibold text-foreground mb-3">What we can talk about</h3>
+                <div className="flex flex-wrap gap-2">
+                  {['Acting', 'Creativity', 'Music', 'Life', 'Stories', 'Building', 'Mindset', 'Career'].map(tag => (
+                    <span key={tag} className="px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-medium text-foreground">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-foreground mb-4">Reviews</h3>
+                <div className="space-y-4">
+                  {/* Static Placeholder Reviews */}
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 rounded-full bg-surface border border-border shrink-0" />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm text-foreground">Rohan S.</span>
+                        <div className="flex gap-0.5 text-foreground text-xs">★★★★★</div>
+                      </div>
+                      <p className="text-sm text-muted mt-1 leading-snug">Amazing conversation. Super insightful and practical.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 rounded-full bg-surface border border-border shrink-0" />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm text-foreground">Neha M.</span>
+                        <div className="flex gap-0.5 text-foreground text-xs">★★★★★</div>
+                      </div>
+                      <p className="text-sm text-muted mt-1 leading-snug">Very kind, patient and a great listener. Highly recommend!</p>
+                    </div>
+                  </div>
+                </div>
+                <button className="text-sm font-medium text-foreground mt-4 hover:underline">View all reviews →</button>
+              </div>
+
             </div>
           )}
+
+        </div>
+
+        {/* ── Footer Elements ── */}
+        <div className="mt-12 space-y-4">
+          
+          {/* Membership Card */}
+          <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+            <h3 className="text-xl font-semibold text-foreground mb-1">Membership</h3>
+            <p className="text-sm text-muted mb-6">Join to unlock exclusive benefits.</p>
+            
+            <div className="bg-foreground text-background rounded-2xl p-6 mb-2">
+              <div className="text-3xl font-bold mb-1">₹199<span className="text-base font-normal opacity-80">/month</span></div>
+              <ul className="space-y-3 mt-6 mb-6 text-sm">
+                <li className="flex items-center gap-3"><Check className="w-4 h-4 opacity-80" /> Member-only posts</li>
+                <li className="flex items-center gap-3"><Check className="w-4 h-4 opacity-80" /> Behind the scenes</li>
+                <li className="flex items-center gap-3"><Check className="w-4 h-4 opacity-80" /> Early access to new drops</li>
+                <li className="flex items-center gap-3"><Check className="w-4 h-4 opacity-80" /> Discounts on sessions</li>
+                <li className="flex items-center gap-3"><Check className="w-4 h-4 opacity-80" /> Members-only group calls</li>
+              </ul>
+              <div className="flex items-center gap-2 mb-6">
+                <div className="flex -space-x-2">
+                  <div className="w-6 h-6 rounded-full bg-background opacity-50 border border-foreground"></div>
+                  <div className="w-6 h-6 rounded-full bg-background opacity-60 border border-foreground"></div>
+                  <div className="w-6 h-6 rounded-full bg-background opacity-70 border border-foreground"></div>
+                </div>
+                <span className="text-xs font-medium opacity-80">+24</span>
+              </div>
+              <button onClick={() => alert('Subscriptions coming soon!')} className="w-full bg-background text-foreground font-semibold py-3.5 rounded-xl hover:opacity-90 transition-opacity">
+                Subscribe Now
+              </button>
+            </div>
+          </div>
+
+          {/* All Sessions Grid Footer */}
+          <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-neo-pink/10 rounded-xl flex items-center justify-center shrink-0"><Check className="w-5 h-5 text-neo-pink"/></div>
+                <div>
+                  <h4 className="font-semibold text-sm text-foreground leading-tight mb-0.5">Safe & Secure</h4>
+                  <p className="text-[10px] text-muted leading-tight">All payments are protected.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center shrink-0"><Heart className="w-5 h-5 text-red-500"/></div>
+                <div>
+                  <h4 className="font-semibold text-sm text-foreground leading-tight mb-0.5">100% creator earnings</h4>
+                  <p className="text-[10px] text-muted leading-tight">Your support goes directly to creator.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </main>
 
@@ -1030,10 +1456,10 @@ export default function CreatorClient({
       <AnimatePresence>
         {showAdmirersModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[400] bg-black/30 backdrop-blur-sm flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className="bg-white rounded-xl border border-gray-200 shadow-lg p-6 max-w-md w-full max-h-[80vh] flex flex-col">
+            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className="bg-surface rounded-xl border border-border shadow-lg p-6 max-w-md w-full max-h-[80vh] flex flex-col">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-semibold">Admirers</h2>
-                <button onClick={() => setShowAdmirersModal(false)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors">✕</button>
+                <h2 className="text-lg font-semibold text-foreground">Admirers</h2>
+                <button onClick={() => setShowAdmirersModal(false)} className="w-8 h-8 rounded-full hover:bg-background flex items-center justify-center text-muted transition-colors">✕</button>
               </div>
               <div className="flex-1 overflow-y-auto space-y-2">
                 {isLoadingAdmirers ? (
@@ -1043,8 +1469,8 @@ export default function CreatorClient({
                   </div>
                 ) : admirerList.length > 0 ? (
                   admirerList.map((admirer, idx) => (
-                    <div key={idx} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50">
-                      <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200">
+                    <div key={idx} className="flex items-center gap-3 p-3 rounded-lg hover:bg-background">
+                      <div className="w-10 h-10 rounded-full overflow-hidden border border-border">
                         <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${admirer.username || admirer.email}`} alt="avatar" className="w-full h-full object-cover" />
                       </div>
                       <span className="flex-1 text-sm font-medium truncate">{admirer.username || 'Anonymous'}</span>
@@ -1064,55 +1490,16 @@ export default function CreatorClient({
         )}
       </AnimatePresence>
 
-      {/* Booking Modal */}
-      <AnimatePresence>
-        {showBookingModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[400] bg-black/30 backdrop-blur-sm flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className="bg-white rounded-xl border border-gray-200 shadow-lg p-6 max-w-md w-full">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-semibold">Book a Session</h2>
-                <button onClick={() => setShowBookingModal(false)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors">✕</button>
-              </div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 mb-1.5 block">Date</label>
-                    <input type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:border-gray-400" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 mb-1.5 block">Time</label>
-                    <input type="time" value={bookingTime} onChange={(e) => setBookingTime(e.target.value)} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:border-gray-400" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 mb-1.5 block">Package</label>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {templates.map((tpl: any) => (
-                      <button key={tpl.id} onClick={() => setBookingTemplate(tpl)} className={`w-full text-left p-3 rounded-lg text-sm flex justify-between items-center border transition-colors ${bookingTemplate?.id === tpl.id ? 'bg-black text-white border-black' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
-                        <span>{tpl.duration} min {tpl.type}</span>
-                        <span className="font-semibold">{tpl.price} TKN</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6 flex gap-3">
-                <button onClick={() => setShowBookingModal(false)} className="btn btn-secondary flex-1 py-3">Cancel</button>
-                <button onClick={handleBookCall} disabled={isBooking || !bookingDate || !bookingTime || !bookingTemplate} className="btn btn-primary flex-1 py-3 disabled:opacity-50">{isBooking ? 'Booking...' : 'Confirm & Pay'}</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       {/* Purchased Product Modal */}
       <AnimatePresence>
         {purchasedProduct && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[400] bg-black/30 backdrop-blur-sm flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className="bg-white rounded-xl border border-gray-200 shadow-lg p-6 max-w-md w-full">
+            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className="bg-surface rounded-xl border border-border shadow-lg p-6 max-w-md w-full">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">Purchase Complete ✓</h2>
-                <button onClick={() => setPurchasedProduct(null)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors">✕</button>
+                <h2 className="text-lg font-semibold text-foreground">Purchase Complete ✓</h2>
+                <button onClick={() => setPurchasedProduct(null)} className="w-8 h-8 rounded-full hover:bg-background flex items-center justify-center text-muted transition-colors">✕</button>
               </div>
               <p className="text-sm text-gray-500 mb-4">{purchasedProduct.name}</p>
               {purchasedProduct.type === 'booking' ? (
@@ -1128,6 +1515,26 @@ export default function CreatorClient({
                   </a>
                   <p className="text-[11px] text-gray-400 text-center mt-3">A confirmation email with this link has also been sent to your inbox.</p>
                 </>
+              ) : purchasedProduct.type === 'recording' ? (
+                <div className="space-y-4">
+                  <div className="relative rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center">
+                    <video
+                      src={purchasedProduct.content}
+                      controls
+                      autoPlay
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <a
+                    href={purchasedProduct.content}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary w-full py-3 text-sm flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-4 h-4" /> Download Recording
+                  </a>
+                </div>
               ) : purchasedProduct.content && purchasedProduct.content.startsWith('http') ? (
                 <a
                   href={purchasedProduct.content}
@@ -1137,7 +1544,7 @@ export default function CreatorClient({
                 >
                   {purchasedProduct.type === 'digital' && <><Download className="w-4 h-4" /> Download File</>}
                   {purchasedProduct.type === 'link' && <><ExternalLink className="w-4 h-4" /> Open Link</>}
-                  {!['digital', 'link', 'booking'].includes(purchasedProduct.type) && <><Download className="w-4 h-4" /> Access Content</>}
+                  {!['digital', 'link', 'booking', 'recording'].includes(purchasedProduct.type) && <><Download className="w-4 h-4" /> Access Content</>}
                 </a>
               ) : (
                 <p className="text-xs text-gray-400 text-center">The creator will share the deliverable with you soon.</p>

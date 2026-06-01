@@ -63,6 +63,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, fundraiser });
   }
 
+  // DELETE fundraiser
+  if (action === 'delete') {
+    const user = await currentUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const email = user.emailAddresses?.[0]?.emailAddress?.toLowerCase();
+    if (!email) return NextResponse.json({ error: 'No email' }, { status: 400 });
+
+    const username = await kv.get(`user:${email}:username`);
+    if (!username) return NextResponse.json({ error: 'No username claimed' }, { status: 400 });
+
+    await kv.del(`fundraise:${username}`);
+    await kv.del(`fundraise:${username}:supporters`);
+    
+    return NextResponse.json({ success: true });
+  }
+
   // DONATE — create Razorpay order
   if (action === 'create-order') {
     const { amount, username } = body;

@@ -58,6 +58,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     faqs: [],
     roomType: 'audio',
     isRoomFree: true,
+    videoProvider: 'supercalls',
+    isGoogleConnected: false,
+    isZoomConnected: false,
   };
 
   if (process.env.KV_URL) {
@@ -70,9 +73,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     const templates = await kv.get(`user:${email}:templates`) as any[];
     const faqs = await kv.get(`user:${email}:faqs`) as any[];
     const displayName = await kv.get(`user:${email}:displayName`) as string;
+    const videoProvider = await kv.get(`user:${email}:videoProvider`) as string;
+    const googleTokens = await kv.get(`user:${email}:google_tokens`);
+    const zoomTokens = await kv.get(`user:${email}:zoom_tokens`);
 
     if (vRate !== null) initialSettings.videoRate = Number(vRate);
     if (aRate !== null) initialSettings.audioRate = Number(aRate);
+    if (videoProvider) initialSettings.videoProvider = videoProvider;
+    initialSettings.isGoogleConnected = !!googleTokens;
+    initialSettings.isZoomConnected = !!zoomTokens;
     if (socials) {
       if (socials.twitter && !socials.x) {
         socials.x = socials.twitter;

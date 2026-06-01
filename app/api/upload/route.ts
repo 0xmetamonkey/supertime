@@ -23,20 +23,19 @@ export async function POST(request: Request): Promise<NextResponse> {
   const uniqueFilename = `${Date.now()}-${cleanFilename}`;
 
   try {
-    // 1. Try Vercel Blob first
-    const bodyClone = request.clone();
-    const blob = await put(uniqueFilename, bodyClone.body as ReadableStream, {
-      access: 'public',
-    });
-    return NextResponse.json(blob);
-  } catch (error: any) {
-    console.warn("Vercel Blob upload failed, utilizing high-fidelity local fallback:", error?.message || error);
-    
+    const arrayBuffer = await request.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
     try {
-      // 2. High-Fidelity Local Fallback: Save to public/uploads
-      const arrayBuffer = await request.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+      // 1. Try Vercel Blob first
+      const blob = await put(uniqueFilename, buffer, {
+        access: 'public',
+      });
+      return NextResponse.json(blob);
+    } catch (error: any) {
+      console.warn("Vercel Blob upload failed, utilizing high-fidelity local fallback:", error?.message || error);
       
+      // 2. High-Fidelity Local Fallback: Save to public/uploads
       const uploadDir = path.join(process.cwd(), 'public', 'uploads');
       
       // Ensure the upload directory exists
@@ -52,9 +51,9 @@ export async function POST(request: Request): Promise<NextResponse> {
         pathname: `uploads/${uniqueFilename}`,
         size: buffer.byteLength,
       });
-    } catch (fallbackError: any) {
-      console.error("Local fallback upload failed completely:", fallbackError);
-      return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
     }
+  } catch (outerError: any) {
+    console.error("Failed to parse request body array buffer:", outerError);
+    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
   }
 }

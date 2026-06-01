@@ -44,6 +44,16 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── Form Autofill Reset (Fixes white-on-white in Dark Mode) ── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--background) inset !important;
+  -webkit-text-fill-color: var(--foreground) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 /* ── Structural Utilities ── */
 
 /* Standard card container — layout only, no decoration */

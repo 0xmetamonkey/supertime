@@ -36,6 +36,19 @@ interface SetupChecklistProps {
 
 export default function SetupChecklist({ username, initialSettings, onNavigateTab }: SetupChecklistProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+
+  React.useEffect(() => {
+    const saved = localStorage.getItem('supertime-setup-checklist-expanded');
+    if (saved !== null) {
+      setIsExpanded(saved === 'true');
+    }
+  }, []);
+
+  const handleToggleExpand = () => {
+    const next = !isExpanded;
+    setIsExpanded(next);
+    localStorage.setItem('supertime-setup-checklist-expanded', String(next));
+  };
   const [copiedLink, setCopiedLink] = useState(false);
 
   const items: ChecklistItem[] = [
@@ -124,29 +137,29 @@ export default function SetupChecklist({ username, initialSettings, onNavigateTa
     <motion.section
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden mb-8"
+      className="bg-white dark:bg-surface border border-gray-100 dark:border-border rounded-2xl shadow-sm overflow-hidden mb-8 transition-colors"
     >
       {/* Header */}
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-6 hover:bg-gray-50 transition-colors"
+        onClick={handleToggleExpand}
+        className="w-full flex items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
       >
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-gray-500" />
+          <div className="w-10 h-10 bg-gray-50 dark:bg-background rounded-lg flex items-center justify-center transition-colors">
+            <Sparkles className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </div>
           <div className="text-left">
-            <h3 className="text-lg font-medium text-gray-900">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-foreground transition-colors">
               Setup Checklist
             </h3>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-sm text-gray-500 dark:text-muted mt-0.5 transition-colors">
               {completedCount}/{totalCount} complete · {progressPercent}%
             </p>
           </div>
         </div>
         <div className="flex items-center gap-4">
           {/* Progress bar (compact) */}
-          <div className="hidden md:block w-32 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="hidden md:block w-32 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden transition-colors">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${progressPercent}%` }}
@@ -167,9 +180,9 @@ export default function SetupChecklist({ username, initialSettings, onNavigateTa
             exit={{ height: 0 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-gray-100">
+            <div className="border-t border-gray-100 dark:border-border transition-colors">
               {/* Full-width progress bar */}
-              <div className="h-0.5 bg-gray-100">
+              <div className="h-0.5 bg-gray-100 dark:bg-gray-800 transition-colors">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${progressPercent}%` }}
@@ -183,10 +196,10 @@ export default function SetupChecklist({ username, initialSettings, onNavigateTa
                 return (
                   <div
                     key={item.id}
-                    className={`flex items-center gap-4 p-5 ${idx < items.length - 1 ? 'border-b border-gray-50' : ''} ${item.isComplete ? 'opacity-50' : 'hover:bg-gray-50'} transition-all group`}
+                    className={`flex items-center gap-4 p-5 ${idx < items.length - 1 ? 'border-b border-gray-50 dark:border-border' : ''} ${item.isComplete ? 'opacity-50' : 'hover:bg-gray-50 dark:hover:bg-gray-800/30'} transition-all group`}
                   >
                     {/* Check circle */}
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors ${item.isComplete ? 'bg-blue-500 text-white' : 'border border-gray-200 text-gray-300'}`}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors ${item.isComplete ? 'bg-blue-500 text-white' : 'border border-gray-200 dark:border-gray-700 text-gray-350 dark:text-gray-500'}`}>
                       {item.isComplete ? (
                         <Check className="w-3.5 h-3.5" />
                       ) : (
@@ -195,16 +208,16 @@ export default function SetupChecklist({ username, initialSettings, onNavigateTa
                     </div>
 
                     {/* Icon */}
-                    <div className="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-background text-gray-500 dark:text-gray-400 flex items-center justify-center shrink-0 transition-colors">
                       <Icon className="w-4 h-4" />
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <h4 className={`font-medium text-gray-900 text-sm ${item.isComplete ? 'line-through text-gray-400' : ''}`}>
+                      <h4 className={`font-medium text-gray-900 dark:text-foreground text-sm transition-colors ${item.isComplete ? 'line-through text-gray-400 dark:text-gray-500' : ''}`}>
                         {item.label}
                       </h4>
-                      <p className="text-xs text-gray-500 mt-0.5 hidden md:block">
+                      <p className="text-xs text-gray-500 dark:text-muted mt-0.5 hidden md:block transition-colors">
                         {item.description}
                       </p>
                     </div>
@@ -213,7 +226,7 @@ export default function SetupChecklist({ username, initialSettings, onNavigateTa
                     {!item.isComplete && (
                       <button
                         onClick={item.action}
-                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 font-medium text-xs rounded-md hover:bg-gray-50 transition-all"
+                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-background border border-gray-200 dark:border-border text-gray-700 dark:text-gray-300 font-medium text-xs rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
                       >
                         {item.id === 'share' && copiedLink ? (
                           <><CheckCircle className="w-3 h-3 text-green-500" /> Copied!</>

@@ -86,7 +86,7 @@ export default async function CreatorPage({ params }: Props) {
 
   if (!ownerEmail) {
     return (
-      <div className="min-h-screen bg-white text-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
         {/* Animated Background Elements */}
         <div className="absolute top-40 -left-20 w-80 h-80 bg-neo-blue/10 rounded-full blur-3xl" />
         <div className="absolute bottom-20 -right-20 w-[500px] h-[500px] bg-neo-pink/10 rounded-full blur-3xl" />

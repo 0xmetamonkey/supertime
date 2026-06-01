@@ -4,12 +4,14 @@ import crypto from 'crypto';
 import { kv } from '@vercel/kv';
 import { currentUser } from "@clerk/nextjs/server";
 import { sendEmail } from '@/app/lib/email';
+import { createBooking } from '@/app/api/call/book/route';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { action, amount, productId, creatorUsername,
-      razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
+      razorpay_order_id, razorpay_payment_id, razorpay_signature,
+      bookingDetails, buyerEmail: providedBuyerEmail, buyerName: providedBuyerName } = body;
 
     // ─── VERIFY PAYMENT ───
     if (action === 'verify') {
@@ -30,16 +32,21 @@ export async function POST(req: NextRequest) {
 
       console.log('[Purchase API] ✅ Signature valid');
 
-      // Get buyer info
-      let buyerEmail = '';
-      let buyerName = 'Guest';
-      try {
-        const user = await currentUser();
-        buyerEmail = user?.emailAddresses?.[0]?.emailAddress || '';
-        buyerName = user?.firstName || user?.username || 'Guest';
-        console.log('[Purchase API] Buyer:', buyerEmail, buyerName);
-      } catch (clerkErr) {
-        console.warn('[Purchase API] Clerk currentUser() failed, continuing without buyer email:', clerkErr);
+      // Get buyer info (use provided if guest, otherwise check Clerk)
+      let buyerEmail = providedBuyerEmail || '';
+      let buyerName = providedBuyerName || 'Guest';
+      
+      if (!buyerEmail) {
+        try {
+          const user = await currentUser();
+          buyerEmail = user?.emailAddresses?.[0]?.emailAddress || '';
+          buyerName = user?.firstName || user?.username || 'Guest';
+          console.log('[Purchase API] Clerk Buyer:', buyerEmail, buyerName);
+        } catch (clerkErr) {
+          console.warn('[Purchase API] Clerk currentUser() failed, continuing without buyer email:', clerkErr);
+        }
+      } else {
+        console.log('[Purchase API] Guest Buyer:', buyerEmail, buyerName);
       }
 
       // Resolve product name and type
@@ -56,23 +63,28 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Generate a Supertime meeting room for booking-type products
       let meetingRoomId = '';
       let meetingUrl = '';
-      if (productType === 'booking' && creatorUsername) {
-        meetingRoomId = `session-${Math.random().toString(36).slice(2, 10)}`;
-        await kv.set(`meeting:${meetingRoomId}`, {
-          type: 'scheduled',
-          creator: creatorUsername,
-          buyer: buyerEmail || '',
-          productName,
-          paymentId: razorpay_payment_id,
-          createdAt: Date.now()
-        });
-        const host = req.headers.get('host') || 'supertime.wtf';
-        const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
-        meetingUrl = `${protocol}://${host}/live/${meetingRoomId}`;
-        console.log('[Purchase API] 🎥 Meeting room created:', meetingUrl);
+      if (productType === 'booking' && creatorUsername && bookingDetails) {
+        try {
+          const host = req.headers.get('host') || 'supertime.wtf';
+          const bookingResult = await createBooking({
+            creatorUsername,
+            date: bookingDetails.date,
+            time: bookingDetails.time,
+            templateId: productId,
+            type: productType,
+            duration: 30, // Default duration if not specified
+            price: amount,
+            visitorEmail: buyerEmail,
+            paymentId: razorpay_payment_id,
+            host
+          });
+          meetingUrl = bookingResult?.meetingUrl || '';
+          console.log('[Purchase API] 🎥 Meeting created via createBooking:', meetingUrl);
+        } catch (bookingErr) {
+          console.error('[Purchase API] ❌ Failed to create booking:', bookingErr);
+        }
       }
 
       // Credit creator's withdrawable balance (90% — platform takes 10% commission)
@@ -123,7 +135,7 @@ export async function POST(req: NextRequest) {
       console.log('[Purchase API] 📧 Starting email dispatch...');
       console.log('[Purchase API] buyerEmail:', buyerEmail, '| creatorEmail:', creatorEmail, '| RESEND_API_KEY present:', !!process.env.RESEND_API_KEY);
 
-      if (process.env.RESEND_API_KEY) {
+      if (process.env.RESEND_API_KEY && productType !== 'booking') {
         try {
           const host = req.headers.get('host') || 'supertime.wtf';
           const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';

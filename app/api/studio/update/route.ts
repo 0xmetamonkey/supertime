@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
 
   const email = emailAddr.toLowerCase();
   const requestData = await req.json();
-  const { socials, videoRate, audioRate, isLive, isAcceptingCalls, templates, availability, artifact, roomType, isRoomFree, mode, faqs, upiId, displayName } = requestData;
+  const { socials, videoRate, audioRate, isLive, isAcceptingCalls, templates, availability, artifact, roomType, isRoomFree, mode, faqs, upiId, displayName, videoProvider } = requestData;
 
   try {
     if (process.env.KV_URL) {
@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
       if (availability !== undefined) await kv.set(`user:${email}:availability`, availability);
       if (faqs !== undefined) await kv.set(`user:${email}:faqs`, faqs);
       if (upiId !== undefined) await kv.set(`user:${email}:upiId`, upiId);
+      if (videoProvider !== undefined) await kv.set(`user:${email}:videoProvider`, videoProvider);
       if (requestData.artifacts !== undefined) await kv.set(`user:${email}:artifacts`, requestData.artifacts);
 
       if (artifact) {
