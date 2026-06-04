@@ -75,6 +75,7 @@ export interface ProfileViewProps {
   isAdmiring?: boolean;
   isLive?: boolean;
   isPreview?: boolean;
+  bio?: string;
 }
 
 export default function ProfileView({
@@ -89,6 +90,7 @@ export default function ProfileView({
   isAdmiring = false,
   isLive = false,
   isPreview = false,
+  bio = '',
 }: ProfileViewProps) {
   const [profileTab, setProfileTab] = useState<'store' | 'courses' | 'about'>('store');
 
@@ -172,7 +174,7 @@ export default function ProfileView({
             </button>
           </div>
           <p className={`max-w-xl text-[#6B6B6B] leading-relaxed ${isPreview ? 'text-[10px]' : 'text-sm font-medium'}`}>
-            Scaling human connection through time-based digital assets and elegant, meaningful conversation.
+            {bio || "Scaling human connection through time-based digital assets and elegant, meaningful conversation."}
           </p>
         </div>
 
