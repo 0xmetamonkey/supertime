@@ -8,6 +8,7 @@ import { useUser } from "@clerk/nextjs";
 import { checkAvailability, claimUsername } from './actions';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import { useLanguage } from './components/LanguageContext';
 
 export default function LandingPageClient({
   session,
@@ -20,6 +21,7 @@ export default function LandingPageClient({
 }) {
   const router = useRouter();
   const { user: clerkUser } = useUser();
+  const { t } = useLanguage();
 
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
@@ -121,10 +123,10 @@ export default function LandingPageClient({
         <div className="w-full px-6 sm:px-8 md:px-12 grid md:grid-cols-12 gap-12 md:gap-16 items-start">
           <div className="md:col-span-8 space-y-8">
             <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight text-foreground leading-[1.05]">
-              Intentional<br />time with humans.
+              {t('heroTitle')}
             </h1>
             <p className="text-lg md:text-xl text-muted leading-relaxed max-w-xl">
-              Supertime is a calm space to connect with creators, thinkers, artists and experts. Real conversations. Not endless content.
+              {t('heroSubtitle')}
             </p>
 
             {/* Claim Box & Explore Duality */}
@@ -137,7 +139,7 @@ export default function LandingPageClient({
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                      placeholder="username"
+                      placeholder={t('claimUsername')}
                       className="flex-1 bg-transparent border-none outline-none text-foreground font-medium text-sm sm:text-base placeholder:text-muted/65 lowercase min-w-0"
                     />
                   </div>
@@ -146,7 +148,7 @@ export default function LandingPageClient({
                     disabled={!username || loading}
                     className="bg-foreground text-background font-semibold px-6 py-3.5 sm:py-0 rounded-xl sm:rounded-none hover:opacity-90 transition-all disabled:opacity-50 text-sm flex items-center justify-center gap-1 shrink-0"
                   >
-                    {loading ? '...' : 'Claim'}
+                    {loading ? '...' : t('claimBtn')}
                   </button>
                 </div>
                 {error && (
@@ -156,13 +158,13 @@ export default function LandingPageClient({
                 )}
               </form>
               <div className="flex items-center gap-2 pl-1 pt-1">
-                <span className="text-muted text-sm">Want to search instead?</span>
+                <span className="text-muted text-sm">{t('wantToSearch')}</span>
                 <button
                   type="button"
                   onClick={() => router.push('/explore')}
                   className="text-foreground hover:text-muted font-semibold text-sm underline decoration-1 underline-offset-4 flex items-center gap-1 transition-colors"
                 >
-                  explore humans <ArrowRight className="w-4 h-4" />
+                  {t('exploreHumans')} <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -170,7 +172,7 @@ export default function LandingPageClient({
 
           {/* Features Column (Aligned with subtle left border) */}
           <div className="md:col-span-4 md:border-l md:border-border md:pl-10 space-y-5 self-start md:pt-14 pt-6">
-            <h4 className="font-semibold text-xs uppercase tracking-wider text-foreground">A better way to connect</h4>
+            <h4 className="font-semibold text-xs uppercase tracking-wider text-foreground">{t('featHeader')}</h4>
             <ul className="space-y-3 text-base text-muted font-medium leading-none">
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-foreground shrink-0" />
@@ -201,7 +203,7 @@ export default function LandingPageClient({
       <section id="creators" className="py-20 md:py-32 border-t border-border bg-surface">
         <div className="w-full px-6 sm:px-8 md:px-12">
           <div className="flex justify-between items-end mb-12">
-            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">Meet some humans</h2>
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">{t('meetHumans')}</h2>
             <Link href="/explore" className="text-sm font-medium text-foreground hover:text-muted flex items-center gap-1 transition-colors">
               View all <ArrowRight className="w-4 h-4" />
             </Link>
@@ -267,16 +269,16 @@ export default function LandingPageClient({
         <div className="w-full px-6 sm:px-8 md:px-12 grid md:grid-cols-12 gap-12 md:gap-16 items-start">
           <div className="md:col-span-7">
             <h2 className="text-3xl md:text-5xl font-semibold tracking-tight text-foreground leading-tight max-w-lg">
-              We believe the internet can be calm, intentional and human.
+              {t('beliefTitle')}
             </h2>
           </div>
           <div className="md:col-span-5 space-y-6">
             <p className="text-base text-muted leading-relaxed">
-              Supertime is building the infrastructure for meaningful conversations. A place where time, attention and compensation are aligned.
+              {t('beliefDesc')}
             </p>
             <div className="pt-2">
               <Link href="/about" className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-muted transition-colors">
-                Read our thoughts <ArrowRight className="w-4 h-4" />
+                {t('readThoughts')} <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
@@ -287,7 +289,7 @@ export default function LandingPageClient({
       <section id="roadmap" className="py-20 md:py-32 border-t border-border">
         <div className="w-full px-6 sm:px-8 md:px-12">
           <div className="flex justify-between items-end mb-16">
-            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">On our roadmap</h2>
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">{t('roadmapTitle')}</h2>
             <Link href="/roadmap" className="text-sm font-medium text-foreground hover:text-muted flex items-center gap-1 transition-colors">
               View roadmap <ArrowRight className="w-4 h-4" />
             </Link>

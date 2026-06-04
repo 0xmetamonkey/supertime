@@ -2,15 +2,31 @@
 
 import React, { useState } from 'react';
 import FeedbackWidget from './FeedbackWidget';
+import { useLanguage, Language } from './LanguageContext';
 
 export default function Footer() {
   const [clicks, setClicks] = useState(0);
   const [showDao, setShowDao] = useState(false);
+  const { language, setLanguage, t } = useLanguage();
 
   return (
     <footer className="border-t border-border py-8 bg-surface text-foreground transition-colors duration-300 mt-24">
       <div className="w-full px-6 sm:px-8 md:px-12 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-medium text-muted">
-        <span>© 2026 Supertime</span>
+        <div className="flex items-center gap-4">
+          <span>© 2026 Supertime</span>
+          <select 
+            value={language} 
+            onChange={(e) => setLanguage(e.target.value as Language)}
+            className="bg-transparent border-none text-muted hover:text-foreground outline-none cursor-pointer uppercase text-xs font-semibold appearance-none"
+          >
+            <option value="en" className="bg-background text-foreground">English</option>
+            <option value="hi" className="bg-background text-foreground">हिंदी</option>
+            <option value="es" className="bg-background text-foreground">Español</option>
+            <option value="fr" className="bg-background text-foreground">Français</option>
+            <option value="te" className="bg-background text-foreground">తెలుగు</option>
+            <option value="ta" className="bg-background text-foreground">தமிழ்</option>
+          </select>
+        </div>
         <div className="flex gap-6">
           <a href="/about" className="hover:text-foreground transition-colors">About</a>
           <a href="/roadmap" className="hover:text-foreground transition-colors">Roadmap</a>
