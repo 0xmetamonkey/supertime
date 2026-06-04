@@ -196,7 +196,7 @@ export default function DashboardClient({ session, username, initialBalance, ini
                 initialSettings={initialSettings}
                 balance={balance}
                 withdrawable={withdrawable}
-                setActiveTab={setActiveTab}
+                setActiveTab={(tab: string) => setActiveTab(tab as Tab)}
               />
             )}
 
