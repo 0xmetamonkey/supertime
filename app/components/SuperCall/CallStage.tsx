@@ -325,14 +325,6 @@ export default function CallStage({
         await client.join(data.appId, channelName, data.token, joinUid);
         setIsConnected(true);
 
-        try {
-          const streamId = await client.createDataStream({ ordered: true, reliable: true });
-          dataStreamIdRef.current = streamId;
-          console.log(`[CALL] 4b. Data stream created: ${streamId}`);
-        } catch (e) {
-          console.error("[CALL] ❌ Failed to create data stream", e);
-        }
-
         console.log(`[CALL] 5. Publishing local tracks...`);
         await client.publish(tracks);
         console.log(`[CALL] ✅ Local tracks published. You are now live in the channel.`);
@@ -468,9 +460,13 @@ export default function CallStage({
   };
 
   const sendSignal = (msg: any) => {
-    if (client && dataStreamIdRef.current !== null) {
+    if (client) {
       const encoded = new TextEncoder().encode(JSON.stringify(msg));
-      (client as any).sendStreamMessage(dataStreamIdRef.current, encoded);
+      try {
+        (client as any).sendStreamMessage(encoded);
+      } catch (e) {
+        console.error("Failed to send stream message", e);
+      }
     }
   };
 
