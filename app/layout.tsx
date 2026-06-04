@@ -46,7 +46,6 @@ export default function RootLayout({
           logoPlacement: "inside",
           shimmer: false,
           logoImageUrl: "/logo.png",
-          showOptionalSRP: false,
         },
         variables: {
           colorPrimary: "#111111",
