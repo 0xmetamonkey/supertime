@@ -22,7 +22,7 @@ export function IncomingCallRing({ incomingCall, onAccept, onReject }: IncomingC
   useEffect(() => {
     if (incomingCall) {
       if (!audioRef.current) {
-        audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
+        audioRef.current = new Audio('/Aura_Call_2026-06-04T070202.wav');
         audioRef.current.loop = true;
       }
 

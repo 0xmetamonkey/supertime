@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { useUser } from "@clerk/nextjs";
 import { checkAvailability, claimUsername } from './actions';
@@ -201,9 +202,9 @@ export default function LandingPageClient({
         <div className="w-full px-6 sm:px-8 md:px-12">
           <div className="flex justify-between items-end mb-12">
             <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">Meet some humans</h2>
-            <a href="/explore" className="text-sm font-medium text-foreground hover:text-muted flex items-center gap-1 transition-colors">
+            <Link href="/explore" className="text-sm font-medium text-foreground hover:text-muted flex items-center gap-1 transition-colors">
               View all <ArrowRight className="w-4 h-4" />
-            </a>
+            </Link>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -241,7 +242,7 @@ export default function LandingPageClient({
                         @{handle}
                       </div>
                     </div>
-                    <p className="text-sm text-muted leading-relaxed line-clamp-2">
+                    <p className="text-sm text-muted leading-relaxed line-clamp-2 min-h-[2.75rem]">
                       {creator.desc}
                     </p>
                     <div className="flex gap-2 text-xs font-semibold text-foreground pt-1 items-center">
@@ -263,7 +264,7 @@ export default function LandingPageClient({
 
       {/* Mission / Belief Section */}
       <section id="about" className="py-20 md:py-32 border-t border-border">
-        <div className="w-full px- sm:px-8 md:px-12 grid md:grid-cols-12 gap-12 md:gap-16 items-start">
+        <div className="w-full px-6 sm:px-8 md:px-12 grid md:grid-cols-12 gap-12 md:gap-16 items-start">
           <div className="md:col-span-7">
             <h2 className="text-3xl md:text-5xl font-semibold tracking-tight text-foreground leading-tight max-w-lg">
               We believe the internet can be calm, intentional and human.
@@ -274,9 +275,9 @@ export default function LandingPageClient({
               Supertime is building the infrastructure for meaningful conversations. A place where time, attention and compensation are aligned.
             </p>
             <div className="pt-2">
-              <a href="/about" className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-muted transition-colors">
+              <Link href="/about" className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-muted transition-colors">
                 Read our thoughts <ArrowRight className="w-4 h-4" />
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -287,9 +288,9 @@ export default function LandingPageClient({
         <div className="w-full px-6 sm:px-8 md:px-12">
           <div className="flex justify-between items-end mb-16">
             <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">On our roadmap</h2>
-            <a href="/roadmap" className="text-sm font-medium text-foreground hover:text-muted flex items-center gap-1 transition-colors">
+            <Link href="/roadmap" className="text-sm font-medium text-foreground hover:text-muted flex items-center gap-1 transition-colors">
               View roadmap <ArrowRight className="w-4 h-4" />
-            </a>
+            </Link>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-12">

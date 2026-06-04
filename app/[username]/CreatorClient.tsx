@@ -599,7 +599,7 @@ export default function CreatorClient({
 
     if (shouldRing) {
       if (!callerRingerRef.current) {
-        callerRingerRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1350/1350-preview.mp3');
+        callerRingerRef.current = new Audio('/Aura_Call_2026-06-04T070202.wav');
         callerRingerRef.current.loop = true;
       }
       callerRingerRef.current.play().catch(e => console.log('[Caller] Ringer blocked:', e));

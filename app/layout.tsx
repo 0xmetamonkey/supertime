@@ -77,6 +77,7 @@ export default function RootLayout({
     >
       <html lang="en" suppressHydrationWarning>
         <head>
+          <meta name="zoom-domain-verification" content="ZOOM_verify_16ae31b7f3954bf48e30084ba1a6977b">
           <script
             dangerouslySetInnerHTML={{
               __html: `

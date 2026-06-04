@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AblyProvider, useCallSignaling } from '@/app/lib/ably';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Zap,
@@ -28,7 +29,8 @@ import {
   Camera,
   Play,
   Menu,
-  X
+  X,
+  Activity
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
@@ -43,20 +45,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const searchParams = useSearchParams();
   const isSimulated = typeof window !== 'undefined' && window.location.search.includes('sim=true');
 
-  // Use a mock username if in simulator mode
   const effectiveUsername = isSimulated ? (username || 'test-creator') : username;
-
-  // Ably real-time signaling (injected from StudioWrapper)
   const ablySignaling = initialSettings?._ablySignaling;
-
-  useEffect(() => {
-    console.log('[Studio] Component Mounted:', {
-      username,
-      effectiveUsername,
-      hasSession: !!session,
-      isSimulated
-    });
-  }, []);
 
   const [isLive, setIsLive] = useState(initialSettings?.isLive ?? false);
   const [isCalling, setIsCalling] = useState(false);
@@ -71,8 +61,6 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [stats, setStats] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
-  // Settings
-
   const [pendingVideoRate, setPendingVideoRate] = useState(initialSettings?.videoRate ?? 100);
   const [pendingAudioRate, setPendingAudioRate] = useState(initialSettings?.audioRate ?? 50);
   const [pendingSocials, setPendingSocials] = useState(initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' });
@@ -83,12 +71,10 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [roomType, setRoomType] = useState<'audio' | 'video'>(initialSettings?.roomType || 'audio');
   const [isRoomFree, setIsRoomFree] = useState<boolean>(initialSettings?.isRoomFree ?? true);
 
-  // Visitor
   const [claimName, setClaimName] = useState('');
   const [claimLoading, setClaimLoading] = useState(false);
   const [claimError, setClaimError] = useState('');
 
-  // Economics
   const [balance, setBalance] = useState<number | null>(null);
   const [withdrawable, setWithdrawable] = useState<number>(0);
   const [showWithdraw, setShowWithdraw] = useState(false);
@@ -96,20 +82,15 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
-  // SEPARATE STATES: Broadcast and Calls are independent
   const [isAcceptingCalls, setIsAcceptingCalls] = useState(initialSettings?.isAcceptingCalls ?? true);
-  // isLive = broadcasting, isAcceptingCalls = taking 1:1 calls
   const [showDashboard, setShowDashboard] = useState(false);
 
-  // Reactive sync with unified signaling
   useEffect(() => {
     if (ablySignaling?.activeCall) {
-      console.log('[StudioClient] 📞 Active call detected via signaling:', ablySignaling.activeCall);
       setIsCalling(true);
       setCallType(ablySignaling.activeCall.type);
       setActiveChannelName(ablySignaling.activeCall.channelName);
     } else if (isCalling && !ablySignaling?.activeCall) {
-      console.log('[StudioClient] 👋 Call ended via signaling. Resetting session.');
       setIsCalling(false);
       setActiveChannelName(null);
       setCallDuration(0);
@@ -158,7 +139,6 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
     setIsWithdrawing(true);
     try {
-      // Save UPI ID for future use
       fetch('/api/studio/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -184,8 +164,6 @@ export default function StudioClient({ username, session, initialSettings }: { u
       setIsWithdrawing(false);
     }
   };
-
-
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) return;
@@ -248,36 +226,26 @@ export default function StudioClient({ username, session, initialSettings }: { u
   }, [effectiveUsername]);
 
   useEffect(() => {
-    // This effect manages the PUBLIC BROADCAST channel.
-    // IF we are in a 1:1 call (isCalling), we stay hands-off.
     if (isCalling) return;
 
     if (!effectiveUsername || !isLive) {
-      // Only clear if we were using a broadcast channel
       if (activeChannelName?.startsWith('room-')) {
-        console.log('[Studio] Not live, clearing broadcast channel');
         setActiveChannelName(null);
       }
       return;
     }
 
-    // Join broadcast room
     const broadcastChannel = `room-${effectiveUsername}`;
     if (activeChannelName !== broadcastChannel) {
-      console.log(`[Studio] Broadcasting live, joining ${broadcastChannel}`);
       setActiveChannelName(broadcastChannel);
     }
   }, [isLive, isCalling, effectiveUsername, activeChannelName]);
-
-  // Economics
-
 
   useEffect(() => {
     if (!isCalling || !isPeerConnected) return;
     const interval = setInterval(() => {
       setCallDuration(prev => {
         const next = prev + 1;
-        // Estimate tokens earned (approximate display)
         const rate = callType === 'video' ? pendingVideoRate : pendingAudioRate;
         if (next % 60 === 0) setTokensEarned(e => e + rate);
         return next;
@@ -286,10 +254,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
     return () => clearInterval(interval);
   }, [isCalling, isPeerConnected, callType, pendingVideoRate, pendingAudioRate]);
 
-  // Call end handler
-
   const handleEndCall = () => {
-    console.log('[Studio] 👋 Ending 1:1 Call Session');
     setIsCalling(false);
     setActiveChannelName(null);
     setIsPeerConnected(false);
@@ -333,46 +298,48 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
   if (!effectiveUsername) {
     return (
-      <main className="min-h-screen bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-foreground font-sans selection:bg-rose-500 selection:text-white p-6 md:p-12">
-        <nav className="max-w-7xl mx-auto flex justify-between items-center mb-16 border-b border-gray-200 dark:border-border pb-8">
+      <main className="min-h-screen bg-background text-foreground font-sans selection:bg-rose-500 selection:text-white p-6 md:p-12">
+        <nav className="max-w-7xl mx-auto flex justify-between items-center mb-16 border-b border-border pb-8">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gray-900 dark:bg-white text-white dark:text-black flex items-center justify-center rounded-xl shadow-sm">
+            <div className="w-9 h-9 bg-foreground text-background flex items-center justify-center rounded-xl shadow-sm">
               <Zap className="w-4 h-4 text-yellow-500 fill-current" />
             </div>
             <h1 className="text-xl font-medium tracking-tight">Studio</h1>
           </div>
           <div className="flex items-center gap-6">
             <WalletManager onBalanceChange={setBalance} />
-            <button onClick={() => signOut(() => { window.location.href = "/"; })} className="text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors">Logout</button>
+            <button onClick={() => signOut(() => { window.location.href = "/"; })} className="text-xs text-muted hover:text-red-500 transition-colors">Logout</button>
           </div>
         </nav>
 
         <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
-          <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-8 rounded-2xl shadow-sm space-y-6">
-            <h2 className="text-2xl font-medium text-gray-900 dark:text-foreground tracking-tight">Claim your Identity</h2>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Claim your unique link and start exchanging energy for tokens. Pure monetized time.
-            </p>
-            <form onSubmit={handleClaim} className="space-y-6 pt-2">
+          <div className="bg-surface border border-border p-8 rounded-2xl shadow-sm space-y-6">
+            <div>
+              <h2 className="text-2xl font-semibold text-foreground tracking-tight">Step 1 of your 10-year Empire</h2>
+              <p className="text-sm text-muted mt-2 leading-relaxed">
+                Supertime isn't just about calls. It's the infrastructure for your independence. Claim your unique link, exchange your energy for tokens, and start building towards a billion-dollar outcome.
+              </p>
+            </div>
+            <form onSubmit={handleClaim} className="space-y-6 pt-4">
               <div className="w-full">
-                <label className="text-xs font-medium text-gray-400 block mb-2">Your Username</label>
-                <div className="flex flex-col sm:flex-row items-stretch bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-border rounded-xl focus-within:bg-white dark:focus-within:bg-zinc-900 transition-all overflow-hidden">
+                <label className="text-xs font-medium text-muted block mb-2 uppercase tracking-wider">Your Unique Link</label>
+                <div className="flex flex-col sm:flex-row items-stretch bg-background border border-border rounded-xl focus-within:border-foreground transition-all overflow-hidden">
                   <div className="flex-1 flex items-center px-4 py-3 min-w-0">
-                    <span className="text-gray-400 text-sm pr-0.5 shrink-0">supertime.wtf/</span>
+                    <span className="text-muted text-sm pr-0.5 shrink-0">supertime.wtf/</span>
                     <input
                       type="text"
                       value={claimName}
                       onChange={(e) => setClaimName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                       placeholder="username"
-                      className="flex-1 bg-transparent border-none outline-none text-gray-900 dark:text-foreground font-medium text-sm placeholder:text-gray-300 min-w-0"
+                      className="flex-1 bg-transparent border-none outline-none text-foreground font-medium text-sm placeholder:text-muted min-w-0"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={!claimName || claimLoading}
-                    className="bg-gray-900 dark:bg-foreground text-white dark:text-background font-medium px-6 py-3 sm:py-0 hover:opacity-90 transition-opacity disabled:opacity-50 text-sm flex items-center justify-center shrink-0"
+                    className="bg-foreground text-background font-medium px-6 py-3 sm:py-0 hover:opacity-90 transition-opacity disabled:opacity-50 text-sm flex items-center justify-center shrink-0"
                   >
-                    {claimLoading ? '...' : 'Claim'}
+                    {claimLoading ? '...' : 'Claim & Start'}
                   </button>
                 </div>
               </div>
@@ -381,12 +348,12 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </div>
 
           <div className="flex flex-col gap-6">
-            <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-8 rounded-2xl shadow-sm">
-              <h3 className="text-sm font-medium text-gray-400 mb-2">Energy Wallet</h3>
-              <p className="font-semibold text-4xl mb-4 text-gray-900 dark:text-foreground tracking-tight">{balance ?? '0'} <span className="text-sm font-medium text-gray-400">TKN</span></p>
-              <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+            <div className="bg-surface border border-border p-8 rounded-2xl shadow-sm">
+              <h3 className="text-sm font-medium text-muted mb-2">Energy Wallet</h3>
+              <p className="font-semibold text-4xl mb-4 text-foreground tracking-tight">{balance ?? '0'} <span className="text-sm font-medium text-muted">TKN</span></p>
+              <div className="flex items-center gap-2 text-xs font-medium text-muted">
                 <Sparkles className="w-4 h-4 text-yellow-500" />
-                Ready to use
+                Ready to use when you claim
               </div>
             </div>
           </div>
@@ -396,7 +363,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-foreground font-sans selection:bg-rose-500 selection:text-white">
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-rose-500 selection:text-white">
       {/* ACTIVE SESSION OVERLAY */}
       {isLive && activeChannelName && !isCalling && (
         <BroadcastHost
@@ -412,8 +379,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
       {/* Active 1:1 Call → SuperCall (Premium HUD) */}
       {isCalling && activeChannelName && (
-        <div className="fixed inset-0 z-[500] bg-zinc-950">
-          {/* Status Bar for 1:1 calls - Standardized Premium Style */}
+        <div className="fixed inset-0 z-[500] bg-black">
           <div className="absolute top-6 left-6 right-6 z-[510] flex items-center justify-start">
             <div className="flex items-center gap-2">
               <div className="bg-green-500/10 border border-green-500/20 px-4 py-2 rounded-xl">
@@ -440,55 +406,48 @@ export default function StudioClient({ username, session, initialSettings }: { u
         </div>
       )}
 
-      {/* The IncomingCallRing is now handled globally in StudioWrapper */}
-
       {/* HEADER */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-zinc-950/80 backdrop-blur-md border-b border-white/10 py-4 transition-colors">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border py-4 transition-colors">
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-8">
-            <a href="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 bg-white/5 flex items-center justify-center border border-white/10 rounded-lg shadow-sm transition-transform group-hover:rotate-12">
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="w-8 h-8 bg-surface flex items-center justify-center border border-border rounded-lg shadow-sm transition-transform group-hover:rotate-12">
                 <Zap className="text-yellow-500 w-5 h-5 fill-current" />
               </div>
-              <span className="text-xl font-bold tracking-tight text-white">Studio</span>
+              <span className="text-xl font-bold tracking-tight text-foreground">Studio</span>
               {isLive && (
                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 rounded-full border border-red-500/20">
                   <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
                   <span className="text-[8px] font-bold text-red-500 uppercase tracking-widest">Live</span>
                 </div>
               )}
-            </a>
+            </Link>
 
             <div className="hidden md:flex items-center gap-6">
-              <a href={`/${username}`} className="text-xs text-white/60 hover:text-rose-500 transition-colors">Public Profile</a>
+              <Link href={`/${username}`} className="text-xs text-muted hover:text-foreground transition-colors">Public Profile</Link>
               <button
-                onClick={() => {
-                  const el = document.getElementById('highlights-vault');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="text-xs text-white/60 hover:text-rose-500 transition-colors"
+                onClick={() => setShowDashboard(true)}
+                className="text-xs text-muted hover:text-foreground transition-colors"
               >
-                My Recordings
+                Command Center
               </button>
-              <button onClick={() => router.push('/studio/settings')} className="text-xs text-white/60 hover:text-rose-500 transition-colors">Settings</button>
+              <Link href="/studio/settings" className="text-xs text-muted hover:text-foreground transition-colors">Settings</Link>
             </div>
           </div>
 
           <div className="flex items-center gap-6">
             {!isCalling && <WalletManager onBalanceChange={setBalance} />}
 
-            {/* Desktop Logout - now hidden on small screens */}
             <button
               onClick={() => signOut(() => { window.location.href = "/"; })}
-              className="hidden md:flex w-10 h-10 bg-white/5 text-white border border-white/10 rounded-xl items-center justify-center hover:bg-white/10 transition-all"
+              className="hidden md:flex w-10 h-10 bg-surface text-foreground border border-border rounded-xl items-center justify-center hover:bg-background transition-all"
             >
               <LogOut className="w-5 h-5" />
             </button>
 
-            {/* Hamburger Button */}
             <button
               onClick={() => setShowMobileMenu(true)}
-              className="md:hidden w-10 h-10 bg-white text-black rounded-xl flex items-center justify-center hover:scale-105 transition-all shadow-md"
+              className="md:hidden w-10 h-10 bg-foreground text-background rounded-xl flex items-center justify-center hover:scale-105 transition-all shadow-md"
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -504,9 +463,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-[10000] bg-zinc-950 flex flex-col p-8 md:hidden"
+            className="fixed inset-0 z-[10000] bg-background flex flex-col p-8 md:hidden"
           >
-            {/* Background Accents */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
               <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-rose-500/10 blur-[120px] rounded-full" />
               <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[120px] rounded-full" />
@@ -514,33 +472,33 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
             <div className="relative z-10 flex justify-between items-center mb-16">
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-white/5 flex items-center justify-center border border-white/10 rounded-xl">
+                <div className="w-10 h-10 bg-surface flex items-center justify-center border border-border rounded-xl">
                   <Zap className="text-yellow-500 w-6 h-6 fill-current" />
                 </div>
-                <span className="text-2xl font-bold tracking-tight text-white">Menu</span>
+                <span className="text-2xl font-bold tracking-tight text-foreground">Menu</span>
               </div>
               <button
                 onClick={() => setShowMobileMenu(false)}
-                className="w-12 h-12 bg-white text-black rounded-2xl flex items-center justify-center shadow-md transition-all"
+                className="w-12 h-12 bg-foreground text-background rounded-2xl flex items-center justify-center shadow-md transition-all"
               >
                 <X className="w-8 h-8" />
               </button>
             </div>
 
             <div className="relative z-10 flex flex-col gap-6 flex-1">
-              <a
+              <Link
                 href={`/${username}`}
                 onClick={() => setShowMobileMenu(false)}
-                className="text-3xl font-bold tracking-tight text-white hover:text-rose-500 border-b border-white/10 pb-6 transition-colors"
+                className="text-3xl font-bold tracking-tight text-foreground hover:text-rose-500 border-b border-border pb-6 transition-colors"
               >
                 Profile
-              </a>
+              </Link>
               <button
                 onClick={() => {
                   setShowMobileMenu(false);
                   router.push('/dashboard?tab=tools');
                 }}
-                className="text-3xl font-bold tracking-tight text-white hover:text-blue-500 text-left border-b border-white/10 pb-6 transition-colors"
+                className="text-3xl font-bold tracking-tight text-foreground hover:text-blue-500 text-left border-b border-border pb-6 transition-colors"
               >
                 Tools
               </button>
@@ -549,19 +507,17 @@ export default function StudioClient({ username, session, initialSettings }: { u
                   setShowMobileMenu(false);
                   router.push('/wallet');
                 }}
-                className="text-3xl font-bold tracking-tight text-green-500 hover:text-yellow-500 text-left border-b border-white/10 pb-6 transition-colors"
+                className="text-3xl font-bold tracking-tight text-green-500 hover:text-yellow-500 text-left border-b border-border pb-6 transition-colors"
               >
                 Vault
               </button>
-              <button
-                onClick={() => {
-                  setShowMobileMenu(false);
-                  router.push('/studio/settings');
-                }}
-                className="text-3xl font-bold tracking-tight text-white hover:text-rose-500 text-left border-b border-white/10 pb-6 transition-colors"
+              <Link
+                href="/studio/settings"
+                onClick={() => setShowMobileMenu(false)}
+                className="text-3xl font-bold tracking-tight text-foreground hover:text-rose-500 text-left border-b border-border pb-6 transition-colors block"
               >
                 Settings
-              </button>
+              </Link>
             </div>
 
             <div className="relative z-10 pt-8">
@@ -576,34 +532,35 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </motion.div>
         )}
       </AnimatePresence>
-      <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
+
+      <main className="max-w-7xl mx-auto px-6 pt-32 pb-32">
         <div className="grid lg:grid-cols-12 gap-12 mt-12">
-          {/* QUEUE & SCHEDULE - Keep this prominent as it is active work */}
+          {/* QUEUE & SCHEDULE */}
           <div className="lg:col-span-12">
             <div className="grid md:grid-cols-2 gap-8">
               {/* WAITLIST */}
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-foreground tracking-tight">Waitlist</h3>
-                  <div className="h-px flex-1 bg-gray-200 dark:bg-border" />
-                  <span className="text-xs font-semibold bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 px-2.5 py-0.5 rounded-full">{requests.length}</span>
+                  <h3 className="text-lg font-medium text-foreground tracking-tight">Waitlist</h3>
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs font-semibold bg-surface text-muted px-2.5 py-0.5 rounded-full">{requests.length}</span>
                 </div>
                 {requests.length === 0 ? (
-                  <div className="border border-gray-200 dark:border-border border-dashed p-10 text-center rounded-2xl bg-white dark:bg-surface">
-                    <p className="text-xs text-gray-400 dark:text-zinc-500 font-medium">Queue is currently empty</p>
+                  <div className="border border-border border-dashed p-10 text-center rounded-2xl bg-surface">
+                    <p className="text-xs text-muted font-medium">Queue is currently empty</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {requests.map((req, i) => (
-                      <div key={i} className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-4 rounded-xl flex justify-between items-center group shadow-sm hover:shadow-md transition-all">
+                      <div key={i} className="bg-surface border border-border p-4 rounded-xl flex justify-between items-center group shadow-sm hover:shadow-md transition-all">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-zinc-800 text-xs font-medium text-gray-600 dark:text-gray-400 flex items-center justify-center">#{i + 1}</div>
+                          <div className="w-8 h-8 rounded-full bg-background text-xs font-medium text-muted flex items-center justify-center border border-border">#{i + 1}</div>
                           <div>
-                            <p className="font-medium text-sm text-gray-900 dark:text-foreground">{req.from || 'Guest'}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{new Date(req.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            <p className="font-medium text-sm text-foreground">{req.from || 'Guest'}</p>
+                            <p className="text-xs text-muted mt-0.5">{new Date(req.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                           </div>
                         </div>
-                        <button className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-border flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                        <button className="w-8 h-8 rounded-lg bg-background border border-border flex items-center justify-center text-muted hover:bg-surface transition-colors">
                           <ArrowRight className="w-4 h-4" />
                         </button>
                       </div>
@@ -615,25 +572,25 @@ export default function StudioClient({ username, session, initialSettings }: { u
               {/* SCHEDULE */}
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-foreground tracking-tight">Schedule</h3>
-                  <div className="h-px flex-1 bg-gray-200 dark:bg-border" />
-                  <span className="text-xs font-semibold bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 px-2.5 py-0.5 rounded-full">{bookings.length}</span>
+                  <h3 className="text-lg font-medium text-foreground tracking-tight">Schedule</h3>
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs font-semibold bg-surface text-muted px-2.5 py-0.5 rounded-full">{bookings.length}</span>
                 </div>
                 {bookings.length === 0 ? (
-                  <div className="border border-gray-200 dark:border-border border-dashed p-10 text-center rounded-2xl bg-white dark:bg-surface">
-                    <p className="text-xs text-gray-400 dark:text-zinc-500 font-medium">No bookings scheduled today</p>
+                  <div className="border border-border border-dashed p-10 text-center rounded-2xl bg-surface">
+                    <p className="text-xs text-muted font-medium">No bookings scheduled today</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {bookings.map((booking, i) => (
-                      <div key={i} className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-4 rounded-xl shadow-sm hover:shadow-md transition-all group">
+                      <div key={i} className="bg-surface border border-border p-4 rounded-xl shadow-sm hover:shadow-md transition-all group">
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-xs font-medium text-indigo-500">{booking.date} @ {booking.time}</span>
                           <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                         </div>
-                        <p className="font-medium text-base text-gray-900 dark:text-foreground mb-1">{booking.visitorEmail.split('@')[0]}</p>
+                        <p className="font-medium text-base text-foreground mb-1">{booking.visitorEmail.split('@')[0]}</p>
                         <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-400">{booking.duration} Min {booking.type}</span>
+                          <span className="text-xs text-muted">{booking.duration} Min {booking.type}</span>
                           <button onClick={() => window.open(`mailto:${booking.visitorEmail}`)} className="text-xs font-medium text-blue-500 hover:text-blue-600 hover:underline transition-all">Notify Client</button>
                         </div>
                       </div>
@@ -647,7 +604,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
       </main>
 
       {/* BOTTOM ACTION BAR */}
-      <div className="fixed bottom-0 left-0 right-0 z-[100] bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-t border-gray-200 dark:border-border p-4 flex justify-between items-center gap-4">
+      <div className="fixed bottom-0 left-0 right-0 z-[90] bg-background/80 backdrop-blur-md border-t border-border p-4 flex justify-between items-center gap-4">
         <div className="flex items-center gap-4 flex-1">
           <button
             onClick={() => {
@@ -661,7 +618,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </button>
           <button
             onClick={handleToggleCalls}
-            className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border ${isAcceptingCalls ? 'bg-zinc-900 dark:bg-foreground text-white dark:text-background border-transparent' : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-border hover:bg-gray-50 dark:hover:bg-zinc-700'}`}
+            className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border ${isAcceptingCalls ? 'bg-foreground text-background border-transparent' : 'bg-surface text-muted border-border hover:bg-background'}`}
           >
             {isAcceptingCalls ? 'Calls Ready' : 'Calls Off'}
           </button>
@@ -669,153 +626,165 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
         <button
           onClick={() => setShowDashboard(true)}
-          className="px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border border-gray-200 dark:border-border bg-white dark:bg-zinc-850 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-750 dark:text-gray-300 flex items-center gap-2"
+          className="px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border border-border bg-surface hover:bg-background text-foreground flex items-center gap-2 group"
         >
-          <LayoutDashboard className="w-4 h-4 text-gray-400" /> Management
+          <LayoutDashboard className="w-4 h-4 text-muted group-hover:text-foreground transition-colors" /> Command Center
         </button>
       </div>
 
-      {/* BOTTOM DASHBOARD MODAL */}
+      {/* IMMERSIVE COMMAND CENTER MODAL */}
       <AnimatePresence>
-        {
-          showDashboard && (
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-x-0 bottom-0 z-[1000] bg-white dark:bg-zinc-950 border-t border-gray-200 dark:border-border h-[85vh] flex flex-col overflow-hidden shadow-2xl rounded-t-3xl"
-            >
-              <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-border bg-gray-50 dark:bg-zinc-900">
-                <div className="flex items-center gap-3">
-                  <LayoutDashboard className="w-5 h-5 text-gray-550 dark:text-gray-400" />
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-foreground tracking-tight">Management Vault</h3>
+        {showDashboard && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-4 md:inset-8 z-[1000] bg-background/95 backdrop-blur-3xl border border-border flex flex-col shadow-2xl rounded-3xl overflow-hidden"
+          >
+            <div className="flex justify-between items-center p-6 border-b border-border bg-surface/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-background border border-border rounded-xl flex items-center justify-center shadow-sm">
+                  <Activity className="w-5 h-5 text-indigo-500" />
                 </div>
-                <button
-                  onClick={() => setShowDashboard(false)}
-                  className="w-8 h-8 rounded-full bg-gray-150 dark:bg-zinc-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-foreground flex items-center justify-center transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground tracking-tight">Command Center</h3>
+                  <p className="text-xs text-muted">Your analytics, economy, and highlights vault.</p>
+                </div>
               </div>
+              <button
+                onClick={() => setShowDashboard(false)}
+                className="w-10 h-10 rounded-xl bg-background border border-border text-muted hover:text-foreground hover:border-foreground flex items-center justify-center transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-12 pb-32">
-                <div className="grid md:grid-cols-3 gap-6">
-                  <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-6 rounded-2xl shadow-sm text-gray-900 dark:text-foreground">
-                    <h3 className="text-sm font-medium text-gray-400 mb-1">Energy Wallet</h3>
-                    <p className="font-semibold text-3xl mb-4 tracking-tight tabular-nums">{balance ?? '0'} <span className="text-sm font-medium text-gray-400">TKN</span></p>
+            <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-12 custom-scrollbar">
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="bg-surface border border-border p-6 rounded-2xl shadow-sm text-foreground relative overflow-hidden group">
+                  <div className="absolute -right-4 -top-4 w-24 h-24 bg-yellow-500/10 rounded-full blur-xl group-hover:bg-yellow-500/20 transition-all" />
+                  <h3 className="text-sm font-medium text-muted mb-1 relative z-10">Energy Wallet</h3>
+                  <p className="font-bold text-4xl mb-4 tracking-tight tabular-nums relative z-10">{balance ?? '0'} <span className="text-lg font-medium text-muted">TKN</span></p>
+                  <div className="relative z-10">
                     <WalletManager onBalanceChange={setBalance} />
                   </div>
+                </div>
 
-                  <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-6 rounded-2xl shadow-sm text-gray-900 dark:text-foreground">
-                    <h3 className="text-sm font-medium text-gray-400 mb-1">Earnings</h3>
-                    <p className="font-semibold text-3xl mb-4 tracking-tight tabular-nums">₹{withdrawable}</p>
-                    <button
-                      onClick={() => router.push('/wallet')}
-                      className="w-full bg-zinc-900 dark:bg-foreground text-white dark:text-background py-2.5 font-medium text-xs rounded-xl shadow-sm hover:opacity-90 transition-opacity"
-                    >
-                      Withdraw Funds
-                    </button>
-                  </div>
+                <div className="bg-surface border border-border p-6 rounded-2xl shadow-sm text-foreground relative overflow-hidden group">
+                  <div className="absolute -right-4 -top-4 w-24 h-24 bg-green-500/10 rounded-full blur-xl group-hover:bg-green-500/20 transition-all" />
+                  <h3 className="text-sm font-medium text-muted mb-1 relative z-10">Earnings Ready</h3>
+                  <p className="font-bold text-4xl mb-4 tracking-tight tabular-nums relative z-10">₹{withdrawable}</p>
+                  <button
+                    onClick={() => router.push('/wallet')}
+                    className="w-full bg-foreground text-background py-2.5 font-medium text-sm rounded-xl shadow-sm hover:opacity-90 transition-opacity relative z-10"
+                  >
+                    Withdraw to Bank
+                  </button>
+                </div>
 
-                  <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-6 rounded-2xl shadow-sm text-gray-900 dark:text-foreground">
-                    <h3 className="text-sm font-medium text-gray-400 mb-4 flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-gray-400" /> Session Log
-                    </h3>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="font-medium text-gray-400">Earned</span>
-                        <span className="font-medium text-gray-900 dark:text-foreground">1.2k TKN</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="font-medium text-gray-400">Minutes</span>
-                        <span className="font-medium text-gray-900 dark:text-foreground">142 Min</span>
-                      </div>
+                <div className="bg-surface border border-border p-6 rounded-2xl shadow-sm text-foreground relative overflow-hidden group">
+                   <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition-all" />
+                  <h3 className="text-sm font-medium text-muted mb-4 flex items-center gap-2 relative z-10">
+                    <Clock className="w-4 h-4 text-blue-500" /> Session Log
+                  </h3>
+                  <div className="space-y-3 relative z-10">
+                    <div className="flex justify-between items-center text-sm border-b border-border pb-2">
+                      <span className="font-medium text-muted">Earned Today</span>
+                      <span className="font-bold text-foreground">1.2k TKN</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-medium text-muted">Active Minutes</span>
+                      <span className="font-bold text-foreground">142 Min</span>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* ANALYTICS SECTION */}
-                <div className="space-y-6">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-foreground border-b border-gray-200 dark:border-border pb-2 tracking-tight">Insights</h3>
-                  {!loadingStats && stats && (
-                    <div className="grid md:grid-cols-2 gap-8">
-                      <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-6 rounded-2xl shadow-sm text-gray-900 dark:text-foreground">
-                        <h4 className="text-sm font-medium text-gray-400 mb-8">Performance History</h4>
-                        <div className="flex items-end justify-between h-40 gap-2">
-                          {stats.history.map((day: any, i: number) => (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-                              <div className="w-full bg-gray-100 dark:bg-zinc-800 h-full flex flex-col justify-end rounded-t-sm overflow-hidden">
-                                <div
-                                  style={{ height: `${Math.min(100, (day.earnings / (Math.max(...stats.history.map((d: any) => d.earnings)) || 1)) * 100)}%` }}
-                                  className="bg-green-500 w-full"
-                                />
-                              </div>
-                              <span className="text-[9px] font-medium text-gray-400 dark:text-gray-500 mt-2">{day.date.split('-').slice(1).join('/')}</span>
+              {/* ANALYTICS SECTION */}
+              <div className="space-y-6">
+                <h3 className="text-xl font-semibold text-foreground border-b border-border pb-3 tracking-tight">Insights & Growth</h3>
+                {!loadingStats && stats && (
+                  <div className="grid md:grid-cols-2 gap-8">
+                    <div className="bg-surface border border-border p-6 rounded-2xl shadow-sm text-foreground">
+                      <h4 className="text-sm font-medium text-muted mb-8">Performance History</h4>
+                      <div className="flex items-end justify-between h-40 gap-2">
+                        {stats.history.map((day: any, i: number) => (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative">
+                            <div className="w-full bg-background border border-border h-full flex flex-col justify-end rounded-lg overflow-hidden">
+                              <div
+                                style={{ height: `${Math.min(100, (day.earnings / (Math.max(...stats.history.map((d: any) => d.earnings)) || 1)) * 100)}%` }}
+                                className="bg-foreground w-full opacity-50 group-hover:opacity-100 transition-opacity"
+                              />
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="grid grid-rows-2 gap-4">
-                        <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-4 rounded-xl flex justify-between items-center shadow-sm text-gray-900 dark:text-foreground">
-                          <span className="text-xs font-medium text-gray-400">Profile Views</span>
-                          <span className="text-2xl font-semibold tracking-tight">{stats.total.view || 0}</span>
-                        </div>
-                        <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border p-4 rounded-xl flex justify-between items-center shadow-sm text-gray-900 dark:text-foreground">
-                          <span className="text-xs font-medium text-gray-400">Total Calls</span>
-                          <span className="text-2xl font-semibold tracking-tight">{stats.total.call_start || 0}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* HIGHLIGHTS SECTION */}
-                <div id="highlights-vault" className="space-y-6 scroll-mt-32">
-                  <div className="border-b border-gray-200 dark:border-border pb-2 flex justify-between items-end">
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-foreground tracking-tight">Highlights</h3>
-                    <span className="text-[10px] text-gray-400 mb-1">Secure Cloud Vault</span>
-                  </div>
-
-                  {artifacts.length === 0 ? (
-                    <div className="border border-gray-200 dark:border-border border-dashed p-12 text-center rounded-2xl bg-white dark:bg-surface">
-                      <p className="text-xs text-gray-450 dark:text-zinc-500 font-medium">No recordings yet. Hit record during your next session!</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {artifacts.map((art: any) => (
-                        <div key={art.id} className="bg-white dark:bg-surface border border-gray-200 dark:border-border rounded-xl overflow-hidden group shadow-sm hover:shadow-md transition-all">
-                          <div className="relative aspect-video bg-gray-50 dark:bg-zinc-900 border-b border-gray-200 dark:border-border">
-                            <video src={art.url} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300" />
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                              <button onClick={() => window.open(art.url, '_blank')} className="px-3 py-1.5 rounded-lg bg-white/90 text-gray-800 backdrop-blur-sm text-[10px] font-medium shadow-sm hover:bg-white transition-all">WATCH</button>
-                            </div>
+                            <span className="text-[10px] font-medium text-muted">{day.date.split('-').slice(1).join('/')}</span>
                           </div>
-                          <div className="p-2.5 flex justify-between items-center text-[10px] text-gray-400 font-medium">
-                            {new Date(art.timestamp).toLocaleDateString()}
-                            <button
-                              onClick={() => {
-                                  if (confirm('Delete this highlight forever?')) {
-                                    handleDeleteArtifact(art.id);
-                                  }
-                              }}
-                              className="hover:text-red-500 transition-colors p-1"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-rows-2 gap-4">
+                      <div className="bg-surface border border-border p-6 rounded-2xl flex justify-between items-center shadow-sm text-foreground">
+                        <span className="text-sm font-medium text-muted">Profile Views</span>
+                        <span className="text-3xl font-bold tracking-tight">{stats.total.view || 0}</span>
+                      </div>
+                      <div className="bg-surface border border-border p-6 rounded-2xl flex justify-between items-center shadow-sm text-foreground">
+                        <span className="text-sm font-medium text-muted">Total Conversations</span>
+                        <span className="text-3xl font-bold tracking-tight">{stats.total.call_start || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* HIGHLIGHTS SECTION */}
+              <div id="highlights-vault" className="space-y-6">
+                <div className="border-b border-border pb-3 flex justify-between items-end">
+                  <h3 className="text-xl font-semibold text-foreground tracking-tight">Highlights Vault</h3>
+                  <span className="text-xs text-muted font-medium bg-surface px-2 py-1 rounded-md border border-border">Secure Cloud</span>
+                </div>
+
+                {artifacts.length === 0 ? (
+                  <div className="border border-border border-dashed p-16 text-center rounded-3xl bg-surface">
+                    <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center border border-border mx-auto mb-4">
+                      <Camera className="w-6 h-6 text-muted" />
+                    </div>
+                    <h4 className="text-lg font-medium text-foreground mb-1">No recordings yet</h4>
+                    <p className="text-sm text-muted font-medium max-w-sm mx-auto">Hit record during your next session to save your best moments directly to your vault.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    {artifacts.map((art: any) => (
+                      <div key={art.id} className="bg-surface border border-border rounded-2xl overflow-hidden group shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                        <div className="relative aspect-video bg-background border-b border-border overflow-hidden">
+                          <video src={art.url} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500 scale-105 group-hover:scale-100" />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-background/50 backdrop-blur-sm">
+                            <button onClick={() => window.open(art.url, '_blank')} className="px-4 py-2 rounded-xl bg-foreground text-background text-xs font-bold shadow-sm hover:scale-105 transition-transform flex items-center gap-1.5">
+                              <Play className="w-3 h-3 fill-current" /> WATCH
                             </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                        <div className="p-4 flex justify-between items-center text-xs text-muted font-medium bg-surface">
+                          {new Date(art.timestamp).toLocaleDateString()}
+                          <button
+                            onClick={() => {
+                                if (confirm('Delete this highlight forever?')) {
+                                  handleDeleteArtifact(art.id);
+                                }
+                            }}
+                            className="w-8 h-8 rounded-lg bg-background border border-border flex items-center justify-center hover:text-red-500 hover:border-red-500/30 hover:bg-red-500/10 transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </motion.div>
-          )
-        }
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
-
-
     </div>
   );
 }

@@ -37,7 +37,7 @@ export default function OverviewTab({ username, withdrawable, balance, initialSe
         </div>
         {username && (
           <button
-            onClick={() => window.open('/' + username, '_blank')}
+            onClick={() => window.open('/studio', '_blank')}
             className="flex items-center gap-2 bg-foreground text-background px-5 py-2.5 rounded-lg font-medium text-sm hover:opacity-90 transition-opacity shadow-sm"
           >
             <Sparkles className="w-4 h-4" /> Access Studio
