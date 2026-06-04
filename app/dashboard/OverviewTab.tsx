@@ -46,7 +46,7 @@ export default function OverviewTab({ username, withdrawable, balance, initialSe
       </motion.section>
 
       {/* SETUP CHECKLIST */}
-      <SetupChecklist username={username || ''} initialSettings={initialSettings} />
+      <SetupChecklist username={username || ''} initialSettings={initialSettings} onNavigateTab={setActiveTab} />
 
       {/* ANALYTICS GRID */}
       <div className="grid md:grid-cols-2 gap-8">
