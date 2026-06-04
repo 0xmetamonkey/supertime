@@ -246,11 +246,30 @@ export default function CallStage({
       setVolumes(newVols);
     };
 
+    const handleStreamMessage = (msgUid: string | number, payload: Uint8Array) => {
+      try {
+        const text = new TextDecoder().decode(payload);
+        const msg = JSON.parse(text);
+        console.log("[CALL] 📨 Stream message received:", msg);
+        if (msg.type === 'REQ_REC') {
+          setConsentState('pending_approval');
+        } else if (msg.type === 'RES_REC_OK') {
+          setConsentState('granted');
+        } else if (msg.type === 'RES_REC_NO') {
+          setConsentState('denied');
+          setTimeout(() => setConsentState('idle'), 3000);
+        }
+      } catch (e) {
+        console.error("Failed to parse stream message", e);
+      }
+    };
+
     // Attach listeners
     client.on('user-published', handleUserPublished);
     client.on('user-unpublished', handleUserUnpublished);
     client.on('user-left', handleUserLeft);
     client.on('volume-indicator', handleVolumeIndicator);
+    client.on('stream-message', handleStreamMessage);
 
     const connect = async () => {
       if (isConnectingRef.current) return;
@@ -306,6 +325,14 @@ export default function CallStage({
         await client.join(data.appId, channelName, data.token, joinUid);
         setIsConnected(true);
 
+        try {
+          const streamId = await client.createDataStream({ ordered: true, reliable: true });
+          dataStreamIdRef.current = streamId;
+          console.log(`[CALL] 4b. Data stream created: ${streamId}`);
+        } catch (e) {
+          console.error("[CALL] ❌ Failed to create data stream", e);
+        }
+
         console.log(`[CALL] 5. Publishing local tracks...`);
         await client.publish(tracks);
         console.log(`[CALL] ✅ Local tracks published. You are now live in the channel.`);
@@ -329,11 +356,6 @@ export default function CallStage({
 
     return () => {
       active = false;
-      client.off('user-published', handleUserPublished);
-      client.off('user-unpublished', handleUserUnpublished);
-      client.off('user-left', handleUserLeft);
-      client.off('volume-indicator', handleVolumeIndicator);
-
       if (tracksRef.current) {
         tracksRef.current.forEach(t => { t.stop(); t.close(); });
         tracksRef.current = [];

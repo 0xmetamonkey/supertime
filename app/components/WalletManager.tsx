@@ -17,13 +17,14 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
   // We keep the state valid for now but will simplify UI
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'upi'>('card');
 
-  useEffect(() => {
-    // Load Razorpay Script
+  const loadRazorpay = () => new Promise((resolve) => {
+    if ((window as any).Razorpay) return resolve(true);
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
     document.body.appendChild(script);
-  }, []);
+  });
 
   const fetchBalance = async () => {
     try {
@@ -37,8 +38,13 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
   };
 
   const handleRecharge = async (amount: number) => {
+    if (amount <= 0) return;
     setLoading(true);
     try {
+      const isLoaded = await loadRazorpay();
+      if (!isLoaded) {
+        throw new Error("Razorpay SDK failed to load. Please check your connection.");
+      }
       // 1. Create Order
       const orderRes = await fetch('/api/payment/create-order', {
         method: 'POST',

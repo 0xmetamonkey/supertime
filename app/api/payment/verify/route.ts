@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { kv } from '@vercel/kv';
-import { currentUser } from "@clerk/nextjs/server";
-
+import { kv } from '@vercel/kv';
+import { currentUser, auth } from "@clerk/nextjs/server";
 // Fallback memory store
 declare global {
   var mockWalletStore: Map<string, number>;
@@ -13,9 +13,14 @@ if (!global.mockWalletStore) {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await currentUser();
-  const email = user?.emailAddresses?.[0]?.emailAddress;
-  if (!user || !email) {
+  const { sessionClaims } = await auth();
+  let email = (sessionClaims as any)?.email;
+  if (!email) {
+    const user = await currentUser();
+    email = user?.emailAddresses?.[0]?.emailAddress;
+  }
+
+  if (!email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

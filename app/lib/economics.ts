@@ -62,13 +62,24 @@ export async function processSplitPayment(fromEmail: string, toEmail: string, am
   // 2. Calculate Split
   const { speakerShare, platformShare } = calculateSessionSplit(amount);
 
-  // 3. Update Balances
-  // We use a multi/pipeline if possible, but standard KV sets are okay for this scale
+  // 3. Update Sender Balances
   const finalSenderBalance = currentFullBalance - amount;
   await kv.set(`balance:${from}`, finalSenderBalance);
 
+  const senderWithdrawable = (await kv.get<number>(`withdrawable:${from}`)) ?? 0;
+  const senderTopup = currentFullBalance - senderWithdrawable;
+  if (amount > senderTopup) {
+    const withdrawableSpent = amount - senderTopup;
+    const newSenderWithdrawable = Math.max(0, senderWithdrawable - withdrawableSpent);
+    await kv.set(`withdrawable:${from}`, newSenderWithdrawable);
+  }
+
+  // Update Receiver Balances
   const currentWithdrawable = (await kv.get<number>(`withdrawable:${to}`)) ?? 0;
   await kv.set(`withdrawable:${to}`, currentWithdrawable + speakerShare);
+
+  const currentReceiverBalance = (await kv.get<number>(`balance:${to}`)) ?? 0;
+  await kv.set(`balance:${to}`, currentReceiverBalance + speakerShare);
 
   // 4. Update Platform Revenue
   const totalPlatformRevenue = (await kv.get<number>(`platform:revenue`)) ?? 0;
@@ -96,6 +107,9 @@ export async function recordWithdrawalRequest(email: string, amount: number, upi
 
   // 2. Deduct immediately
   await kv.set(`withdrawable:${userEmail}`, currentWithdrawable - amount);
+
+  const currentFullBalance = (await kv.get<number>(`balance:${userEmail}`)) ?? 0;
+  await kv.set(`balance:${userEmail}`, Math.max(0, currentFullBalance - amount));
 
   // 3. Create Request
   const request: WithdrawalRequest = {

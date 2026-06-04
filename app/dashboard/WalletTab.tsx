@@ -19,17 +19,22 @@ export default function WalletTab({ withdrawable, balance }: WalletTabProps) {
   const [upiId, setUpiId] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
 
-  useEffect(() => {
-    // Load Razorpay Script
+  const loadRazorpay = () => new Promise((resolve) => {
+    if ((window as any).Razorpay) return resolve(true);
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
     document.body.appendChild(script);
-  }, []);
+  });
 
   const handleRecharge = async (amount: number) => {
     setIsProcessing(true);
     try {
+      const isLoaded = await loadRazorpay();
+      if (!isLoaded) {
+        throw new Error("Razorpay SDK failed to load. Please check your connection or disable adblockers.");
+      }
       const orderRes = await fetch('/api/payment/create-order', {
         method: 'POST',
         body: JSON.stringify({ amount: amount }), // Amount in INR

@@ -264,6 +264,20 @@ export default function CreatorClient({
         modal: { ondismiss: () => setIsSubscribing(false) },
         theme: { color: '#000000' },
       };
+      const loadRazorpay = () => new Promise((resolve) => {
+        if ((window as any).Razorpay) return resolve(true);
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+      });
+
+      const isLoaded = await loadRazorpay();
+      if (!isLoaded) {
+        throw new Error("Razorpay SDK failed to load. Please check your connection or disable adblockers.");
+      }
+
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
     } catch (err) {
@@ -338,6 +352,20 @@ export default function CreatorClient({
         modal: { ondismiss: () => setBuyingId(null) },
         theme: { color: '#000000' },
       };
+      const loadRazorpay = () => new Promise((resolve) => {
+        if ((window as any).Razorpay) return resolve(true);
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+      });
+
+      const isLoaded = await loadRazorpay();
+      if (!isLoaded) {
+        throw new Error("Razorpay SDK failed to load.");
+      }
+
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
     } catch (err) {
@@ -387,6 +415,20 @@ export default function CreatorClient({
         modal: { ondismiss: () => setTipping(false) },
         theme: { color: '#000000' },
       };
+      const loadRazorpay = () => new Promise((resolve) => {
+        if ((window as any).Razorpay) return resolve(true);
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+      });
+
+      const isLoaded = await loadRazorpay();
+      if (!isLoaded) {
+        throw new Error("Razorpay SDK failed to load.");
+      }
+
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
     } catch (err) {

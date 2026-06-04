@@ -18,6 +18,13 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Supertime — Sell your time",
   description: "A marketplace where anyone can sell their time for money.",
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/icon.png',
+  },
+  verification: {
+    google: 'ZPKkisFhFaYoSi1Y-uk3Q-zVlsTa-3x_WgMfigwQsFY',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import FeedbackWidget from './FeedbackWidget';
 import { useLanguage, Language } from './LanguageContext';
 
 export default function Footer() {
   const [clicks, setClicks] = useState(0);
   const [showDao, setShowDao] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { language, setLanguage, t } = useLanguage();
 
   return (
@@ -34,9 +35,19 @@ export default function Footer() {
           <FeedbackWidget />
           <button 
             onClick={() => {
-              setClicks(c => c + 1);
-              if (clicks + 1 >= 10) setShowDao(true);
-              if (clicks === 0) setTimeout(() => { if (clicks < 9) window.location.href = '/terms'; }, 1000);
+              const newClicks = clicks + 1;
+              setClicks(newClicks);
+              
+              if (newClicks >= 4) {
+                setShowDao(true);
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+              }
+              
+              if (newClicks === 1) {
+                timeoutRef.current = setTimeout(() => { 
+                  window.location.href = '/terms'; 
+                }, 1000);
+              }
             }}
             className="hover:text-foreground transition-colors"
           >

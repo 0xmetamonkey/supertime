@@ -11,7 +11,7 @@ import {
   Store,
   Wrench,
   Bot,
-  Copy,
+  Share,
   CheckCircle,
   FileText,
 } from 'lucide-react';
@@ -166,14 +166,27 @@ export default function DashboardClient({ session, username, initialBalance, ini
                   supertime.wtf/{username}
                 </a>
                 <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(`https://supertime.wtf/${username}`);
-                    setCopiedLink(true);
-                    setTimeout(() => setCopiedLink(false), 2000);
+                  onClick={async () => {
+                    const url = `https://supertime.wtf/${username}`;
+                    if (navigator.share) {
+                      try {
+                        await navigator.share({ url });
+                        setCopiedLink(true);
+                        setTimeout(() => setCopiedLink(false), 2000);
+                      } catch (e) {
+                        navigator.clipboard.writeText(url);
+                        setCopiedLink(true);
+                        setTimeout(() => setCopiedLink(false), 2000);
+                      }
+                    } else {
+                      navigator.clipboard.writeText(url);
+                      setCopiedLink(true);
+                      setTimeout(() => setCopiedLink(false), 2000);
+                    }
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-sm font-medium text-foreground hover:bg-surface transition-colors"
                 >
-                  {copiedLink ? <><CheckCircle className="w-4 h-4 text-green-500" /> Copied</> : <><Copy className="w-4 h-4" /> Copy</>}
+                  {copiedLink ? <><CheckCircle className="w-4 h-4 text-green-500" /> Shared</> : <><Share className="w-4 h-4" /> Share</>}
                 </button>
                 <div className="ml-2 flex items-center">
                   <UserButton afterSignOutUrl="/" />
