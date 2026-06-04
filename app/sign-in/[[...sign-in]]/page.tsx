@@ -3,12 +3,12 @@ import { Zap } from "lucide-react";
 
 export default function Page() {
   return (
-    <div className="min-h-screen bg-neo-yellow flex flex-col items-center justify-center p-4">
-      <div className="mb-8 flex items-center gap-2">
-        <div className="w-12 h-12 bg-black flex items-center justify-center border-4 border-black shadow-[4px_4px_0px_0px_theme(colors.neo-pink)]">
-          <Zap className="text-neo-yellow w-8 h-8 fill-current" />
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 transition-colors">
+      <div className="mb-8 flex flex-col items-center gap-3">
+        <div className="w-12 h-12 bg-foreground rounded-xl flex items-center justify-center shadow-sm">
+          <Zap className="text-background w-6 h-6 fill-current" />
         </div>
-        <span className="text-4xl font-black uppercase tracking-tighter">Supertime</span>
+        <span className="text-3xl font-bold tracking-tight text-foreground">Supertime</span>
       </div>
 
       <SignIn appearance={{

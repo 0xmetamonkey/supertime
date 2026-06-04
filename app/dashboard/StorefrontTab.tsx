@@ -21,9 +21,10 @@ import FundraiserManager from './FundraiserManager';
 
 interface StorefrontTabProps {
   username: string | null;
+  initialSettings?: any;
 }
 
-export default function StorefrontTab({ username }: StorefrontTabProps) {
+export default function StorefrontTab({ username, initialSettings }: StorefrontTabProps) {
   const [storefrontTab, setStorefrontTab] = useState<'store' | 'courses' | 'about'>('store');
   const [showCreateShow, setShowCreateShow] = useState(false);
   const [newShowTitle, setNewShowTitle] = useState('');
@@ -46,6 +47,31 @@ export default function StorefrontTab({ username }: StorefrontTabProps) {
   });
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadingThumb, setUploadingThumb] = useState(false);
+
+  // Subscription State
+  const [subPrice, setSubPrice] = useState(initialSettings?.subscriptionPrice || 199);
+  const [subBenefits, setSubBenefits] = useState<string[]>(initialSettings?.subscriptionBenefits || []);
+  const [newBenefit, setNewBenefit] = useState('');
+  const [isSavingSub, setIsSavingSub] = useState(false);
+  const [subSaveSuccess, setSubSaveSuccess] = useState(false);
+
+  const handleSaveSubscription = async () => {
+    setIsSavingSub(true);
+    setSubSaveSuccess(false);
+    try {
+      await fetch('/api/studio/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscriptionPrice: subPrice, subscriptionBenefits: subBenefits }),
+      });
+      setSubSaveSuccess(true);
+      setTimeout(() => setSubSaveSuccess(false), 3000);
+    } catch (e) {
+      alert("Failed to save subscription settings");
+    } finally {
+      setIsSavingSub(false);
+    }
+  };
 
   useEffect(() => {
     fetch('/api/user/products')
@@ -519,6 +545,77 @@ export default function StorefrontTab({ username }: StorefrontTabProps) {
 
       <div className="w-full h-[1px] bg-border my-12" />
       <div className="grid lg:grid-cols-2 gap-12">
+        <div>
+           <h3 className="text-xl font-medium text-foreground">Membership / Inner Circle</h3>
+           <p className="text-sm text-muted mb-6">Manage your monthly subscription tier</p>
+           
+           <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+             <div className="mb-4">
+               <label className="text-xs font-medium text-gray-500 block mb-1.5">Monthly Price (₹)</label>
+               <input
+                 type="number"
+                 value={subPrice}
+                 onChange={(e) => setSubPrice(Number(e.target.value))}
+                 className="w-full bg-background border border-border rounded-xl p-3 font-medium text-sm text-foreground outline-none focus:bg-surface"
+               />
+             </div>
+             
+             <div className="mb-4">
+               <label className="text-xs font-medium text-gray-500 block mb-1.5">Subscription Benefits</label>
+               <div className="flex gap-2 mb-3">
+                 <input
+                   type="text"
+                   value={newBenefit}
+                   onChange={(e) => setNewBenefit(e.target.value)}
+                   placeholder="e.g. Exclusive Q&A"
+                   className="flex-1 bg-background border border-border rounded-xl p-3 font-medium text-sm text-foreground outline-none focus:bg-surface"
+                   onKeyDown={(e) => {
+                     if (e.key === 'Enter' && newBenefit.trim()) {
+                       setSubBenefits([...subBenefits, newBenefit.trim()]);
+                       setNewBenefit('');
+                     }
+                   }}
+                 />
+                 <button
+                   onClick={() => {
+                     if (newBenefit.trim()) {
+                       setSubBenefits([...subBenefits, newBenefit.trim()]);
+                       setNewBenefit('');
+                     }
+                   }}
+                   className="bg-foreground text-background px-4 rounded-xl font-medium text-sm"
+                 >
+                   Add
+                 </button>
+               </div>
+               
+               <ul className="space-y-2 mt-4">
+                 {subBenefits.map((b: string, i: number) => (
+                   <li key={i} className="flex justify-between items-center bg-background border border-border rounded-lg p-3 text-sm text-foreground">
+                     <span>{b}</span>
+                     <button
+                       onClick={() => setSubBenefits(subBenefits.filter((_, idx) => idx !== i))}
+                       className="text-gray-400 hover:text-red-500"
+                     >
+                       <X className="w-4 h-4" />
+                     </button>
+                   </li>
+                 ))}
+                 {subBenefits.length === 0 && (
+                   <p className="text-sm text-gray-400 text-center py-4">No benefits added yet.</p>
+                 )}
+               </ul>
+             </div>
+             
+             <button
+               onClick={handleSaveSubscription}
+               disabled={isSavingSub}
+               className={`w-full py-3 rounded-xl font-medium text-sm transition-opacity mt-4 ${subSaveSuccess ? 'bg-green-500 text-white' : 'bg-gray-900 dark:bg-foreground text-white dark:text-background hover:opacity-90'}`}
+             >
+               {subSaveSuccess ? 'Saved ✓' : isSavingSub ? 'Saving...' : 'Save Membership Settings'}
+             </button>
+           </div>
+        </div>
         <div>
            <h3 className="text-xl font-medium text-foreground">Live Shows</h3>
            <p className="text-sm text-muted mb-6">Schedule ticketed broadcast events</p>

@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
 
   const email = emailAddr.toLowerCase();
   const requestData = await req.json();
-  const { socials, videoRate, audioRate, isLive, isAcceptingCalls, templates, availability, artifact, roomType, isRoomFree, mode, faqs, upiId, displayName, videoProvider } = requestData;
+  const { socials, videoRate, audioRate, isLive, isAcceptingCalls, templates, availability, artifact, roomType, isRoomFree, mode, faqs, upiId, displayName, videoProvider, bio, subscriptionPrice, subscriptionBenefits } = requestData;
 
   try {
     if (process.env.KV_URL) {
@@ -31,6 +31,9 @@ export async function POST(req: NextRequest) {
       if (upiId !== undefined) await kv.set(`user:${email}:upiId`, upiId);
       if (videoProvider !== undefined) await kv.set(`user:${email}:videoProvider`, videoProvider);
       if (requestData.artifacts !== undefined) await kv.set(`user:${email}:artifacts`, requestData.artifacts);
+      if (bio !== undefined) await kv.set(`user:${email}:bio`, bio);
+      if (subscriptionPrice !== undefined) await kv.set(`user:${email}:subscriptionPrice`, subscriptionPrice);
+      if (subscriptionBenefits !== undefined) await kv.set(`user:${email}:subscriptionBenefits`, subscriptionBenefits);
 
       if (artifact) {
         const existingArtifacts = await kv.get(`user:${email}:artifacts`) as any[] || [];

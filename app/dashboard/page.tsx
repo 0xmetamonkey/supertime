@@ -61,6 +61,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     videoProvider: 'supercalls',
     isGoogleConnected: false,
     isZoomConnected: false,
+    bio: '',
+    subscriptionPrice: 199,
+    subscriptionBenefits: ['Member-only posts', 'Behind the scenes', 'Early access to new drops', 'Discounts on sessions', 'Members-only group calls'],
   };
 
   if (process.env.KV_URL) {
@@ -76,6 +79,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     const videoProvider = await kv.get(`user:${email}:videoProvider`) as string;
     const googleTokens = await kv.get(`user:${email}:google_tokens`);
     const zoomTokens = await kv.get(`user:${email}:zoom_tokens`);
+    const bio = await kv.get(`user:${email}:bio`) as string;
+    const subscriptionPrice = await kv.get(`user:${email}:subscriptionPrice`);
+    const subscriptionBenefits = await kv.get(`user:${email}:subscriptionBenefits`) as string[];
 
     if (vRate !== null) initialSettings.videoRate = Number(vRate);
     if (aRate !== null) initialSettings.audioRate = Number(aRate);
@@ -95,6 +101,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     if (templates) initialSettings.templates = templates;
     if (faqs) initialSettings.faqs = faqs;
     if (displayName) initialSettings.displayName = displayName;
+    if (bio) initialSettings.bio = bio;
+    if (subscriptionPrice !== null) initialSettings.subscriptionPrice = Number(subscriptionPrice);
+    if (subscriptionBenefits) initialSettings.subscriptionBenefits = subscriptionBenefits;
   }
 
   return (
