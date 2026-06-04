@@ -21,7 +21,7 @@ export async function getDetailedWallet(email: string) {
   const withdrawable = (await kv.get<number>(`withdrawable:${email.toLowerCase()}`)) ?? 0;
   return {
     balance,       // Spending credits
-    withdrawable,  // Earned INR (TKN equivalent)
+    withdrawable,  // Earned INR (Credits equivalent)
   };
 }
 
@@ -29,19 +29,19 @@ export async function getDetailedWallet(email: string) {
  * Split Logic: 60/40 Split
  * Ensures rounding down to avoid fractional artifacts
  */
-export function calculateSessionSplit(totalTokens: number) {
-  const speakerShare = Math.floor(totalTokens * SPEAKER_SHARE_PERCENT);
-  const platformShare = Math.floor(totalTokens * PLATFORM_FEE_PERCENT);
+export function calculateSessionSplit(totalCredits: number) {
+  const speakerShare = Math.floor(totalCredits * SPEAKER_SHARE_PERCENT);
+  const platformShare = Math.floor(totalCredits * PLATFORM_FEE_PERCENT);
 
-  // Note: If totalTokens is small (e.g. 1), rounding both down might leave a residue.
+  // Note: If totalCredits is small (e.g. 1), rounding both down might leave a residue.
   // We prioritize speaker share getting the floor, and platform gets the rest 
   // OR we follow the 60/40 rule strictly as requested.
-  // User: "Ensure the math rounds down to the nearest integer to avoid fractional token errors."
+  // User: "Ensure the math rounds down to the nearest integer to avoid fractional credit errors."
 
   return {
     speakerShare,
     platformShare,
-    residue: totalTokens - speakerShare - platformShare
+    residue: totalCredits - speakerShare - platformShare
   };
 }
 

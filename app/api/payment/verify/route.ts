@@ -42,20 +42,20 @@ export async function POST(req: NextRequest) {
       const order = await instance.orders.fetch(razorpay_order_id);
 
       // Amount is in paise. 100 paise = 1 INR.
-      // 1 INR = 1 TKN
+      // 1 INR = 1 Credit
       const amountInRupees = Number(order.amount) / 100;
-      const tokensToAdd = amountInRupees;
+      const creditsToAdd = amountInRupees;
 
       // Credit Wallet using EMAIL as identifier
       if (process.env.KV_URL) {
         const current = (await kv.get<number>(`balance:${normalizedEmail}`)) ?? 0;
-        await kv.set(`balance:${normalizedEmail}`, current + tokensToAdd);
+        await kv.set(`balance:${normalizedEmail}`, current + creditsToAdd);
       } else {
         const current = global.mockWalletStore.get(normalizedEmail) ?? 0;
-        global.mockWalletStore.set(normalizedEmail, current + tokensToAdd);
+        global.mockWalletStore.set(normalizedEmail, current + creditsToAdd);
       }
 
-      return NextResponse.json({ success: true, newBalance: tokensToAdd });
+      return NextResponse.json({ success: true, newBalance: creditsToAdd });
     } else {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }

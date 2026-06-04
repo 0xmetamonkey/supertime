@@ -45,6 +45,8 @@ export default function RootLayout({
           socialButtonsVariant: "blockButton",
           logoPlacement: "inside",
           shimmer: false,
+          logoImageUrl: "/logo.png",
+          showOptionalSRP: false,
         },
         variables: {
           colorPrimary: "#111111",

@@ -216,6 +216,7 @@ export default function DashboardClient({ session, username, initialBalance, ini
             {activeTab === 'storefront' && (
               <StorefrontTab
                 username={username}
+                initialSettings={initialSettings}
               />
             )}
 

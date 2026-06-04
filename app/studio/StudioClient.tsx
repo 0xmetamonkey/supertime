@@ -53,7 +53,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null);
   const [requests, setRequests] = useState<any[]>([]);
   const [callDuration, setCallDuration] = useState(0);
-  const [tokensEarned, setTokensEarned] = useState(0);
+  const [creditsEarned, setCreditsEarned] = useState(0);
   const [isPeerConnected, setIsPeerConnected] = useState(false);
   const [activeChannelName, setActiveChannelName] = useState<string | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -94,7 +94,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
       setIsCalling(false);
       setActiveChannelName(null);
       setCallDuration(0);
-      setTokensEarned(0);
+      setCreditsEarned(0);
     }
   }, [ablySignaling?.activeCall, isCalling]);
 
@@ -247,7 +247,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
       setCallDuration(prev => {
         const next = prev + 1;
         const rate = callType === 'video' ? pendingVideoRate : pendingAudioRate;
-        if (next % 60 === 0) setTokensEarned(e => e + rate);
+        if (next % 60 === 0) setCreditsEarned(e => e + rate);
         return next;
       });
     }, 1000);
@@ -259,7 +259,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
     setActiveChannelName(null);
     setIsPeerConnected(false);
     setCallDuration(0);
-    setTokensEarned(0);
+    setCreditsEarned(0);
     ablySignaling?.endActiveCall();
   };
 
@@ -317,7 +317,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
             <div>
               <h2 className="text-2xl font-semibold text-foreground tracking-tight">Step 1 of your 10-year Empire</h2>
               <p className="text-sm text-muted mt-2 leading-relaxed">
-                Supertime isn't just about calls. It's the infrastructure for your independence. Claim your unique link, exchange your energy for tokens, and start building towards a billion-dollar outcome.
+                Supertime isn't just about calls. It's the infrastructure for your independence. Claim your unique link, exchange your energy for credits, and start building towards a billion-dollar outcome.
               </p>
             </div>
             <form onSubmit={handleClaim} className="space-y-6 pt-4">
@@ -350,7 +350,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
           <div className="flex flex-col gap-6">
             <div className="bg-surface border border-border p-8 rounded-2xl shadow-sm">
               <h3 className="text-sm font-medium text-muted mb-2">Energy Wallet</h3>
-              <p className="font-semibold text-4xl mb-4 text-foreground tracking-tight">{balance ?? '0'} <span className="text-sm font-medium text-muted">TKN</span></p>
+              <p className="font-semibold text-4xl mb-4 text-foreground tracking-tight">{balance ?? '0'} <span className="text-sm font-medium text-muted">Credits</span></p>
               <div className="flex items-center gap-2 text-xs font-medium text-muted">
                 <Sparkles className="w-4 h-4 text-yellow-500" />
                 Ready to use when you claim
@@ -383,7 +383,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
           <div className="absolute top-6 left-6 right-6 z-[510] flex items-center justify-start">
             <div className="flex items-center gap-2">
               <div className="bg-green-500/10 border border-green-500/20 px-4 py-2 rounded-xl">
-                <span className="text-green-500 text-sm font-semibold tabular-nums">+{tokensEarned.toFixed(0)} TKN</span>
+                <span className="text-green-500 text-sm font-semibold tabular-nums">+{creditsEarned.toFixed(0)} Credits</span>
               </div>
               <div className="bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-xl">
                 <span className="text-white text-sm font-semibold tabular-nums">{formatTime(callDuration)}</span>
@@ -665,7 +665,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
                 <div className="bg-surface border border-border p-6 rounded-2xl shadow-sm text-foreground relative overflow-hidden group">
                   <div className="absolute -right-4 -top-4 w-24 h-24 bg-yellow-500/10 rounded-full blur-xl group-hover:bg-yellow-500/20 transition-all" />
                   <h3 className="text-sm font-medium text-muted mb-1 relative z-10">Energy Wallet</h3>
-                  <p className="font-bold text-4xl mb-4 tracking-tight tabular-nums relative z-10">{balance ?? '0'} <span className="text-lg font-medium text-muted">TKN</span></p>
+                  <p className="font-bold text-4xl mb-4 tracking-tight tabular-nums relative z-10">{balance ?? '0'} <span className="text-lg font-medium text-muted">Credits</span></p>
                   <div className="relative z-10">
                     <WalletManager onBalanceChange={setBalance} />
                   </div>
@@ -676,7 +676,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
                   <h3 className="text-sm font-medium text-muted mb-1 relative z-10">Earnings Ready</h3>
                   <p className="font-bold text-4xl mb-4 tracking-tight tabular-nums relative z-10">₹{withdrawable}</p>
                   <button
-                    onClick={() => router.push('/wallet')}
+                    onClick={() => router.push('/dashboard?tab=wallet')}
                     className="w-full bg-foreground text-background py-2.5 font-medium text-sm rounded-xl shadow-sm hover:opacity-90 transition-opacity relative z-10"
                   >
                     Withdraw to Bank
@@ -691,7 +691,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
                   <div className="space-y-3 relative z-10">
                     <div className="flex justify-between items-center text-sm border-b border-border pb-2">
                       <span className="font-medium text-muted">Earned Today</span>
-                      <span className="font-bold text-foreground">1.2k TKN</span>
+                      <span className="font-bold text-foreground">1.2k Credits</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="font-medium text-muted">Active Minutes</span>

@@ -117,6 +117,9 @@ export default async function CreatorPage({ params }: Props) {
   let templates: any[] = [];
   let artifacts: any[] = [];
   let faqs: any[] = [];
+  let bio = "";
+  let subscriptionPrice = 199;
+  let subscriptionBenefits: string[] = [];
 
   if (ownerEmail && process.env.KV_URL) {
     isVerified = !!(await kv.get(`user:${ownerEmail}:verified`));
@@ -135,6 +138,10 @@ export default async function CreatorPage({ params }: Props) {
     const tpls = await kv.get(`user:${ownerEmail}:templates`) as any[];
     const arts = await kv.get(`user:${ownerEmail}:artifacts`) as any[];
     const fqs = await kv.get(`user:${ownerEmail}:faqs`) as any[];
+    const fetchedBio = await kv.get(`user:${ownerEmail}:bio`) as string;
+    const fetchedSubPrice = await kv.get(`user:${ownerEmail}:subscriptionPrice`);
+    const fetchedSubBenefits = await kv.get(`user:${ownerEmail}:subscriptionBenefits`) as string[];
+
     if (vRate !== null) videoRate = Number(vRate);
     if (aRate !== null) audioRate = Number(aRate);
     if (pImage) profileImage = String(pImage);
@@ -145,6 +152,10 @@ export default async function CreatorPage({ params }: Props) {
     if (tpls) templates = tpls;
     if (arts) artifacts = arts;
     if (fqs) faqs = fqs;
+    if (fetchedBio) bio = fetchedBio;
+    if (fetchedSubPrice !== null) subscriptionPrice = Number(fetchedSubPrice);
+    if (fetchedSubBenefits) subscriptionBenefits = fetchedSubBenefits;
+
     (socials as any).roomType = roomType || 'audio';
     (socials as any).isRoomFree = isRoomFree === null ? true : !!isRoomFree;
     (socials as any).studioMode = studioMode;
@@ -171,6 +182,9 @@ export default async function CreatorPage({ params }: Props) {
       templates={templates}
       artifacts={artifacts}
       faqs={faqs}
+      bio={bio}
+      subscriptionPrice={subscriptionPrice}
+      subscriptionBenefits={subscriptionBenefits}
       roomType={(socials as any).roomType}
       isRoomFree={(socials as any).isRoomFree}
     />

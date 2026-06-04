@@ -60,6 +60,9 @@ interface CreatorClientProps {
   isRoomFree?: boolean;
   studioMode?: 'solitude' | 'theatre' | 'private';
   _ablySignaling?: any; // Injected from CreatorWrapper for real-time signaling
+  bio?: string;
+  subscriptionPrice?: number;
+  subscriptionBenefits?: string[];
 }
 
 // FAQ Accordion component for public profile
@@ -122,7 +125,10 @@ export default function CreatorClient({
   roomType = 'audio',
   isRoomFree = true,
   studioMode = 'solitude',
-  _ablySignaling
+  _ablySignaling,
+  bio = "",
+  subscriptionPrice = 199,
+  subscriptionBenefits = []
 }: CreatorClientProps) {
   const { user: clerkUser, isLoaded } = useUser();
   const { openSignIn } = useClerk();
@@ -142,7 +148,7 @@ export default function CreatorClient({
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [callDuration, setCallDuration] = useState(0);
-  const [tokensSpent, setTokensSpent] = useState(0);
+  const [creditsSpent, setCreditsSpent] = useState(0);
   const [isCreatorOnline, setIsCreatorOnline] = useState(isLive);
   const [activeChannelName, setActiveChannelName] = useState<string | null>(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -408,7 +414,7 @@ export default function CreatorClient({
       setIsCalling(false);
       setActiveChannelName(null);
       setCallDuration(0);
-      setTokensSpent(0);
+      setCreditsSpent(0);
     }
   }, [_ablySignaling?.activeCall, isCalling, activeChannelName]);
 
@@ -444,7 +450,7 @@ export default function CreatorClient({
     setActiveChannelName(`room-${username}`);
     setIsWatching(true);
     setCallDuration(0);
-    setTokensSpent(0);
+    setCreditsSpent(0);
     lastDeductMinuteRef.current = 0;
 
     // Track stream join
@@ -468,7 +474,7 @@ export default function CreatorClient({
     const currentRate = type === 'video' ? videoRate : audioRate;
 
     if (balance < currentRate && !isSimulated) {
-      showError(`Add ${currentRate} TKN to start a ${type} call.`);
+      showError(`Add ${currentRate} Credits to start a ${type} call.`);
       return;
     }
 
@@ -530,7 +536,7 @@ export default function CreatorClient({
     setCallType(type);
     setIsCalling(true);
     setCallDuration(0);
-    setTokensSpent(0);
+    setCreditsSpent(0);
     // Initialize to -1 so the first minute (0) is charged when handleTimeUpdate starts
     lastDeductMinuteRef.current = -1;
 
@@ -549,12 +555,12 @@ export default function CreatorClient({
     console.log(`[Timer] Tick: ${seconds}s, CurrentMinute: ${currentMinute}, LastMinute: ${lastDeductMinuteRef.current}`);
 
     if (currentMinute > lastDeductMinuteRef.current) {
-      console.log(`[Timer] 🔔 NEW MINUTE DETECTED: Charging ${currentRate} TKN`);
+      console.log(`[Timer] 🔔 NEW MINUTE DETECTED: Charging ${currentRate} Credits`);
       lastDeductMinuteRef.current = currentMinute;
       if (!(isRoom && isRoomFree) && !isSimulated) {
         const success = await deductBalance(currentRate);
         if (success) {
-          setTokensSpent(prev => prev + currentRate);
+          setCreditsSpent(prev => prev + currentRate);
           // Track Earning
           fetch('/api/analytics/track', {
             method: 'POST',
@@ -643,7 +649,7 @@ export default function CreatorClient({
     setActiveChannelName(null);
     setIsPeerConnected(false);
     setCallDuration(0);
-    setTokensSpent(0);
+    setCreditsSpent(0);
 
     // 2. Immediately tell the signaling hook to clear its state
     // This prevents the useEffect from re-triggering setIsCalling(true)
@@ -673,7 +679,7 @@ export default function CreatorClient({
       });
 
       if (res.status === 402) {
-        showError("Out of tokens! Call ending...");
+        showError("Out of credits! Call ending...");
         handleEndCall();
         return false;
       }
@@ -807,7 +813,7 @@ export default function CreatorClient({
           <div className="absolute top-6 left-6 right-6 z-[510] flex items-center justify-start">
             <div className="flex items-center gap-2">
               <div className="bg-neo-pink/10 border border-neo-pink/20 px-4 py-2 rounded-xl">
-                <span className="text-neo-pink text-sm font-black tabular-nums">-{tokensSpent} TKN</span>
+                <span className="text-neo-pink text-sm font-black tabular-nums">-{creditsSpent} Credits</span>
               </div>
               <div className="bg-black/40 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-xl">
                 <span className="text-white text-sm font-black tabular-nums">{formatTime(callDuration)}</span>
@@ -945,9 +951,8 @@ export default function CreatorClient({
             {isVerified && <span className="text-foreground"><Check className="w-5 h-5 bg-foreground text-background rounded-full p-0.5" /></span>}
           </h1>
 
-          <p className="text-sm text-muted max-w-sm mb-6 leading-relaxed">
-            Actor. Builder. Musician.<br/>
-            Conversations about acting, creativity and building things.
+          <p className="text-sm text-muted max-w-sm mb-6 leading-relaxed whitespace-pre-wrap">
+            {bio || "Actor. Builder. Musician.\nConversations about acting, creativity and building things."}
           </p>
 
           {/* Social links */}
@@ -1405,13 +1410,17 @@ export default function CreatorClient({
             <p className="text-sm text-muted mb-6">Join to unlock exclusive benefits.</p>
             
             <div className="bg-foreground text-background rounded-2xl p-6 mb-2">
-              <div className="text-3xl font-bold mb-1">₹199<span className="text-base font-normal opacity-80">/month</span></div>
+              <div className="text-3xl font-bold mb-1">₹{subscriptionPrice}<span className="text-base font-normal opacity-80">/month</span></div>
               <ul className="space-y-3 mt-6 mb-6 text-sm">
-                <li className="flex items-center gap-3"><Check className="w-4 h-4 opacity-80" /> Member-only posts</li>
-                <li className="flex items-center gap-3"><Check className="w-4 h-4 opacity-80" /> Behind the scenes</li>
-                <li className="flex items-center gap-3"><Check className="w-4 h-4 opacity-80" /> Early access to new drops</li>
-                <li className="flex items-center gap-3"><Check className="w-4 h-4 opacity-80" /> Discounts on sessions</li>
-                <li className="flex items-center gap-3"><Check className="w-4 h-4 opacity-80" /> Members-only group calls</li>
+                {(subscriptionBenefits && subscriptionBenefits.length > 0 ? subscriptionBenefits : [
+                  'Member-only posts',
+                  'Behind the scenes',
+                  'Early access to new drops',
+                  'Discounts on sessions',
+                  'Members-only group calls'
+                ]).map((benefit, index) => (
+                  <li key={index} className="flex items-center gap-3"><Check className="w-4 h-4 opacity-80 shrink-0" /> <span className="leading-tight">{benefit}</span></li>
+                ))}
               </ul>
               <div className="flex items-center gap-2 mb-6">
                 <div className="flex -space-x-2">

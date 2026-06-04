@@ -29,12 +29,14 @@ interface ProfileEditorProps {
     templates?: any[];
     products?: any[];
     displayName?: string;
+    bio?: string;
   };
 }
 
 export default function ProfileEditor({ username, initialSettings }: ProfileEditorProps) {
   const [profileImage, setProfileImage] = useState(initialSettings.profileImage || '');
   const [displayName, setDisplayName] = useState(initialSettings.displayName || '');
+  const [bio, setBio] = useState(initialSettings.bio || '');
   const [socials, setSocials] = useState(initialSettings.socials || { instagram: '', x: '', youtube: '', website: '' });
   const [faqs, setFaqs] = useState<{ id: string; question: string; answer: string }[]>(initialSettings.faqs || []);
   const [isUploading, setIsUploading] = useState(false);
@@ -91,7 +93,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
     try {
       await fetch('/api/studio/update', {
         method: 'POST',
-        body: JSON.stringify({ socials, profileImage, faqs, displayName })
+        body: JSON.stringify({ socials, profileImage, faqs, displayName, bio })
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -151,6 +153,22 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
               className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border text-gray-900 dark:text-foreground px-4 py-3 rounded-xl text-sm font-medium outline-none focus:ring-1 focus:ring-blue-500 transition-all"
             />
             <p className="text-xs text-gray-500">Your full name displayed on explore cards and profile headers.</p>
+          </div>
+
+          <div className="mt-6 mb-4">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-foreground flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-gray-400" /> Bio / Description
+            </h3>
+          </div>
+          <div className="space-y-2">
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="I'm an actor, builder and a musician..."
+              rows={3}
+              className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border text-gray-900 dark:text-foreground px-4 py-3 rounded-xl text-sm font-medium outline-none focus:ring-1 focus:ring-blue-500 transition-all resize-none"
+            />
+            <p className="text-xs text-gray-500">A short introduction about who you are and what you offer.</p>
           </div>
         </div>
 
@@ -317,6 +335,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
                 faqs={faqs}
                 templates={initialSettings.templates || []}
                 products={initialSettings.products || []}
+                bio={bio}
                 isPreview={true}
                 isLive={true}
               />
