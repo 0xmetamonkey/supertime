@@ -24,6 +24,9 @@ interface CreatorWrapperProps {
   roomType?: 'audio' | 'video';
   isRoomFree?: boolean;
   studioMode?: 'solitude' | 'theatre' | 'private';
+  bio?: string;
+  subscriptionPrice?: number;
+  subscriptionBenefits?: string[];
 }
 
 function CreatorWithSignaling(props: CreatorWrapperProps & { clientId: string }) {
