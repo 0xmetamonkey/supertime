@@ -339,10 +339,10 @@ export async function createBooking({
       console.error('[Resend API] Failed to send booking notification emails:', emailErr);
     }
 
-    return NextResponse.json({ success: true, booking, meetingUrl });
-  } catch (error) {
+    return { success: true, booking, meetingUrl };
+  } catch (error: any) {
     console.error("Booking Error:", error);
-    return NextResponse.json({ error: 'Failed to book' }, { status: 500 });
+    throw error;
   }
 }
 
