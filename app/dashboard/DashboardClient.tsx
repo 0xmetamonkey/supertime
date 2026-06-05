@@ -15,6 +15,7 @@ import {
   CheckCircle,
   FileText,
   MessageSquare,
+  User,
 } from 'lucide-react';
 import { useClerk, UserButton } from "@clerk/nextjs";
 
@@ -42,11 +43,11 @@ type Tab = 'overview' | 'storefront' | 'tools' | 'wallet' | 'settings' | 'feast'
 export default function DashboardClient({ session, username: initialUsername, role: initialRole, initialBalance, initialWithdrawable, initialSettings }: UIProps) {
   const router = useRouter();
   const { signOut } = useClerk();
-  
+
   // Platform Identity State
   const [username, setUsername] = useState(initialUsername);
   const [role, setRole] = useState(initialRole);
-  
+
   // Onboarding State
   const [onboardingStep, setOnboardingStep] = useState(1);
   const [claimInput, setClaimInput] = useState('');
@@ -79,7 +80,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
         setUsername(res.username);
         setRole(res.role);
         // Force a hard refresh to ensure server components (like the Global Chat Listener) pick up the new KV data
-        window.location.href = '/dashboard'; 
+        window.location.href = '/dashboard';
       }
     } catch (e: any) {
       setClaimError(e.message || 'Failed to claim username.');
@@ -91,7 +92,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
   if (!username || !role) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 font-sans">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md w-full bg-surface border border-border p-8 rounded-3xl shadow-2xl"
@@ -101,14 +102,14 @@ export default function DashboardClient({ session, username: initialUsername, ro
               <span className="text-2xl font-bold text-neo-pink">S</span>
             </div>
           </div>
-          
+
           {onboardingStep === 1 ? (
             <>
               <h1 className="text-2xl font-bold text-foreground text-center mb-2">Welcome to Supertime</h1>
               <p className="text-muted text-center mb-8">How do you plan to use the platform?</p>
-              
+
               <div className="space-y-4">
-                <button 
+                <button
                   onClick={() => { setSelectedRole('creator'); setOnboardingStep(2); }}
                   className="w-full flex items-center p-4 border border-border rounded-xl hover:border-neo-pink hover:bg-neo-pink/5 transition-all text-left group"
                 >
@@ -121,7 +122,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
                   </div>
                 </button>
 
-                <button 
+                <button
                   onClick={() => { setSelectedRole('fan'); setOnboardingStep(2); }}
                   className="w-full flex items-center p-4 border border-border rounded-xl hover:border-neo-pink hover:bg-neo-pink/5 transition-all text-left group"
                 >
@@ -134,16 +135,16 @@ export default function DashboardClient({ session, username: initialUsername, ro
                   </div>
                 </button>
               </div>
-              
+
               <div className="mt-8 text-center">
-                 <UserButton afterSignOutUrl="/" />
+                <UserButton afterSignOutUrl="/" />
               </div>
             </>
           ) : (
             <>
               <h1 className="text-2xl font-bold text-foreground text-center mb-2">Choose your identity</h1>
               <p className="text-muted text-center mb-8">This is your unique handle on Supertime.</p>
-              
+
               <div className="relative mb-6">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted font-medium text-lg">@</span>
                 <input
@@ -163,7 +164,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
               )}
 
               <div className="flex gap-3">
-                <button 
+                <button
                   onClick={() => setOnboardingStep(1)}
                   className="px-6 py-4 rounded-xl border border-border text-foreground font-medium hover:bg-surface transition-colors"
                 >
@@ -226,8 +227,8 @@ export default function DashboardClient({ session, username: initialUsername, ro
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-all text-sm font-medium ${activeTab === item.id
-                  ? 'bg-background text-foreground'
-                  : 'text-muted hover:bg-background hover:text-foreground'
+                ? 'bg-background text-foreground'
+                : 'text-muted hover:bg-background hover:text-foreground'
                 }`}
             >
               <item.icon className="w-4 h-4" />
@@ -403,9 +404,10 @@ export default function DashboardClient({ session, username: initialUsername, ro
                     faqs: initialSettings?.faqs || [],
                     templates: initialSettings?.templates || [],
                     displayName: initialSettings?.displayName || '',
+                    bio: initialSettings?.bio || '',
                   }} />
                 </div>
-                <div className="w-full h-1 bg-black/10 rounded-full my-8" />
+                <div className="w-full h-px bg-border my-8" />
                 <SettingsClient username={username || ''} initialSettings={{
                   videoRate: initialSettings?.videoRate ?? 100,
                   audioRate: initialSettings?.audioRate ?? 50,

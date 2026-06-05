@@ -1389,20 +1389,19 @@ export default function CreatorClient({
             <div className="space-y-8">
               <div>
                 <h2 className="text-xl font-semibold text-foreground mb-4">About Me</h2>
-                <p className="text-sm text-muted leading-relaxed mb-6">
-                  I'm an actor, builder and a musician. I love meaningful conversations about creativity, life and everything in between.<br/><br/>
-                  Let's spend some time together.
+                <p className="text-sm text-muted leading-relaxed mb-6 whitespace-pre-wrap">
+                  {bio || "Scaling human connection through time-based digital assets and elegant, meaningful conversation."}
                 </p>
                 
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-sm text-muted">
-                    <Globe className="w-4 h-4" /> Mumbai, India
+                    <Globe className="w-4 h-4" /> Global Citizen
                   </div>
                   <div className="flex items-center gap-3 text-sm text-muted">
-                    <MessageSquare className="w-4 h-4" /> speaks English, Hindi
+                    <MessageSquare className="w-4 h-4" /> Always open to chat
                   </div>
                   <div className="flex items-center gap-3 text-sm text-muted">
-                    <Clock className="w-4 h-4" /> Usually responds in a few hours
+                    <Clock className="w-4 h-4" /> Usually responds quickly
                   </div>
                 </div>
               </div>

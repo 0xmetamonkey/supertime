@@ -1,8 +1,19 @@
-import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { currentUser } from "@clerk/nextjs/server";
-import { promises as fs } from 'fs';
-import path from 'path';
+import admin from 'firebase-admin';
+
+function initFirebase() {
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    });
+  }
+}
 
 export async function POST(request: Request): Promise<NextResponse> {
   const user = await currentUser();
@@ -18,7 +29,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'Filename is required' }, { status: 400 });
   }
 
-  // Generate a clean, unique filename to prevent collisons and character encoding bugs
+  // Generate a clean, unique filename to prevent collisions
   const cleanFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
   const uniqueFilename = `${Date.now()}-${cleanFilename}`;
 
@@ -27,24 +38,59 @@ export async function POST(request: Request): Promise<NextResponse> {
     const buffer = Buffer.from(arrayBuffer);
 
     try {
-      // 1. Try Vercel Blob first
-      const blob = await put(uniqueFilename, buffer, {
-        access: 'public',
+      // Initialize Firebase and explicitly target the storage bucket
+      initFirebase();
+      const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+      const bucket = admin.storage().bucket(bucketName);
+      const file = bucket.file(`uploads/${uniqueFilename}`);
+
+      // Guess content type based on extension
+      let contentType = 'application/octet-stream';
+      if (filename.endsWith('.mp3')) contentType = 'audio/mpeg';
+      if (filename.endsWith('.webm')) contentType = 'audio/webm';
+      if (filename.endsWith('.png')) contentType = 'image/png';
+      if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) contentType = 'image/jpeg';
+
+      await file.save(buffer, {
+        metadata: { contentType },
       });
-      return NextResponse.json(blob);
-    } catch (error: any) {
-      console.warn("Vercel Blob upload failed, utilizing high-fidelity local fallback:", error?.message || error);
+
+      // Try to make it public via ACL (works on older buckets)
+      try {
+        await file.makePublic();
+      } catch (aclError) {
+        console.warn("Could not make public via ACL (likely UBLA enabled), relying on Signed URL.");
+      }
+
+      // Generate a long-lived signed URL (essentially permanent)
+      const [publicUrl] = await file.getSignedUrl({
+        action: 'read',
+        expires: '01-01-2099', 
+      });
+
+      return NextResponse.json({
+        url: publicUrl,
+        downloadUrl: publicUrl,
+        pathname: `uploads/${uniqueFilename}`,
+        size: buffer.byteLength,
+      });
+    } catch (firebaseError: any) {
+      console.warn("Firebase Storage upload failed, utilizing high-fidelity local fallback:", firebaseError?.message || firebaseError);
       
-      // 2. High-Fidelity Local Fallback: Save to public/uploads
+      const fs = require('fs');
+      const path = require('path');
+
+      // High-Fidelity Local Fallback: Save to public/uploads
       const uploadDir = path.join(process.cwd(), 'public', 'uploads');
       
       // Ensure the upload directory exists
-      await fs.mkdir(uploadDir, { recursive: true });
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
       
       const filePath = path.join(uploadDir, uniqueFilename);
-      await fs.writeFile(filePath, buffer);
+      fs.writeFileSync(filePath, buffer);
       
-      // Return a Vercel-compatible Blob response shape so client code works flawlessly
       return NextResponse.json({
         url: `/uploads/${uniqueFilename}`,
         downloadUrl: `/uploads/${uniqueFilename}`,
@@ -52,8 +98,8 @@ export async function POST(request: Request): Promise<NextResponse> {
         size: buffer.byteLength,
       });
     }
-  } catch (outerError: any) {
-    console.error("Failed to parse request body array buffer:", outerError);
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+  } catch (error: any) {
+    console.error("Critical Upload Error:", error);
+    return NextResponse.json({ error: 'Upload completely failed: ' + error.message }, { status: 500 });
   }
 }

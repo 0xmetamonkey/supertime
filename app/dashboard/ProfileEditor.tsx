@@ -19,6 +19,7 @@ import {
   User,
 } from 'lucide-react';
 import ProfileView from '../components/ProfileView';
+import { useRouter } from 'next/navigation';
 
 interface ProfileEditorProps {
   username: string;
@@ -34,6 +35,7 @@ interface ProfileEditorProps {
 }
 
 export default function ProfileEditor({ username, initialSettings }: ProfileEditorProps) {
+  const router = useRouter();
   const [profileImage, setProfileImage] = useState(initialSettings.profileImage || '');
   const [displayName, setDisplayName] = useState(initialSettings.displayName || '');
   const [bio, setBio] = useState(initialSettings.bio || '');
@@ -96,6 +98,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
         body: JSON.stringify({ socials, profileImage, faqs, displayName, bio })
       });
       setSaveSuccess(true);
+      router.refresh(); // Tells Next.js to re-fetch the server component state
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (e) {
       alert("Failed to save profile");
