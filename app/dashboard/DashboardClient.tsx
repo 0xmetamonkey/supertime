@@ -214,8 +214,9 @@ export default function DashboardClient({ session, username: initialUsername, ro
       {/* SIDEBAR */}
       <aside className="hidden lg:flex flex-col w-64 bg-surface border-r border-border h-screen sticky top-0 z-50 transition-colors">
         <div className="p-6">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push('/')}>
+          <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => router.push('/')}>
             <span className="text-lg font-medium tracking-tight text-foreground">Supertime</span>
+            <span className="text-[9px] font-bold uppercase tracking-widest bg-neo-pink text-white px-1.5 py-0.5 rounded-full shadow-sm">Beta</span>
           </div>
         </div>
 

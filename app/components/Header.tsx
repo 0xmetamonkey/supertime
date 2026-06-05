@@ -14,9 +14,14 @@ export default function Header() {
   return (
     <header className="border-b border-border py-4 bg-background/90 backdrop-blur-md sticky top-0 z-40 transition-colors duration-300">
       <div className="w-full px-6 sm:px-8 md:px-12 flex justify-between items-center">
-        <span className="text-lg font-bold tracking-tight cursor-pointer" onClick={() => router.push('/')}>
-          supertime
-        </span>
+        <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => router.push('/')}>
+          <span className="text-lg font-bold tracking-tight">
+            supertime
+          </span>
+          <span className="text-[9px] font-bold uppercase tracking-widest bg-neo-pink text-white px-1.5 py-0.5 rounded-full shadow-sm">
+            Beta
+          </span>
+        </div>
 
         <div className="flex items-center gap-6">
           <nav className="hidden sm:flex items-center gap-6">
