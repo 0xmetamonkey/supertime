@@ -1,4 +1,5 @@
 'use client';
+// Force Vercel rebuild to catch bio prop
 
 import { useEffect, useState } from 'react';
 import { AblyProvider, useCallSignaling } from '@/app/lib/ably';
