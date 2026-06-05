@@ -125,7 +125,7 @@ export default function GlobalStudioRecorder({ username }: { username: string })
     const width = canvas.width;
     const height = canvas.height;
     
-    analyserRef.current.getByteFrequencyData(dataArrayRef.current);
+    analyserRef.current.getByteFrequencyData(dataArrayRef.current as any);
     canvasCtx.clearRect(0, 0, width, height);
     
     const barWidth = (width / dataArrayRef.current.length) * 2.5;
