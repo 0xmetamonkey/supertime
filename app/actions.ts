@@ -88,8 +88,10 @@ export async function getFeaturedCreators() {
   if (!process.env.KV_URL) return [];
   try {
     const keys = await kv.keys("owner:*");
+    // Shuffle the keys array randomly
+    const shuffledKeys = keys.sort(() => 0.5 - Math.random());
     // Slice up to 4 creators
-    const usernames = keys.slice(0, 4).map(k => k.replace("owner:", ""));
+    const usernames = shuffledKeys.slice(0, 4).map(k => k.replace("owner:", ""));
 
     // Fetch emails in parallel
     const emails = await Promise.all(usernames.map(username => kv.get<string>(`owner:${username}`)));
