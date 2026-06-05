@@ -121,7 +121,7 @@ export default function SettingsClient({ username, initialSettings }: SettingsCl
                   <Video className="w-4 h-4" /> Video Room
                 </button>
               </div>
-              
+
               <div className="border-t border-gray-100 dark:border-border pt-6">
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Entrance Fee</p>
                 <div className="grid grid-cols-2 gap-4">
@@ -217,7 +217,7 @@ export default function SettingsClient({ username, initialSettings }: SettingsCl
           {/* VIDEO MEETING INTEGRATIONS */}
           <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors space-y-6">
             <SectionHeader id="integrations" title="Video Integrations" icon={<Calendar className="w-5 h-5 text-gray-400" />} />
-            
+
             <div className="space-y-4">
               {/* Google Meet Integration Card */}
               <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-900/50 border border-gray-150 dark:border-border rounded-xl">

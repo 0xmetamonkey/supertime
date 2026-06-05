@@ -14,6 +14,7 @@ import {
   Share,
   CheckCircle,
   FileText,
+  MessageSquare,
 } from 'lucide-react';
 import { useClerk, UserButton } from "@clerk/nextjs";
 
@@ -25,6 +26,7 @@ import FeastTab from './FeastTab';
 import SettingsClient from '../studio/settings/SettingsClient';
 import ProfileEditor from './ProfileEditor';
 import GlobalStudioRecorder from './GlobalStudioRecorder';
+import InboxTab from './InboxTab';
 
 interface UIProps {
   session: any;
@@ -34,7 +36,7 @@ interface UIProps {
   initialSettings?: any;
 }
 
-type Tab = 'overview' | 'storefront' | 'tools' | 'wallet' | 'settings' | 'feast';
+type Tab = 'overview' | 'storefront' | 'tools' | 'wallet' | 'settings' | 'feast' | 'inbox';
 
 export default function DashboardClient({ session, username, initialBalance, initialWithdrawable, initialSettings }: UIProps) {
   const router = useRouter();
@@ -48,7 +50,7 @@ export default function DashboardClient({ session, username, initialBalance, ini
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['overview', 'storefront', 'tools', 'wallet', 'settings', 'feast'].includes(tabParam)) {
+    if (tabParam && ['overview', 'storefront', 'tools', 'wallet', 'settings', 'feast', 'inbox'].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
     }
   }, []);
@@ -66,6 +68,7 @@ export default function DashboardClient({ session, username, initialBalance, ini
   const menuItems = [
     { label: 'Overview', icon: LayoutDashboard, id: 'overview' as const },
     { label: 'Feast', icon: FileText, id: 'feast' as const },
+    { label: 'Inbox', icon: MessageSquare, id: 'inbox' as const },
     { label: 'Storefront', icon: Store, id: 'storefront' as const },
     { label: 'Tools', icon: Wrench, id: 'tools' as const },
     { label: 'Wallet', icon: Wallet, id: 'wallet' as const },
@@ -125,6 +128,13 @@ export default function DashboardClient({ session, username, initialBalance, ini
           >
             <Store className="w-5 h-5" />
             <span className="text-[10px] font-medium tracking-wide text-center">Store</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('inbox')}
+            className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'inbox' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
+          >
+            <MessageSquare className="w-5 h-5" />
+            <span className="text-[10px] font-medium tracking-wide text-center">Inbox</span>
           </button>
           <button
             onClick={() => setActiveTab('tools')}
@@ -237,6 +247,10 @@ export default function DashboardClient({ session, username, initialBalance, ini
               <FeastTab
                 username={username || ''}
               />
+            )}
+
+            {activeTab === 'inbox' && (
+              <InboxTab />
             )}
 
             {activeTab === 'settings' && (

@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { kv } from "@vercel/kv";
 import ChatClient from "./ChatClient";
 
-export default async function ChatPage({ searchParams }: { searchParams: { to?: string } }) {
+export default async function ChatPage({ searchParams }: { searchParams: Promise<{ to?: string }> }) {
+  const sp = await searchParams;
   const { userId, sessionClaims } = await auth();
   let email = (sessionClaims as any)?.email || '';
 
@@ -18,10 +19,10 @@ export default async function ChatPage({ searchParams }: { searchParams: { to?: 
   }
 
   if (!userId) {
-    redirect(`/sign-in?forceRedirectUrl=/chat${searchParams.to ? `?to=${searchParams.to}` : ''}`);
+    redirect(`/sign-in?forceRedirectUrl=/chat${sp.to ? `?to=${sp.to}` : ''}`);
   }
 
-  const recipient = searchParams.to;
+  const recipient = sp.to;
 
   // Resolve username from KV
   let username = '';

@@ -21,8 +21,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
 
-    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET!;
+    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim() || '';
+    const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim() || '';
 
     const options = {
       amount: amount * 100, // Razorpay takes amount in paise (1 INR = 100 paise)
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64'),
+        'Authorization': 'Basic ' + btoa(`${keyId}:${keySecret}`),
       },
       body: JSON.stringify(options),
     });

@@ -232,26 +232,26 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
   }
 
   return (
-    <div className="h-screen h-[100dvh] bg-white text-black font-sans flex flex-col overflow-hidden">
+    <div className="h-screen h-[100dvh] bg-background text-foreground font-sans flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="z-50 bg-white border-b-4 border-black px-4 py-3 flex items-center justify-between shrink-0">
+      <header className="z-50 bg-surface/80 backdrop-blur-xl border-b border-border px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <button onClick={() => window.history.back()} className="w-8 h-8 bg-black text-white border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all">
-            <ArrowLeft className="w-4 h-4" />
+          <button onClick={() => window.history.back()} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-background transition-colors text-muted hover:text-foreground">
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="w-8 h-8 bg-black flex items-center justify-center border-2 border-black shadow-[3px_3px_0px_0px_theme(colors.neo-pink)]">
-            <Zap className="text-neo-yellow w-4 h-4 fill-current" />
+          <div className="w-10 h-10 bg-neo-pink/10 rounded-full flex items-center justify-center">
+            <Zap className="text-neo-pink w-5 h-5 fill-current" />
           </div>
           <div>
-            <h1 className="font-black uppercase tracking-tighter text-lg leading-none">
-              {recipient ? `Chat with @${recipient}` : 'Team Chat'}
+            <h1 className="font-semibold text-foreground text-lg leading-none">
+              {recipient ? `@${recipient}` : 'Team Chat'}
             </h1>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-muted">
                 {recipient ? 'Direct Message' : 'Supertime HQ'}
               </span>
-              <div className="h-2 w-[1px] bg-zinc-200" />
-              <span className="text-[9px] font-black uppercase tracking-widest text-neo-blue">
+              <div className="h-1 w-1 rounded-full bg-border" />
+              <span className="text-xs text-muted">
                 @{user.username}
               </span>
             </div>
@@ -260,18 +260,18 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             {connected ? (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-neo-green/20 border-2 border-black">
-                <Wifi className="w-3 h-3 text-black" />
-                <span className="font-black uppercase text-[9px] tracking-widest">Live</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 rounded-full">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="font-medium text-xs text-green-600 dark:text-green-400">Live</span>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-red-100 border-2 border-black">
-                <WifiOff className="w-3 h-3 text-red-600" />
-                <span className="font-black uppercase text-[9px] tracking-widest text-red-600">Offline</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500/10 rounded-full">
+                <WifiOff className="w-3 h-3 text-red-500" />
+                <span className="font-medium text-xs text-red-600 dark:text-red-400">Offline</span>
               </div>
             )}
           </div>
-          <div className="border-2 border-black p-0.5 bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+          <div className="bg-surface rounded-full">
             <UserButton afterSignOutUrl="/" />
           </div>
         </div>
@@ -282,18 +282,18 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <Zap className="w-12 h-12 text-zinc-200 mx-auto mb-4 animate-pulse" />
-              <p className="font-bold text-zinc-400 uppercase tracking-widest text-xs">Loading messages...</p>
+              <div className="w-12 h-12 border-4 border-muted border-t-neo-pink rounded-full animate-spin mx-auto mb-4" />
+              <p className="font-medium text-muted text-sm">Loading messages...</p>
             </div>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-sm">
-              <div className="w-20 h-20 bg-neo-yellow border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center mx-auto mb-6">
-                <Zap className="w-10 h-10 text-black" />
+              <div className="w-20 h-20 bg-neo-blue/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Zap className="w-10 h-10 text-neo-blue" />
               </div>
-              <h2 className="font-black uppercase text-2xl tracking-tighter mb-2">Fresh start!</h2>
-              <p className="font-bold text-zinc-500 text-sm">
+              <h2 className="font-semibold text-foreground text-2xl mb-2">Fresh start!</h2>
+              <p className="text-muted text-sm">
                 {recipient
                   ? `Say hi to @${recipient}! No one else can see this chat.`
                   : "Send the first message to your team. Messages persist for 7 days."}
@@ -304,38 +304,38 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
           groupedMessages.map((group, gi) => (
             <div key={gi}>
               {/* Date separator */}
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex-1 h-0.5 bg-zinc-200" />
-                <span className="font-black uppercase text-[10px] tracking-widest text-zinc-400 bg-white px-2">{group.date}</span>
-                <div className="flex-1 h-0.5 bg-zinc-200" />
+              <div className="flex items-center gap-3 mb-6 mt-4">
+                <div className="flex-1 h-px bg-border" />
+                <span className="font-medium text-xs text-muted px-2">{group.date}</span>
+                <div className="flex-1 h-px bg-border" />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {group.messages.map((msg) => {
                   const isMe = msg.from === user.username;
                   return (
                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[80%] sm:max-w-[60%] ${isMe
-                        ? 'bg-black text-white border-4 border-black shadow-[4px_4px_0px_0px_theme(colors.neo-blue)]'
-                        : 'bg-zinc-100 text-black border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]'
-                        } px-4 py-3`}>
+                        ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm'
+                        : 'bg-surface border border-border text-foreground rounded-2xl rounded-tl-sm'
+                        } px-4 py-3 shadow-sm`}>
                         {!isMe && (
-                          <p className="font-black uppercase text-[10px] tracking-widest text-neo-pink mb-1">{msg.from}</p>
+                          <p className="font-semibold text-xs text-neo-pink mb-1">{msg.from}</p>
                         )}
-                        <p className="font-bold text-sm leading-relaxed break-words whitespace-pre-wrap">
+                        <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
                           {(() => {
                             const mentionNames = TEAM_MEMBERS.map(m => m.username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
                             const regex = new RegExp(`(@(?:${mentionNames.join('|')}))`, 'g');
                             return msg.text.split(regex).map((part, i) =>
                               part.startsWith('@') ? (
-                                <span key={i} className="text-neo-blue font-black underline decoration-2 underline-offset-2">
+                                <span key={i} className={`${isMe ? 'text-blue-200' : 'text-blue-500'} font-semibold underline decoration-1 underline-offset-2`}>
                                   {part}
                                 </span>
                               ) : part
                             );
                           })()}
                         </p>
-                        <p className={`font-bold text-[10px] uppercase tracking-widest mt-1 ${isMe ? 'text-zinc-500' : 'text-zinc-400'} text-right`}>
+                        <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-blue-200' : 'text-muted'}`}>
                           {formatTime(msg.timestamp)}
                         </p>
                       </div>
@@ -351,23 +351,23 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
 
       {/* Typing Indicator */}
       {typingUsers.size > 0 && (
-        <div className="px-6 py-2 bg-zinc-50 border-t-2 border-zinc-200">
-          <p className="font-bold text-xs text-zinc-400 animate-pulse">
+        <div className="px-6 py-2 bg-background border-t border-border">
+          <p className="font-medium text-xs text-muted animate-pulse">
             {Array.from(typingUsers.keys()).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
           </p>
         </div>
       )}
 
       {/* Input Area */}
-      <div className="bg-white border-t-4 border-black p-4 shrink-0">
+      <div className="bg-background border-t border-border p-4 shrink-0">
         <form
           onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
           className="flex items-stretch gap-3 relative"
         >
           {mentions.show && (
-            <div className="absolute bottom-full left-4 bg-white border-4 border-black mb-2 w-64 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] z-[100] max-h-48 overflow-y-auto">
-              <div className="p-2 border-b-2 border-black bg-zinc-50">
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Mention Team Member</span>
+            <div className="absolute bottom-full left-4 bg-surface border border-border rounded-xl mb-2 w-64 shadow-xl z-[100] max-h-48 overflow-y-auto overflow-hidden">
+              <div className="p-2 border-b border-border bg-background">
+                <span className="text-xs font-semibold text-muted">Mention Team Member</span>
               </div>
               {TEAM_MEMBERS
                 .filter(m => m.username.toLowerCase().includes(mentions.query.toLowerCase()))
@@ -380,12 +380,12 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
                       setInput(before + '@' + member.username + ' ');
                       setMentions({ show: false, query: '', index: 0 });
                     }}
-                    className={`w-full text-left px-4 py-2 font-bold text-sm flex items-center gap-2 hover:bg-neo-yellow transition-colors ${i === mentions.index ? 'bg-neo-yellow/30' : ''}`}
+                    className={`w-full text-left px-4 py-2.5 font-medium text-sm flex items-center gap-3 hover:bg-background transition-colors ${i === mentions.index ? 'bg-background' : ''}`}
                   >
-                    <div className="w-5 h-5 bg-black rounded-full flex items-center justify-center">
-                      <Zap className="w-2.5 h-2.5 text-neo-yellow fill-current" />
+                    <div className="w-6 h-6 bg-neo-pink/10 rounded-full flex items-center justify-center shrink-0">
+                      <Zap className="w-3 h-3 text-neo-pink fill-current" />
                     </div>
-                    <span>@{member.username}</span>
+                    <span className="text-foreground">@{member.username}</span>
                   </button>
                 ))
               }
@@ -439,15 +439,15 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
               }
             }}
             placeholder="Type a message..."
-            className="flex-1 bg-zinc-50 border-4 border-black px-4 py-3 font-bold placeholder:text-zinc-300 outline-none focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all"
+            className="flex-1 bg-surface border border-border rounded-xl px-4 py-3 font-medium text-foreground placeholder:text-muted outline-none focus:border-foreground transition-all"
           />
           <button
             type="submit"
             disabled={!input.trim()}
-            className="bg-neo-green text-black border-4 border-black px-5 font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
+            className="bg-foreground text-background rounded-xl px-6 font-semibold hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             <Send className="w-4 h-4" />
-            <span className="hidden sm:inline text-xs">Send</span>
+            <span className="hidden sm:inline text-sm">Send</span>
           </button>
         </form>
       </div>

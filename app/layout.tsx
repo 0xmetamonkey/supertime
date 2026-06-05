@@ -39,6 +39,7 @@ export const metadata: Metadata = {
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { LanguageProvider } from "./components/LanguageContext";
+import GlobalChatListenerWrapper from "./components/GlobalChatListenerWrapper";
 
 export default function RootLayout({
   children,
@@ -106,6 +107,7 @@ export default function RootLayout({
           <ThemeProvider>
             <LanguageProvider>
               {children}
+              <GlobalChatListenerWrapper />
             </LanguageProvider>
           </ThemeProvider>
         </body>

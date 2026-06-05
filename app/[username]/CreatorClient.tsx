@@ -993,9 +993,11 @@ export default function CreatorClient({
             {isVerified && <span className="text-foreground"><Check className="w-5 h-5 bg-foreground text-background rounded-full p-0.5" /></span>}
           </h1>
 
-          <p className="text-sm text-muted max-w-sm mb-6 leading-relaxed whitespace-pre-wrap">
-            {bio || "Actor. Builder. Musician.\nConversations about acting, creativity and building things."}
-          </p>
+          {bio && (
+            <p className="text-sm text-muted max-w-sm mb-6 leading-relaxed whitespace-pre-wrap">
+              {bio}
+            </p>
+          )}
 
           {/* Social links */}
           <div className="flex items-center gap-5 mb-2">
@@ -1090,7 +1092,13 @@ export default function CreatorClient({
             </button>
           </div>
 
-          <button onClick={() => alert('Messaging coming soon!')} className="w-full bg-surface border border-border rounded-2xl py-3.5 flex items-center justify-center gap-2 hover:bg-background transition-colors font-medium text-sm text-foreground shadow-sm">
+          <button onClick={() => {
+            if (isOwner) {
+              showError("This is a preview! Fans will use this to DM you.");
+              return;
+            }
+            router.push(`/chat?to=${username}`);
+          }} className="w-full bg-surface border border-border rounded-2xl py-3.5 flex items-center justify-center gap-2 hover:bg-background transition-colors font-medium text-sm text-foreground shadow-sm">
             <MessageSquare className="w-4 h-4" /> Message
           </button>
         </div>

@@ -46,6 +46,15 @@ export async function POST(req: NextRequest) {
         const ably = new (await import('ably')).Rest(apiKey);
         const channel = ably.channels.get(channelName);
         await channel.publish('message', newMessage);
+
+        // If it's a DM, also publish a notification to the recipient's personal channel
+        if (to) {
+          const notifyChannel = ably.channels.get(`user:${to.toLowerCase()}`);
+          await notifyChannel.publish('notification', {
+            type: 'dm',
+            ...newMessage
+          });
+        }
       }
     } catch (e) {
       console.error('[Chat API] Ably publish failed:', e);
@@ -92,12 +101,16 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const since = parseInt(searchParams.get('since') || '0');
+    const channel = searchParams.get('channel');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
 
     // Determine target key
     let chatKey = TEAM_CHAT_KEY;
-    if (from && to) {
+    
+    if (channel && channel !== 'team:supertime') {
+      chatKey = `chat:${channel}`;
+    } else if (from && to) {
       const participants = [from.toLowerCase(), to.toLowerCase()].sort();
       chatKey = `chat:dm:${participants.join(':')}`;
     }

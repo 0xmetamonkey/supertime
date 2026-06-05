@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useAnimation, PanInfo } from 'framer-motion';
-import { Mic, Square, Loader2, Radio, Sparkles, Pause, GripVertical } from 'lucide-react';
+import { Mic, Square, Loader2, Radio, Sparkles, Pause, GripVertical, Play, Activity } from 'lucide-react';
 
 export default function GlobalStudioRecorder({ username }: { username: string }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -14,6 +14,7 @@ export default function GlobalStudioRecorder({ username }: { username: string })
   // Floating & Docking State
   const [isDocked, setIsDocked] = useState(false);
   const [dockPosition, setDockPosition] = useState<'left' | 'right' | 'floating'>('floating');
+  const [isPaused, setIsPaused] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
@@ -21,6 +22,15 @@ export default function GlobalStudioRecorder({ username }: { username: string })
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const transcriptRef = useRef('');
   const constraintsRef = useRef<HTMLDivElement>(null);
+  
+  // Audio Visualizer Refs
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const dataArrayRef = useRef<Uint8Array | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
+
   const controls = useAnimation();
 
   useEffect(() => {
@@ -53,7 +63,9 @@ export default function GlobalStudioRecorder({ username }: { username: string })
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: { noiseSuppression: true, echoCancellation: true, autoGainControl: true } 
+      });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -68,22 +80,86 @@ export default function GlobalStudioRecorder({ username }: { username: string })
 
       mediaRecorder.start(1000); // chunk every second
       setIsRecording(true);
+      setIsPaused(false);
       setIsExpanded(true);
-      setIsDocked(false); // Auto undock when recording starts
+      setIsDocked(false);
       setTranscript('');
       transcriptRef.current = '';
       setDuration(0);
+
+      // Setup Audio Visualizer
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const analyser = audioCtx.createAnalyser();
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+      analyser.fftSize = 256;
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      
+      audioContextRef.current = audioCtx;
+      analyserRef.current = analyser;
+      dataArrayRef.current = dataArray;
+      sourceRef.current = source;
+      
+      drawVisualizer();
 
       if (recognitionRef.current) {
         recognitionRef.current.start();
       }
 
-      timerRef.current = setInterval(() => {
-        setDuration(prev => prev + 1);
-      }, 1000);
+      startTimer();
     } catch (err) {
       console.error("Error accessing microphone:", err);
       alert("Could not access microphone.");
+    }
+  };
+
+  const drawVisualizer = () => {
+    if (!canvasRef.current || !analyserRef.current || !dataArrayRef.current) return;
+    animationFrameRef.current = requestAnimationFrame(drawVisualizer);
+    
+    const canvas = canvasRef.current;
+    const canvasCtx = canvas.getContext('2d');
+    if (!canvasCtx) return;
+    
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    analyserRef.current.getByteFrequencyData(dataArrayRef.current);
+    canvasCtx.clearRect(0, 0, width, height);
+    
+    const barWidth = (width / dataArrayRef.current.length) * 2.5;
+    let barHeight;
+    let x = 0;
+    
+    for (let i = 0; i < dataArrayRef.current.length; i++) {
+      barHeight = dataArrayRef.current[i] / 2;
+      canvasCtx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
+      canvasCtx.fillRect(x, height - barHeight / 2, barWidth, barHeight / 2);
+      x += barWidth + 1;
+    }
+  };
+
+  const startTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setDuration(prev => prev + 1);
+    }, 1000);
+  };
+
+  const togglePause = () => {
+    if (mediaRecorderRef.current) {
+      if (isPaused) {
+        mediaRecorderRef.current.resume();
+        if (recognitionRef.current) recognitionRef.current.start();
+        startTimer();
+        setIsPaused(false);
+      } else {
+        mediaRecorderRef.current.pause();
+        if (recognitionRef.current) recognitionRef.current.stop();
+        if (timerRef.current) clearInterval(timerRef.current);
+        setIsPaused(true);
+      }
     }
   };
 
@@ -97,7 +173,14 @@ export default function GlobalStudioRecorder({ username }: { username: string })
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close();
+    }
     setIsRecording(false);
+    setIsPaused(false);
   };
 
   const handleStopRecording = async () => {
@@ -129,10 +212,29 @@ export default function GlobalStudioRecorder({ username }: { username: string })
       const uploadData = await uploadRes.json();
       const audioUrl = uploadData.url;
 
-      const finalTranscript = transcriptRef.current;
-      const postTitle = finalTranscript 
-        ? (finalTranscript.split(' ').slice(0, 5).join(' ') + '...') 
-        : `Studio Recording ${new Date().toLocaleDateString()}`;
+      let finalTranscript = transcriptRef.current;
+      let postTitle = `Studio Recording ${new Date().toLocaleDateString()}`;
+      let postSummary = "No transcription available.";
+
+      try {
+        const transcribeFormData = new FormData();
+        transcribeFormData.append('file', audioBlob, 'audio.webm');
+        const transcribeRes = await fetch('/api/transcribe', {
+          method: 'POST',
+          body: transcribeFormData
+        });
+        if (transcribeRes.ok) {
+          const tData = await transcribeRes.json();
+          if (tData.transcript) finalTranscript = tData.transcript;
+          if (tData.title) postTitle = tData.title;
+          if (tData.summary) postSummary = tData.summary;
+          setTranscript(finalTranscript); // update UI just before closing
+        }
+      } catch (tErr) {
+        console.error("Groq transcription failed, falling back to browser transcript", tErr);
+        postTitle = finalTranscript ? (finalTranscript.split(' ').slice(0, 5).join(' ') + '...') : postTitle;
+        postSummary = finalTranscript || postSummary;
+      }
 
       const postRes = await fetch('/api/user/posts', {
         method: 'POST',
@@ -142,7 +244,7 @@ export default function GlobalStudioRecorder({ username }: { username: string })
           post: {
             id: Date.now().toString(),
             title: postTitle,
-            content: finalTranscript || "No transcription available.",
+            content: `${postSummary}\n\n**Full Transcript:**\n${finalTranscript}`,
             audioUrl: audioUrl,
             isLocked: true,
           }
@@ -219,16 +321,21 @@ export default function GlobalStudioRecorder({ username }: { username: string })
             >
               <div className="flex items-center justify-between border-b border-border pb-2">
                 <div className="flex items-center gap-2">
-                  <Radio className="w-4 h-4 text-red-500 animate-pulse" />
-                  <span className="text-sm font-semibold text-foreground">Studio Active</span>
+                  {isPaused ? <Pause className="w-4 h-4 text-amber-500" /> : <Activity className="w-4 h-4 text-rose-500 animate-pulse" />}
+                  <span className="text-sm font-semibold text-foreground">{isPaused ? "Paused" : "Studio Active"}</span>
                 </div>
                 <span className="text-sm font-mono text-muted bg-background/50 px-2 py-0.5 rounded-md border border-border">
                   {formatDuration(duration)}
                 </span>
               </div>
-              <div className="h-24 overflow-y-auto custom-scrollbar">
+              
+              <div className="w-full h-10 bg-black/20 rounded-lg overflow-hidden border border-border/50 relative">
+                <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" width={300} height={40} />
+              </div>
+
+              <div className="h-16 overflow-y-auto custom-scrollbar">
                 <p className="text-xs text-muted italic leading-relaxed">
-                  {transcript || "Listening..."}
+                  {transcript || (isPaused ? "Recording paused..." : "Listening...")}
                 </p>
               </div>
               {isSaving && (
@@ -253,6 +360,17 @@ export default function GlobalStudioRecorder({ username }: { username: string })
             <div className="p-2 text-muted hover:text-foreground transition-colors opacity-50 hover:opacity-100">
               <GripVertical className="w-4 h-4" />
             </div>
+          )}
+
+          {/* Pause/Resume Button */}
+          {isRecording && !isDocked && (
+            <button
+              onClick={togglePause}
+              disabled={isSaving}
+              className="w-12 h-12 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center hover:bg-zinc-800 transition-colors shadow-lg active:scale-95 touch-none"
+            >
+              {isPaused ? <Play className="w-5 h-5 text-emerald-400 fill-emerald-400" /> : <Pause className="w-5 h-5 text-amber-400 fill-amber-400" />}
+            </button>
           )}
 
           <button

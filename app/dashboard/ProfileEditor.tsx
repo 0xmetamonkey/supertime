@@ -149,7 +149,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="e.g. Aman Gupta"
+              placeholder="e.g. John Doe"
               className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border text-gray-900 dark:text-foreground px-4 py-3 rounded-xl text-sm font-medium outline-none focus:ring-1 focus:ring-blue-500 transition-all"
             />
             <p className="text-xs text-gray-500">Your full name displayed on explore cards and profile headers.</p>
@@ -164,7 +164,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="I'm an actor, builder and a musician..."
+              placeholder="I love creating content about..."
               rows={3}
               className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border text-gray-900 dark:text-foreground px-4 py-3 rounded-xl text-sm font-medium outline-none focus:ring-1 focus:ring-blue-500 transition-all resize-none"
             />
