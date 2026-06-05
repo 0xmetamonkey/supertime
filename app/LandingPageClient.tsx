@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { useUser } from "@clerk/nextjs";
-import { checkAvailability, claimUsername } from './actions';
+import { checkAvailability, completeOnboarding } from './actions';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import { useLanguage } from './components/LanguageContext';
@@ -43,10 +43,11 @@ export default function LandingPageClient({
       }
 
       if (isLoggedIn) {
-        await claimUsername(username);
+        await completeOnboarding(username, 'creator');
         window.location.href = '/dashboard';
       } else {
-        router.push(`/sign-in?forceRedirectUrl=/dashboard?claim=${username}`);
+        // Just send them to dashboard after sign-in; the new Onboarding Gate handles the rest
+        router.push(`/sign-in?forceRedirectUrl=/dashboard`);
       }
     } catch (e: any) {
       console.error("Claim Hub Error:", e);

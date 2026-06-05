@@ -97,7 +97,7 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
     // 2. Connect Ably
     const clientId = user.username || user.id;
     const client = new Ably.Realtime({
-      authUrl: `/api/ably/token?clientId=${encodeURIComponent(clientId)}`,
+      authUrl: `/api/ably/token?clientId=${encodeURIComponent(clientId)}&t=${Date.now()}`,
       authMethod: 'GET',
     });
 

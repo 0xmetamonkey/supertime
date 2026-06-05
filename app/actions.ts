@@ -34,41 +34,54 @@ export async function checkAvailability(usernameRaw: string) {
   return !owner;
 }
 
-export async function claimUsername(usernameRaw: string) {
+export async function completeOnboarding(usernameRaw: string, role: 'creator' | 'fan') {
   const user = await currentUser();
   if (!user?.emailAddresses?.[0]?.emailAddress) throw new Error("Not logged in");
 
   const email = user.emailAddresses[0].emailAddress.toLowerCase().trim();
-  const username = usernameRaw.toLowerCase();
+  const username = usernameRaw.toLowerCase().replace(/[^a-z0-9_]/g, ''); // Ensure safe URL characters
 
+  if (!username) throw new Error("Invalid username");
   if (!process.env.KV_URL) throw new Error("Database not connected");
 
   // Prevent claiming reserved names
   const reservedUsernames = [
     'admin', 'supertime', 'api', 'help', 'support', 'billing', 'auth',
-    'login', 'signup', 'dashboard', 'settings', 'null', 'undefined'
+    'login', 'signup', 'dashboard', 'settings', 'null', 'undefined', 'studio', 'chat'
   ];
   if (reservedUsernames.includes(username)) {
     throw new Error("This username is reserved and cannot be claimed.");
   }
 
-  // 1. Check if name is taken
+  // 1. Check if name is taken by someone else
   const owner = await kv.get(`owner:${username}`);
   if (owner && owner !== email) {
-    throw new Error("Username already taken");
+    throw new Error("Username already taken. Please choose another.");
   }
 
-  // 2. Check if user already has a name
+  // 2. Check if user already has a DIFFERENT name
   const existingName = await kv.get(`user:${email}:username`);
   if (existingName && existingName !== username) {
-    throw new Error(`You already have a username: ${existingName}`);
+    // Release old name if they are changing it
+    await kv.del(`owner:${existingName}`);
   }
 
-  // 3. Claim it
+  // 3. Claim the identity and assign the role
   await kv.set(`owner:${username}`, email);
   await kv.set(`user:${email}:username`, username);
+  await kv.set(`user:${email}:role`, role);
+  
+  // Set default settings for creators
+  if (role === 'creator') {
+    const hasRate = await kv.get(`user:${email}:rate:video`);
+    if (!hasRate) {
+      await kv.set(`user:${email}:rate:video`, 100);
+      await kv.set(`user:${email}:rate:audio`, 50);
+      await kv.set(`user:${email}:isRoomFree`, true);
+    }
+  }
 
-  return { success: true };
+  return { success: true, username, role };
 }
 
 export async function getFeaturedCreators() {

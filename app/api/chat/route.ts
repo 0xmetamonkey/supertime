@@ -54,6 +54,37 @@ export async function POST(req: NextRequest) {
             type: 'dm',
             ...newMessage
           });
+
+          // FIREBASE PUSH NOTIFICATION
+          try {
+            const pushToken = await kv.get(`fcm_token:${to.toLowerCase()}`);
+            if (pushToken) {
+              const admin = await import('firebase-admin');
+              if (!admin.apps.length) {
+                admin.initializeApp({
+                  credential: admin.credential.cert({
+                    projectId: process.env.FIREBASE_PROJECT_ID,
+                    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+                  }),
+                });
+              }
+              await admin.messaging().send({
+                token: pushToken as string,
+                notification: {
+                  title: `New message from @${from}`,
+                  body: message.length > 50 ? message.substring(0, 50) + '...' : message,
+                },
+                data: {
+                  type: 'chat-message',
+                  from,
+                }
+              });
+              console.log(`[Chat API] Successfully pushed FCM to ${to}`);
+            }
+          } catch (fcmErr) {
+             console.error('[Chat API] FCM push failed:', fcmErr);
+          }
         }
       }
     } catch (e) {

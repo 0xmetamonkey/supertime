@@ -23,25 +23,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     redirect("/"); // Not logged in? Go home.
   }
 
-  // 1. Resolve Username
+  // 1. Resolve Username & Role
   let username = await resolveUsername(email);
-
-  // Auto-claim username from searchParams if they don't have one yet
-  const claimParam = searchParams?.claim;
-  if (!username && claimParam) {
-    const cleanClaim = claimParam.toLowerCase().replace(/[^a-z0-9_]/g, '');
-    if (cleanClaim && process.env.KV_URL) {
-      try {
-        const isTaken = await kv.get(`owner:${cleanClaim}`);
-        if (!isTaken) {
-          await kv.set(`owner:${cleanClaim}`, email);
-          await kv.set(`user:${email}:username`, cleanClaim);
-          username = cleanClaim;
-          console.log(`[Dashboard] 🎉 Automatically claimed username: @${cleanClaim} for ${email}`);
-        }
-      } catch (err) {
-        console.error("[Dashboard] Auto claim error:", err);
-      }
+  let role = null;
+  
+  if (process.env.KV_URL) {
+    role = await kv.get<string>(`user:${email}:role`);
+    
+    // GRANDFATHERING: If they already claimed a username in the past but have no role, default them to 'creator'
+    if (username && !role) {
+      role = 'creator';
+      await kv.set(`user:${email}:role`, role);
+      console.log(`[Dashboard] Grandfathered legacy user ${email} as a creator.`);
     }
   }
 
@@ -110,6 +103,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     <DashboardClient
       session={userId ? { user: { id: userId, email: email } } : null}
       username={username}
+      role={role}
       initialBalance={balance}
       initialWithdrawable={withdrawable}
       initialSettings={initialSettings}

@@ -35,7 +35,7 @@ import {
 import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
 const BroadcastHost = dynamic(() => import('../components/Broadcast/BroadcastHost'), { ssr: false });
-import { checkAvailability, claimUsername } from '../actions';
+import { checkAvailability, completeOnboarding } from '../actions';
 import { useClerk } from "@clerk/nextjs";
 import WalletManager from '../components/WalletManager';
 
@@ -192,7 +192,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
         setClaimLoading(false);
         return;
       }
-      await claimUsername(claimName);
+      await completeOnboarding(claimName, 'creator');
       window.location.reload();
     } catch (e: any) {
       setClaimError(e.message || "Something went wrong.");

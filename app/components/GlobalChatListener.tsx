@@ -16,7 +16,7 @@ export default function GlobalChatListener({ username }: { username: string }) {
     if (!username) return;
 
     const client = new Ably.Realtime({
-      authUrl: `/api/ably/token?clientId=${encodeURIComponent(username)}`,
+      authUrl: `/api/ably/token?clientId=${encodeURIComponent(username)}&t=${Date.now()}`,
       authMethod: 'GET',
     });
 

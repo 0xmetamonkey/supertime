@@ -28,41 +28,60 @@ messaging.onBackgroundMessage((payload) => {
     return;
   }
 
-  const notificationTitle = payload.notification?.title || 'Incoming Call';
-  const notificationOptions = {
-    body: payload.notification?.body || 'Someone is calling you...',
-    icon: '/logo.png', // Replace with your logo
-    badge: '/badge.png', // Replace with your badge
-    tag: 'incoming-call',
+  const type = payload.data?.type || 'incoming-call';
+  const notificationTitle = payload.notification?.title || 'Supertime';
+  const body = payload.notification?.body || 'You have a new notification';
+
+  let notificationOptions = {
+    body,
+    icon: '/icon.png', 
+    badge: '/icon.png', 
     data: payload.data,
     renotify: true,
     requireInteraction: true,
-    actions: [
+  };
+
+  if (type === 'chat-message') {
+    notificationOptions.tag = 'chat-message';
+    notificationOptions.actions = [
+      {
+        action: 'reply',
+        title: 'Reply'
+      }
+    ];
+  } else {
+    // Incoming Call Default
+    notificationOptions.tag = 'incoming-call';
+    notificationOptions.actions = [
       {
         action: 'answer',
-        title: 'Answer',
-        icon: '/check.png'
+        title: 'Answer'
       },
       {
         action: 'reject',
-        title: 'Reject',
-        icon: '/x.png'
+        title: 'Reject'
       }
-    ]
-  };
+    ];
+  }
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const data = event.notification.data || {};
   
-  if (event.action === 'answer') {
-    const callData = event.notification.data;
+  if (data.type === 'chat-message' || event.action === 'reply') {
+    // Open the chat tab
+    const urlToOpen = new URL('/dashboard?tab=inbox', self.location.origin).href;
+    event.waitUntil(clients.openWindow(urlToOpen));
+    return;
+  }
+  
+  if (event.action === 'answer' || (!event.action && data.type === 'incoming-call')) {
     // Redirect to the main studio or creator page
-    // The signaling hook will pick up the active call on mount via URL params
-    const path = (callData.action === 'incoming-call' && callData.to) ? `/${callData.to}` : '/studio';
-    const urlToOpen = new URL(`${path}?call_channel=${callData.channelName}&call_type=${callData.type}`, self.location.origin).href;
+    const path = (data.action === 'incoming-call' && data.to) ? `/${data.to}` : '/studio';
+    const urlToOpen = new URL(`${path}?call_channel=${data.channelName}&call_type=${data.type}`, self.location.origin).href;
     event.waitUntil(clients.openWindow(urlToOpen));
   }
 });

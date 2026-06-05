@@ -2,13 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { MessageSquare, ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-export default function InboxTab() {
+export default function InboxTab({ username }: { username: string }) {
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pushEnabled, setPushEnabled] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/chat/inbox')
+    // Check if push is already permitted
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        setPushEnabled(true);
+      }
+    }
+
+    fetch(`/api/chat/inbox?username=${encodeURIComponent(username)}`)
       .then(res => res.json())
       .then(data => {
         if (data.conversations) {
@@ -17,7 +25,28 @@ export default function InboxTab() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [username]);
+
+  const enablePushNotifications = async () => {
+    try {
+      const { requestForToken } = await import('../lib/firebase');
+      const token = await requestForToken();
+      if (token) {
+        await fetch('/api/push/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, username })
+        });
+        setPushEnabled(true);
+        alert('Push notifications enabled successfully!');
+      } else {
+        alert('Please allow notification permissions in your browser.');
+      }
+    } catch (e) {
+      console.error('Push setup failed', e);
+      alert('Failed to setup push notifications.');
+    }
+  };
 
   if (loading) {
     return (
@@ -29,14 +58,25 @@ export default function InboxTab() {
 
   return (
     <div className="bg-surface border border-border p-6 rounded-2xl shadow-sm">
-      <div className="mb-6 flex items-center gap-3">
-        <div className="w-10 h-10 bg-neo-pink/10 rounded-xl flex items-center justify-center">
-          <MessageSquare className="w-5 h-5 text-neo-pink" />
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-neo-pink/10 rounded-xl flex items-center justify-center">
+            <MessageSquare className="w-5 h-5 text-neo-pink" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Inbox</h2>
+            <p className="text-sm text-muted">Manage your direct messages with fans</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-semibold text-foreground">Inbox</h2>
-          <p className="text-sm text-muted">Manage your direct messages with fans</p>
-        </div>
+        
+        {!pushEnabled && (
+          <button 
+            onClick={enablePushNotifications}
+            className="text-sm px-4 py-2 bg-foreground text-background font-medium rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2"
+          >
+            Enable Push Notifications
+          </button>
+        )}
       </div>
 
       {conversations.length === 0 ? (

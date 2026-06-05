@@ -7,18 +7,22 @@ export async function GET(req: NextRequest) {
     const { userId, sessionClaims } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    let email = (sessionClaims as any)?.email || '';
-    if (!email) {
-      const user = await currentUser();
-      email = user?.emailAddresses?.[0]?.emailAddress || '';
-    }
+    const { searchParams } = new URL(req.url);
+    let username = searchParams.get('username') || '';
 
-    let username = '';
-    try {
-      const userData = await kv.hgetall(`user:${email}`);
-      username = (userData as any)?.username || email.split('@')[0];
-    } catch {
-      username = email.split('@')[0];
+    if (!username) {
+      let email = (sessionClaims as any)?.email || '';
+      if (!email) {
+        const user = await currentUser();
+        email = user?.emailAddresses?.[0]?.emailAddress || '';
+      }
+
+      try {
+        const userData = await kv.hgetall(`user:${email}`);
+        username = (userData as any)?.username || email.split('@')[0];
+      } catch {
+        username = email.split('@')[0];
+      }
     }
     
     username = username.toLowerCase();

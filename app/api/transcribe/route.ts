@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     if (rawTranscript && process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
       try {
         const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const prompt = `You are an AI assistant helping a creator. Here is a transcript of their recent voice note:
 "${rawTranscript}"
 Please return a JSON object with two keys:
