@@ -53,3 +53,6 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Project documentation
+SUPERTIME_FEATURES.md

@@ -38,7 +38,7 @@ interface UIProps {
   initialSettings?: any;
 }
 
-type Tab = 'overview' | 'storefront' | 'tools' | 'wallet' | 'settings' | 'feast' | 'inbox';
+type Tab = 'overview' | 'storefront' | 'wallet' | 'settings' | 'feast' | 'inbox';
 
 export default function DashboardClient({ session, username: initialUsername, role: initialRole, initialBalance, initialWithdrawable, initialSettings }: UIProps) {
   const router = useRouter();
@@ -64,7 +64,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['overview', 'storefront', 'tools', 'wallet', 'settings', 'feast', 'inbox'].includes(tabParam)) {
+    if (tabParam && ['overview', 'storefront', 'wallet', 'settings', 'feast', 'inbox'].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
     }
   }, []);
@@ -202,7 +202,6 @@ export default function DashboardClient({ session, username: initialUsername, ro
     { label: 'Inbox', icon: MessageSquare, id: 'inbox' as const },
     ...(isCreator ? [
       { label: 'Storefront', icon: Store, id: 'storefront' as const },
-      { label: 'Tools', icon: Wrench, id: 'tools' as const },
     ] : []),
     { label: 'Wallet', icon: Wallet, id: 'wallet' as const },
     ...(isCreator ? [
@@ -372,11 +371,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
               />
             )}
 
-            {activeTab === 'tools' && (
-              <ToolsTab
-                username={username}
-              />
-            )}
+
 
             {activeTab === 'storefront' && (
               <StorefrontTab

@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
           amount = Number(clientAmount) || 0;
         }
 
-        const COMMISSION_RATE = 0.10; // 10%
+        const COMMISSION_RATE = 0.20; // 20%
         const commission = Math.round(amount * COMMISSION_RATE);
         const netAmount = amount - commission;
 

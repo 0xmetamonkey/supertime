@@ -46,9 +46,21 @@ export async function createBooking({
     }
     if (!creatorEmail) throw new Error('Creator not found');
 
+    // ATOMIC LOCK for direct booking calls (free or bypassing Razorpay)
+    // If it was already locked by Razorpay, the verify route just overwrites it.
+    // If we get here directly, try to lock it permanently.
+    const lockKey = `booking_lock:${creatorUsername.toLowerCase()}:${date}:${time}`;
+    const lockAcquired = await kv.set(lockKey, 'booked_direct', { nx: true });
+    
+    // Exception: If paymentId exists, we know Razorpay already locked it during create-order, 
+    // so we can bypass the strict lock failure because we are just finalizing it.
+    if (!lockAcquired && !paymentId) {
+      throw new Error('This timeslot has already been booked.');
+    }
+
     const bookingId = Math.random().toString(36).slice(2, 10);
     const grossPrice = price || 0;
-    const COMMISSION_RATE = 0.10; // 10% platform commission
+    const COMMISSION_RATE = 0.20; // 20% platform commission
     const commission = grossPrice > 0 ? Math.round(grossPrice * COMMISSION_RATE) : 0;
     const netPrice = grossPrice - commission;
 

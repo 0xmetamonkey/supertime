@@ -161,22 +161,11 @@ export default function ToolsTab({ username }: ToolsTabProps) {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* INSTA BOT TOOL CARD */}
-            <motion.div
-              whileHover={{ scale: 1.02, y: -5 }}
-              onClick={() => setActiveTool('insta-bot')}
-              className="bg-white dark:bg-surface p-6 border border-gray-100 dark:border-border rounded-2xl shadow-sm cursor-pointer group transition-all hover:shadow-md"
-            >
-              <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-foreground flex items-center justify-center rounded-xl mb-6 group-hover:scale-110 transition-transform">
-                <Bot className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-foreground mb-2">Insta Automation</h3>
-              <p className="text-sm text-gray-500 leading-relaxed mb-6">
-                Auto-reply to DMs & Comments with links to your storefront.
-              </p>
-              <div className="flex items-center gap-2 text-blue-500 font-medium text-sm group-hover:text-blue-600">
-                Configure <ChevronRight className="w-4 h-4" />
-              </div>
-            </motion.div>
+            <div className="bg-gray-50 dark:bg-gray-800/50 p-6 border border-gray-100 dark:border-gray-800 rounded-2xl opacity-60 flex flex-col justify-center items-center text-center border-dashed">
+              <Bot className="w-6 h-6 mb-4 text-gray-400" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-foreground">Insta Automation</h3>
+              <p className="text-xs font-medium text-gray-500 mt-2">Coming Soon (Pending Meta Review)</p>
+            </div>
 
             {/* STORY REPLIES */}
             <div className="bg-gray-50 dark:bg-gray-800/50 p-6 border border-gray-100 dark:border-gray-800 rounded-2xl opacity-60 flex flex-col justify-center items-center text-center border-dashed">

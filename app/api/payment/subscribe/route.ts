@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
         if (creatorEmail) {
           const grossAmount = amount || 0;
-          const COMMISSION_RATE = 0.10;
+          const COMMISSION_RATE = 0.20;
           const commission = Math.round(grossAmount * COMMISSION_RATE);
           const netAmount = grossAmount - commission;
 
