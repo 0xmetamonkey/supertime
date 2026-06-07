@@ -56,3 +56,6 @@ next-env.d.ts
 
 # Project documentation
 SUPERTIME_FEATURES.md
+
+# Sentry Config File
+.env.sentry-build-plugin
