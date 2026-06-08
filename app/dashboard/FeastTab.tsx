@@ -158,7 +158,7 @@ export default function FeastTab({ username }: { username: string }) {
                     {post.isLocked && <Lock className="w-4 h-4 text-amber-500 shrink-0" />}
                   </div>
                   <p className="text-sm text-muted line-clamp-2 mb-4 flex-1">
-                    {post.content.replace(/[#*`_]/g, '')}
+                    {post.content.replace(/!\[.*?\]\(.*?\)/g, '').replace(/<[^>]+>/g, '').replace(/[#*`_]/g, '').trim()}
                   </p>
                   
                   <div className="flex items-center justify-between border-t border-border pt-4 mt-auto">

@@ -1329,6 +1329,7 @@ export default function CreatorClient({
                           <div className="mb-6">
                             <audio 
                               controls 
+                              controlsList="nodownload"
                               src={post.audioUrl} 
                               className="w-full h-10 rounded-lg outline-none"
                               onTimeUpdate={(e) => {
@@ -1359,16 +1360,23 @@ export default function CreatorClient({
                           )}
                           
                           <div className={`prose prose-sm dark:prose-invert max-w-none text-muted whitespace-pre-wrap ${isLockedAndNotSubscribed ? 'opacity-30 blur-[2px] select-none pointer-events-none min-h-[150px] overflow-hidden' : ''}`}>
-                            {post.audioUrl ? (
-                              <div className="bg-surface border border-border/50 rounded-xl p-5 shadow-sm relative">
-                                <div className="absolute top-0 left-6 -mt-3 bg-background border border-border px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase text-muted shadow-sm">
-                                  Transcript
+                            {(() => {
+                              const htmlContent = post.content
+                                .replace(/\n/g, '<br/>')
+                                .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="w-full h-auto rounded-xl border border-border my-4" />')
+                                .replace(/<video([^>]*)>/g, (m, p1) => p1.includes('controlsList') ? m : `<video${p1} controlsList="nodownload">`);
+                              
+                              return post.audioUrl ? (
+                                <div className="bg-surface border border-border/50 rounded-xl p-5 shadow-sm relative">
+                                  <div className="absolute top-0 left-6 -mt-3 bg-background border border-border px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase text-muted shadow-sm">
+                                    Transcript
+                                  </div>
+                                  <p className="leading-relaxed text-foreground/90 mt-1" dangerouslySetInnerHTML={{ __html: htmlContent }} />
                                 </div>
-                                <p className="leading-relaxed text-foreground/90 mt-1">{post.content}</p>
-                              </div>
-                            ) : (
-                              post.content
-                            )}
+                              ) : (
+                                <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
