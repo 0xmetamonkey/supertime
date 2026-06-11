@@ -16,6 +16,7 @@ import {
   FileText,
   MessageSquare,
   User,
+  Heart,
 } from 'lucide-react';
 import { useClerk, UserButton } from "@clerk/nextjs";
 
@@ -24,10 +25,10 @@ import WalletTab from './WalletTab';
 import ToolsTab from './ToolsTab';
 import StorefrontTab from './StorefrontTab';
 import FeastTab from './FeastTab';
-import SettingsClient from '../studio/settings/SettingsClient';
 import ProfileEditor from './ProfileEditor';
 import GlobalStudioRecorder from './GlobalStudioRecorder';
 import InboxTab from './InboxTab';
+import FundraiserManager from './FundraiserManager';
 
 interface UIProps {
   session: any;
@@ -38,7 +39,7 @@ interface UIProps {
   initialSettings?: any;
 }
 
-type Tab = 'overview' | 'storefront' | 'wallet' | 'settings' | 'feast' | 'inbox';
+type Tab = 'overview' | 'storefront' | 'wallet' | 'settings' | 'feast' | 'inbox' | 'fundraise';
 
 export default function DashboardClient({ session, username: initialUsername, role: initialRole, initialBalance, initialWithdrawable, initialSettings }: UIProps) {
   const router = useRouter();
@@ -64,7 +65,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['overview', 'storefront', 'wallet', 'settings', 'feast', 'inbox'].includes(tabParam)) {
+    if (tabParam && ['overview', 'storefront', 'wallet', 'settings', 'feast', 'inbox', 'fundraise'].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
     }
   }, []);
@@ -202,6 +203,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
     { label: 'Inbox', icon: MessageSquare, id: 'inbox' as const },
     ...(isCreator ? [
       { label: 'Storefront', icon: Store, id: 'storefront' as const },
+      { label: 'Fundraise', icon: Heart, id: 'fundraise' as const },
     ] : []),
     { label: 'Wallet', icon: Wallet, id: 'wallet' as const },
     ...(isCreator ? [
@@ -280,6 +282,15 @@ export default function DashboardClient({ session, username: initialUsername, ro
             >
               <Bot className="w-5 h-5" />
               <span className="text-[10px] font-medium tracking-wide text-center">Tools</span>
+            </button>
+          )}
+          {isCreator && (
+            <button
+              onClick={() => setActiveTab('fundraise')}
+              className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'fundraise' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
+            >
+              <Heart className="w-5 h-5" />
+              <span className="text-[10px] font-medium tracking-wide text-center">Fundraise</span>
             </button>
           )}
           <button
@@ -388,6 +399,10 @@ export default function DashboardClient({ session, username: initialUsername, ro
 
             {activeTab === 'inbox' && (
               <InboxTab username={username || ''} />
+            )}
+
+            {activeTab === 'fundraise' && (
+              <FundraiserManager username={username || ''} />
             )}
 
             {activeTab === 'settings' && (

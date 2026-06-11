@@ -19,7 +19,7 @@ import {
   User,
   ShieldCheck
 } from 'lucide-react';
-import { claimUsername } from '../actions';
+import { completeOnboarding } from '../actions';
 import { requestForToken } from '../lib/firebase';
 
 interface OnboardingFlowProps {
@@ -66,7 +66,7 @@ export function OnboardingFlow({ initialEmail }: OnboardingFlowProps) {
     setLoading(true);
     setError('');
     try {
-      await claimUsername(username);
+      await completeOnboarding(username, 'creator');
       setStep(2);
     } catch (e: any) {
       setError(e.message || 'Failed to claim username');
