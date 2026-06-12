@@ -26,6 +26,7 @@ interface ChecklistItem {
   action: () => void;
   actionLabel: string;
   color: string;
+  scrollToId?: string;
 }
 
 interface SetupChecklistProps {
@@ -50,6 +51,14 @@ export default function SetupChecklist({ username, initialSettings, onNavigateTa
     localStorage.setItem('supertime-setup-checklist-expanded', String(next));
   };
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize(); // initial check
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const items: ChecklistItem[] = [
     {
@@ -58,9 +67,13 @@ export default function SetupChecklist({ username, initialSettings, onNavigateTa
       description: 'First impressions matter — add a photo visitors will see on your profile.',
       icon: Camera,
       isComplete: !!(initialSettings?.profileImage),
-      action: () => onNavigateTab('profile'),
+      action: () => {
+        onNavigateTab('settings');
+        setTimeout(() => document.getElementById('profile-photo-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+      },
       actionLabel: 'Add Photo',
       color: 'neo-pink',
+      scrollToId: 'profile-photo-section',
     },
     {
       id: 'socials',
@@ -73,9 +86,13 @@ export default function SetupChecklist({ username, initialSettings, onNavigateTa
         initialSettings?.socials?.youtube ||
         initialSettings?.socials?.website
       ),
-      action: () => onNavigateTab('profile'),
+      action: () => {
+        onNavigateTab('settings');
+        setTimeout(() => document.getElementById('social-links-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+      },
       actionLabel: 'Add Socials',
       color: 'neo-blue',
+      scrollToId: 'social-links-section',
     },
     {
       id: 'rates',
@@ -103,9 +120,13 @@ export default function SetupChecklist({ username, initialSettings, onNavigateTa
       description: 'Help visitors understand what you offer before they reach out.',
       icon: HelpCircle,
       isComplete: !!(initialSettings?.faqs && initialSettings.faqs.length > 0),
-      action: () => onNavigateTab('profile'),
+      action: () => {
+        onNavigateTab('settings');
+        setTimeout(() => document.getElementById('faqs-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+      },
       actionLabel: 'Add FAQs',
       color: 'neo-pink',
+      scrollToId: 'faqs-section',
     },
     {
       id: 'share',
@@ -115,12 +136,20 @@ export default function SetupChecklist({ username, initialSettings, onNavigateTa
       isComplete: false, // This one is always actionable
       action: () => {
         if (username) {
-          navigator.clipboard.writeText(`https://supertime.wtf/${username}`);
-          setCopiedLink(true);
-          setTimeout(() => setCopiedLink(false), 2000);
+          const url = `https://supertime.wtf/${username}`;
+          if (isMobile && navigator.share) {
+            navigator.share({
+              title: 'Check out my Supertime profile',
+              url: url
+            }).catch(console.error);
+          } else {
+            navigator.clipboard.writeText(url);
+            setCopiedLink(true);
+            setTimeout(() => setCopiedLink(false), 2000);
+          }
         }
       },
-      actionLabel: copiedLink ? 'Copied!' : 'Copy Link',
+      actionLabel: isMobile ? 'Share' : (copiedLink ? 'Copied!' : 'Copy Link'),
       color: 'neo-blue',
     },
   ];

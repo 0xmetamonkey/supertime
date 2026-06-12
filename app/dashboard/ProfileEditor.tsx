@@ -112,7 +112,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
       {/* LEFT: EDIT FORM */}
       <div className="lg:col-span-3 space-y-6">
         {/* PROFILE IMAGE */}
-        <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
+        <div id="profile-photo-section" className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
           <div className="mb-6">
             <h3 className="text-sm font-medium text-gray-900 dark:text-foreground flex items-center gap-2">
               <Upload className="w-4 h-4 text-gray-400" /> Profile Photo
@@ -176,7 +176,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
         </div>
 
         {/* SOCIALS */}
-        <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
+        <div id="social-links-section" className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
           <div className="mb-6">
             <h3 className="text-sm font-medium text-gray-900 dark:text-foreground flex items-center gap-2">
               <Globe className="w-4 h-4 text-gray-400" /> Social Links
@@ -206,7 +206,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
         </div>
 
         {/* FAQs */}
-        <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
+        <div id="faqs-section" className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
           <div className="mb-6 flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-900 dark:text-foreground flex items-center gap-2">
               <HelpCircle className="w-4 h-4 text-gray-400" /> FAQs
