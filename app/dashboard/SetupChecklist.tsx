@@ -182,13 +182,13 @@ export default function SetupChecklist({ username, initialSettings, onNavigateTa
               Setup Checklist
             </h3>
             <p className="text-sm text-gray-500 dark:text-muted mt-0.5 transition-colors">
-              {completedCount}/{totalCount} complete · {progressPercent}%
+              {completedCount}/{totalCount} completed · {progressPercent}%
             </p>
           </div>
         </div>
         <div className="flex items-center gap-4">
           {/* Progress bar (compact) */}
-          <div className="hidden md:block w-32 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden transition-colors">
+          <div className="hidden md:block w-32 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden transition-colors border border-gray-200 dark:border-gray-700">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${progressPercent}%` }}
