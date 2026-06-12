@@ -352,7 +352,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
                 </button>
                 <button
                   onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="p-2 rounded-full hover:bg-surface text-muted hover:text-foreground transition-colors shrink-0"
+                  className="p-2 rounded-full hover:bg-surface text-muted hover:text-foreground transition-colors shrink-0 lg:hidden"
                   aria-label="Toggle Theme"
                 >
                   {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
