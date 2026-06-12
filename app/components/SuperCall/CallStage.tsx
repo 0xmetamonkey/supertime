@@ -9,6 +9,7 @@ import AgoraRTC, {
 } from 'agora-rtc-sdk-ng';
 import { Sparkles, Mic, MicOff, Video, VideoOff, X, Volume2, VolumeX, MessageCircle, DollarSign, Send, Zap, MonitorUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAlertDialog } from '../AlertDialog';
 
 interface CallStageProps {
   channelName: string;
@@ -26,6 +27,7 @@ export default function CallStage({
   channelName, uid: passedUid, type, isCreator, creatorEmail, onDisconnect, onSaveArtifact, onPeerJoined, onPeerLeft
 }: CallStageProps) {
   const [client, setClient] = useState<IAgoraRTCClient | null>(null);
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
   const [localTracks, setLocalTracks] = useState<any>(null);
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
   const [isConnected, setIsConnected] = useState(false);
@@ -400,7 +402,11 @@ export default function CallStage({
 
   const handleTip = async (amount: number) => {
     if (userBalance < amount) {
-      alert("Insufficient balance!");
+      customAlert({
+        title: 'Insufficient Credits',
+        message: 'Insufficient balance!',
+        variant: 'warning',
+      });
       return;
     }
     try {
@@ -415,7 +421,11 @@ export default function CallStage({
         setShowTipModal(false);
       }
     } catch (e) {
-      alert("Tip failed.");
+      customAlert({
+        title: 'Tip Failed',
+        message: 'Tip failed. Please try again.',
+        variant: 'error',
+      });
     }
   };
 
@@ -858,6 +868,7 @@ export default function CallStage({
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes shimmer { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.3; } }
       `}</style>
+      {AlertDialog}
     </div>
   );
 }

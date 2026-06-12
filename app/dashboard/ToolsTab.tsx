@@ -17,6 +17,8 @@ import {
   Clock,
   User
 } from 'lucide-react';
+import { useConfirmDialog } from '../components/ConfirmDialog';
+import { useAlertDialog } from '../components/AlertDialog';
 
 interface ToolsTabProps {
   username: string | null;
@@ -40,6 +42,9 @@ export default function ToolsTab({ username }: ToolsTabProps) {
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [botView, setBotView] = useState<'list' | 'editor'>('list');
   const [selectedCategory, setSelectedCategory] = useState<'dm' | 'comment' | null>(null);
+
+  const { confirm, ConfirmDialog } = useConfirmDialog();
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
 
   useEffect(() => {
     fetch('/api/bot/config')
@@ -70,7 +75,11 @@ export default function ToolsTab({ username }: ToolsTabProps) {
   const handleInstagramConnect = () => {
     const appId = process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID;
     if (!appId) {
-      alert('Instagram App ID not configured.');
+      customAlert({
+        title: 'Configuration Error',
+        message: 'Instagram App ID not configured.',
+        variant: 'error',
+      });
       return;
     }
     const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/instagram/callback`);
@@ -134,13 +143,25 @@ export default function ToolsTab({ username }: ToolsTabProps) {
           setIsConnected(true);
           setInstagramToken('CONNECTED');
         }
-        alert('Bot configuration saved successfully!');
+        customAlert({
+          title: 'Success',
+          message: 'Bot configuration saved successfully!',
+          variant: 'success',
+        });
       } else {
-        alert('Failed to save configuration.');
+        customAlert({
+          title: 'Save Failed',
+          message: 'Failed to save configuration.',
+          variant: 'error',
+        });
       }
     } catch (err) {
       console.error('Error saving bot config:', err);
-      alert('An error occurred while saving.');
+      customAlert({
+        title: 'Error',
+        message: 'An error occurred while saving.',
+        variant: 'error',
+      });
     } finally {
       setSavingConfig(false);
     }
@@ -231,7 +252,14 @@ export default function ToolsTab({ username }: ToolsTabProps) {
                         handleInstagramConnect();
                       }
                     } else {
-                      if (confirm('Disconnect Instagram?')) {
+                      const ok = await confirm({
+                        title: 'Disconnect Instagram?',
+                        message: 'Your bot automations will stop working until you reconnect.',
+                        confirmLabel: 'Disconnect',
+                        cancelLabel: 'Keep connected',
+                        variant: 'danger',
+                      });
+                      if (ok) {
                         setInstagramToken('');
                         setIsConnected(false);
                         handleSaveBotConfig('');
@@ -432,9 +460,16 @@ export default function ToolsTab({ username }: ToolsTabProps) {
                             {rule.triggerType}
                           </div>
                           <button
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              if (confirm('Delete this automation?')) {
+                              const ok = await confirm({
+                                title: 'Delete this automation?',
+                                message: 'This automation rule will be permanently removed.',
+                                confirmLabel: 'Delete',
+                                cancelLabel: 'Keep it',
+                                variant: 'danger',
+                              });
+                              if (ok) {
                                 const newRules = botRules.filter((_, i) => i !== idx);
                                 setBotRules(newRules);
                                 if (currentRuleIndex >= newRules.length) setCurrentRuleIndex(Math.max(0, newRules.length - 1));
@@ -628,9 +663,16 @@ export default function ToolsTab({ username }: ToolsTabProps) {
                                 Rule #{idx + 1}
                               </span>
                               <button
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                   e.stopPropagation();
-                                  if (confirm('Delete this rule?')) {
+                                  const ok = await confirm({
+                                    title: 'Delete this rule?',
+                                    message: 'This automation rule will be permanently removed.',
+                                    confirmLabel: 'Delete',
+                                    cancelLabel: 'Keep it',
+                                    variant: 'danger',
+                                  });
+                                  if (ok) {
                                     const newRules = botRules.filter((_, i) => i !== idx);
                                     setBotRules(newRules);
                                     if (currentRuleIndex >= newRules.length) setCurrentRuleIndex(Math.max(0, newRules.length - 1));
@@ -728,6 +770,8 @@ export default function ToolsTab({ username }: ToolsTabProps) {
           </div>
         </div>
       )}
+      {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

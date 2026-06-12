@@ -18,6 +18,8 @@ import {
   Clock
 } from 'lucide-react';
 import FundraiserManager from './FundraiserManager';
+import { useConfirmDialog } from '../components/ConfirmDialog';
+import { useAlertDialog } from '../components/AlertDialog';
 
 interface StorefrontTabProps {
   username: string | null;
@@ -48,6 +50,9 @@ export default function StorefrontTab({ username, initialSettings }: StorefrontT
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadingThumb, setUploadingThumb] = useState(false);
 
+  const { confirm, ConfirmDialog } = useConfirmDialog();
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
+
   // Subscription State
   const [subPrice, setSubPrice] = useState(initialSettings?.subscriptionPrice || 199);
   const [subBenefits, setSubBenefits] = useState<string[]>(initialSettings?.subscriptionBenefits || []);
@@ -67,7 +72,11 @@ export default function StorefrontTab({ username, initialSettings }: StorefrontT
       setSubSaveSuccess(true);
       setTimeout(() => setSubSaveSuccess(false), 3000);
     } catch (e) {
-      alert("Failed to save subscription settings");
+      customAlert({
+        title: 'Save Failed',
+        message: 'Failed to save subscription settings.',
+        variant: 'error',
+      });
     } finally {
       setIsSavingSub(false);
     }
@@ -113,7 +122,11 @@ export default function StorefrontTab({ username, initialSettings }: StorefrontT
       }
     } catch (err) {
       console.error('Upload error:', err);
-      alert('Upload failed. Please try again.');
+      customAlert({
+        title: 'Upload Failed',
+        message: 'Upload failed. Please try again.',
+        variant: 'error',
+      });
     } finally {
       if (type === 'product') setUploadingFile(false);
       else setUploadingThumb(false);
@@ -482,8 +495,15 @@ export default function StorefrontTab({ username, initialSettings }: StorefrontT
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm('Delete this product?')) {
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: 'Delete this product?',
+                          message: 'This product will be permanently removed from your storefront.',
+                          confirmLabel: 'Delete',
+                          cancelLabel: 'Keep it',
+                          variant: 'danger',
+                        });
+                        if (ok) {
                           handleSaveProducts(products.filter((p: any) => p.id !== prod.id));
                         }
                       }}
@@ -681,7 +701,14 @@ export default function StorefrontTab({ username, initialSettings }: StorefrontT
                       </div>
                       <button
                         onClick={async () => {
-                          if (!newShowTitle || !newShowDate || !newShowTime || !newShowPrice) { alert('Please fill in all fields'); return; }
+                          if (!newShowTitle || !newShowDate || !newShowTime || !newShowPrice) {
+                            customAlert({
+                              title: 'Fields Required',
+                              message: 'Please fill in all fields.',
+                              variant: 'warning',
+                            });
+                            return;
+                          }
                           try {
                             await fetch('/api/shows', {
                               method: 'POST',
@@ -689,8 +716,18 @@ export default function StorefrontTab({ username, initialSettings }: StorefrontT
                               body: JSON.stringify({ action: 'create', title: newShowTitle, description: newShowDesc, date: newShowDate, time: newShowTime, ticketPrice: Number(newShowPrice), maxSeats: Number(newShowSeats) }),
                             });
                             setShowCreateShow(false);
-                            alert('Show created!');
-                          } catch (e) { alert('Failed to create show'); }
+                            customAlert({
+                              title: 'Success',
+                              message: 'Show created!',
+                              variant: 'success',
+                            });
+                          } catch (e) {
+                            customAlert({
+                              title: 'Failed',
+                              message: 'Failed to create show.',
+                              variant: 'error',
+                            });
+                          }
                         }}
                         disabled={!newShowTitle || !newShowDate || !newShowTime || !newShowPrice}
                         className="w-full py-3 bg-gray-900 dark:bg-foreground text-white dark:text-background rounded-xl font-medium text-sm disabled:opacity-50 mt-4">
@@ -707,6 +744,8 @@ export default function StorefrontTab({ username, initialSettings }: StorefrontT
            <FundraiserManager username={username || ''} />
         </div>
       </div>
+      {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

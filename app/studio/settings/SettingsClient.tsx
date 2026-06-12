@@ -16,6 +16,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { useTheme } from '../../components/ThemeProvider';
+import { useAlertDialog } from '../../components/AlertDialog';
 
 interface SettingsClientProps {
   username: string;
@@ -37,6 +38,7 @@ interface SettingsClientProps {
 export default function SettingsClient({ username, initialSettings }: SettingsClientProps) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
 
   const [pendingVideoRate, setPendingVideoRate] = useState(initialSettings.videoRate);
   const [pendingAudioRate, setPendingAudioRate] = useState(initialSettings.audioRate);
@@ -71,7 +73,11 @@ export default function SettingsClient({ username, initialSettings }: SettingsCl
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (e) {
-      alert("Failed to save settings");
+      customAlert({
+        title: 'Save Failed',
+        message: 'Failed to save settings. Please try again.',
+        variant: 'error',
+      });
     } finally {
       setIsSaving(false);
     }
@@ -234,6 +240,7 @@ export default function SettingsClient({ username, initialSettings }: SettingsCl
           </div>
         </div>
       </div>
+      {AlertDialog}
     </div>
   );
 }

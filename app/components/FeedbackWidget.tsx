@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bug, X, UploadCloud, Loader2, CheckCircle2 } from 'lucide-react';
+import { useAlertDialog } from './AlertDialog';
 
 export default function FeedbackWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,6 +11,7 @@ export default function FeedbackWidget() {
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -67,7 +69,11 @@ export default function FeedbackWidget() {
 
     } catch (err) {
       console.error(err);
-      alert("Something went wrong. Please try again.");
+      customAlert({
+        title: 'Submission Error',
+        message: 'Something went wrong. Please try again.',
+        variant: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -183,6 +189,7 @@ export default function FeedbackWidget() {
           </div>
         )}
       </AnimatePresence>
+      {AlertDialog}
     </>
   );
 }

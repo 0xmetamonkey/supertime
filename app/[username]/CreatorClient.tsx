@@ -39,6 +39,7 @@ import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
 const BroadcastViewer = dynamic(() => import('../components/Broadcast/BroadcastViewer'), { ssr: false });
 import { useUser, useClerk } from "@clerk/nextjs";
+import { useAlertDialog } from '../components/AlertDialog';
 
 interface CreatorClientProps {
   username: string,
@@ -132,6 +133,7 @@ export default function CreatorClient({
 }: CreatorClientProps) {
   const { user: clerkUser, isLoaded } = useUser();
   const { openSignIn } = useClerk();
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
 
   const [guestId] = useState(() => Math.random().toString(36).slice(2, 7));
   const uid = clerkUser?.id || `guest-${guestId}`;
@@ -257,7 +259,11 @@ export default function CreatorClient({
           const result = await verifyRes.json();
           if (result.success) {
             setIsSubscribed(true);
-            alert("Welcome to the Inner Circle!");
+            customAlert({
+              title: 'Welcome!',
+              message: 'Welcome to the Inner Circle!',
+              variant: 'success',
+            });
           }
           setIsSubscribing(false);
         },
@@ -344,7 +350,11 @@ export default function CreatorClient({
             }
             if (product.type === 'booking') {
               setShowBookingModal(false);
-              alert("Booking Confirmed & Calendar Invite Sent!");
+              customAlert({
+                title: 'Booking Confirmed',
+                message: 'Booking Confirmed & Calendar Invite Sent!',
+                variant: 'success',
+              });
             }
           }
           setBuyingId(null);
@@ -735,7 +745,11 @@ export default function CreatorClient({
 
   const handleBookCall = async () => {
     if (!bookingDate || !bookingTime || !bookingTemplate) {
-      alert("Please select date, time and a session template.");
+      customAlert({
+        title: 'Selection Required',
+        message: 'Please select date, time and a session template.',
+        variant: 'warning',
+      });
       return;
     }
     setIsBooking(true);
@@ -754,13 +768,25 @@ export default function CreatorClient({
       });
       const data = await res.json();
       if (data.success) {
-        alert("Booking Request Sent!");
+        customAlert({
+          title: 'Booking Sent',
+          message: 'Booking Request Sent!',
+          variant: 'success',
+        });
         setShowBookingModal(false);
       } else {
-        alert("Booking failed: " + data.error);
+        customAlert({
+          title: 'Booking Failed',
+          message: 'Booking failed: ' + data.error,
+          variant: 'error',
+        });
       }
     } catch (e) {
-      alert("Booking failed.");
+      customAlert({
+        title: 'Booking Failed',
+        message: 'Booking failed.',
+        variant: 'error',
+      });
     } finally {
       setIsBooking(false);
     }
@@ -949,11 +975,19 @@ export default function CreatorClient({
                 <button
                   onClick={() => {
                     if (!bookingDate || !bookingTime) {
-                      alert("Please select a date and time.");
+                      customAlert({
+                        title: 'Select Date & Time',
+                        message: 'Please select a date and time.',
+                        variant: 'warning',
+                      });
                       return;
                     }
                     if (!isLoggedIn && (!guestName || !guestEmail)) {
-                      alert("Please enter your name and email.");
+                      customAlert({
+                        title: 'Info Required',
+                        message: 'Please enter your name and email.',
+                        variant: 'warning',
+                      });
                       return;
                     }
                     handleBuyProduct(bookingTemplate, { date: bookingDate, time: bookingTime, guestEmail, guestName });
@@ -1479,7 +1513,11 @@ export default function CreatorClient({
                 </div>
                 <span className="text-xs font-medium opacity-80">+24</span>
               </div>
-              <button onClick={() => alert('Subscriptions coming soon!')} className="w-full bg-background text-foreground font-semibold py-3.5 rounded-xl hover:opacity-90 transition-opacity">
+              <button onClick={() => customAlert({
+                title: 'Coming Soon',
+                message: 'Subscriptions coming soon!',
+                variant: 'info',
+              })} className="w-full bg-background text-foreground font-semibold py-3.5 rounded-xl hover:opacity-90 transition-opacity">
                 Subscribe Now
               </button>
             </div>
@@ -1618,6 +1656,7 @@ export default function CreatorClient({
           <p className="text-xs text-gray-300">Supertime</p>
         </div>
       </footer>
+      {AlertDialog}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useAlertDialog } from './AlertDialog';
 
 type WalletProps = {
   onBalanceChange: (balance: number) => void;
@@ -11,6 +12,7 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
   const router = useRouter();
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
   const [showRecharge, setShowRecharge] = useState(false);
 
   // Method is now just "Add Funds" since Razorpay handles cards/UPI/Netbanking
@@ -85,13 +87,25 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
               // Refresh Balance
               await fetchBalance();
               setShowRecharge(false);
-              alert("Payment Successful! Credits added.");
+              customAlert({
+                title: 'Success',
+                message: 'Payment Successful! Credits added.',
+                variant: 'success',
+              });
             } else {
-              alert("Payment Verification Failed.");
+              customAlert({
+                title: 'Verification Failed',
+                message: 'Payment Verification Failed.',
+                variant: 'error',
+              });
             }
           } catch (err) {
             console.error("Verification error", err);
-            alert("Payment failed during verification.");
+            customAlert({
+              title: 'Verification Failed',
+              message: 'Payment failed during verification.',
+              variant: 'error',
+            });
           }
         },
         prefill: {
@@ -105,13 +119,21 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
 
       const rzp1 = new (window as any).Razorpay(options);
       rzp1.on('payment.failed', function (response: any) {
-        alert("Payment Failed: " + response.error.description);
+        customAlert({
+          title: 'Payment Failed',
+          message: "Payment Failed: " + response.error.description,
+          variant: 'error',
+        });
       });
       rzp1.open();
 
     } catch (e: any) {
       console.error('Recharge init failed', e);
-      alert(`Could not initiate payment: ${e.message || 'Unknown error'}`);
+      customAlert({
+        title: 'Error',
+        message: `Could not initiate payment: ${e.message || 'Unknown error'}`,
+        variant: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -136,6 +158,7 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
           +
         </div>
       </button>
+      {AlertDialog}
     </>
   );
 }
