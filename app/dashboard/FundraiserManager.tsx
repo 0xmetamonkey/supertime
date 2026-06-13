@@ -22,6 +22,8 @@ import {
   Copy,
   CheckCircle,
 } from 'lucide-react';
+import { useConfirmDialog } from '../components/ConfirmDialog';
+import { useAlertDialog } from '../components/AlertDialog';
 
 interface FundraiserManagerProps {
   username: string;
@@ -46,7 +48,11 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
   const [showForm, setShowForm] = useState(false);
   const [isUploading, setIsUploading] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const { confirm, ConfirmDialog } = useConfirmDialog();
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
 
   // Load existing fundraiser
   useEffect(() => {
@@ -86,7 +92,11 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
       else setVerificationDoc(blob.url);
     } catch (e) {
       console.error('Fundraiser upload failed:', e);
-      alert('Upload failed. Please try again.');
+      customAlert({
+        title: 'Upload Failed',
+        message: 'Upload failed. Please try again.',
+        variant: 'error',
+      });
     } finally {
       setIsUploading(null);
     }
@@ -94,7 +104,11 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
 
   const handleSave = async (activate?: boolean) => {
     if (!title.trim() || !story.trim() || !goalAmount) {
-      alert('Please fill in title, story, and goal amount.');
+      customAlert({
+        title: 'Fields Required',
+        message: 'Please fill in title, story, and goal amount.',
+        variant: 'warning',
+      });
       return;
     }
 
@@ -121,19 +135,37 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (e) {
-      alert('Failed to save fundraiser');
+      customAlert({
+        title: 'Save Failed',
+        message: 'Failed to save fundraiser. Please try again.',
+        variant: 'error',
+      });
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDeactivate = async () => {
-    if (!confirm('This will deactivate your fundraiser and restore your regular profile. Continue?')) return;
+    const ok = await confirm({
+      title: 'Deactivate fundraiser?',
+      message: 'This will restore your regular profile. You can reactivate anytime.',
+      confirmLabel: 'Deactivate',
+      cancelLabel: 'Keep active',
+      variant: 'default',
+    });
+    if (!ok) return;
     await handleSave(false);
   };
 
   const handleReset = async () => {
-    if (!confirm('Are you sure you want to completely delete this fundraiser and start fresh? All data will be lost. This cannot be undone.')) return;
+    const ok = await confirm({
+      title: 'Delete this fundraiser?',
+      message: 'All data will be permanently lost. This cannot be undone.',
+      confirmLabel: 'Delete forever',
+      cancelLabel: 'Keep it',
+      variant: 'danger',
+    });
+    if (!ok) return;
     setIsSaving(true);
     try {
       await fetch('/api/fundraise', {
@@ -153,7 +185,11 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
       setHasExisting(false);
       setShowForm(false);
     } catch (e) {
-      alert('Failed to reset fundraiser');
+      customAlert({
+        title: 'Reset Failed',
+        message: 'Failed to reset fundraiser. Please try again.',
+        variant: 'error',
+      });
     } finally {
       setIsSaving(false);
     }
@@ -450,6 +486,8 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
           )}
         </motion.div>
       )}
+      {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

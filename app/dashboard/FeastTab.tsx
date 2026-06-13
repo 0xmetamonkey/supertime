@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, FileText, Send, Trash2, Edit3, Loader2, Sparkles, Plus, Image as ImageIcon } from 'lucide-react';
+import { useConfirmDialog } from '../components/ConfirmDialog';
+import { useAlertDialog } from '../components/AlertDialog';
 
 interface Post {
   id: string;
@@ -26,6 +28,9 @@ export default function FeastTab({ username }: { username: string }) {
   const [imageUrl, setImageUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  const { confirm, ConfirmDialog } = useConfirmDialog();
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
 
   useEffect(() => {
     fetchPosts();
@@ -70,14 +75,25 @@ export default function FeastTab({ username }: { username: string }) {
       const blob = await response.json();
       setImageUrl(blob.url);
     } catch (e) {
-      alert('Failed to upload image');
+      customAlert({
+        title: 'Upload Failed',
+        message: 'Failed to upload image. Please try again.',
+        variant: 'error',
+      });
     } finally {
       setIsUploading(false);
     }
   };
 
   const handleSave = async () => {
-    if (!title.trim() || !content.trim()) return alert("Title and content are required.");
+    if (!title.trim() || !content.trim()) {
+      customAlert({
+        title: 'Fields Required',
+        message: 'Title and content are required.',
+        variant: 'warning',
+      });
+      return;
+    }
     setIsSaving(true);
     try {
       const res = await fetch('/api/user/posts', {
@@ -98,17 +114,32 @@ export default function FeastTab({ username }: { username: string }) {
         await fetchPosts();
         setIsEditorOpen(false);
       } else {
-        alert("Failed to save post");
+        customAlert({
+          title: 'Save Failed',
+          message: 'Failed to save the post. Please try again.',
+          variant: 'error',
+        });
       }
     } catch (e) {
-      alert("Error saving post");
+      customAlert({
+        title: 'Error',
+        message: 'An error occurred while saving the post.',
+        variant: 'error',
+      });
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this post?")) return;
+    const ok = await confirm({
+      title: 'Delete this post?',
+      message: 'This will permanently remove the post and it cannot be recovered.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Keep it',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await fetch('/api/user/posts', {
         method: 'POST',
@@ -117,7 +148,11 @@ export default function FeastTab({ username }: { username: string }) {
       });
       await fetchPosts();
     } catch (e) {
-      alert("Error deleting post");
+      customAlert({
+        title: 'Delete Failed',
+        message: 'An error occurred while deleting the post.',
+        variant: 'error',
+      });
     }
   };
 
@@ -261,6 +296,9 @@ export default function FeastTab({ username }: { username: string }) {
           </div>
         </motion.div>
       )}
+
+      {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

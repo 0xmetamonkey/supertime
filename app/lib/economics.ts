@@ -1,8 +1,8 @@
 import { kv } from "@vercel/kv";
 
 // ECONOMICS CONSTANTS
-export const PLATFORM_FEE_PERCENT = 0.4;
-export const SPEAKER_SHARE_PERCENT = 0.6;
+export const PLATFORM_FEE_PERCENT = 0.2;
+export const SPEAKER_SHARE_PERCENT = 0.8;
 
 export interface WithdrawalRequest {
   id: string;

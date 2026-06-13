@@ -38,6 +38,8 @@ const BroadcastHost = dynamic(() => import('../components/Broadcast/BroadcastHos
 import { checkAvailability, completeOnboarding } from '../actions';
 import { useClerk } from "@clerk/nextjs";
 import WalletManager from '../components/WalletManager';
+import { useConfirmDialog } from '../components/ConfirmDialog';
+import { useAlertDialog } from '../components/AlertDialog';
 
 export default function StudioClient({ username, session, initialSettings }: { username: string | null, session: any, initialSettings?: any }) {
   const router = useRouter();
@@ -85,6 +87,9 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [isAcceptingCalls, setIsAcceptingCalls] = useState(initialSettings?.isAcceptingCalls ?? true);
   const [showDashboard, setShowDashboard] = useState(false);
 
+  const { confirm, ConfirmDialog: ConfirmDialogEl } = useConfirmDialog();
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
+
   useEffect(() => {
     if (ablySignaling?.activeCall) {
       setIsCalling(true);
@@ -129,11 +134,19 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
   const handleWithdraw = async () => {
     if (!upiId || withdrawAmount <= 0) {
-      alert("Please enter a valid amount and UPI ID.");
+      customAlert({
+        title: 'Invalid Input',
+        message: 'Please enter a valid amount and UPI ID.',
+        variant: 'warning',
+      });
       return;
     }
     if (withdrawAmount > withdrawable) {
-      alert("Insufficient withdrawable balance.");
+      customAlert({
+        title: 'Insufficient Balance',
+        message: 'Insufficient withdrawable balance.',
+        variant: 'warning',
+      });
       return;
     }
 
@@ -152,14 +165,26 @@ export default function StudioClient({ username, session, initialSettings }: { u
       });
       const data = await res.json();
       if (data.success) {
-        alert("Withdrawal request sent! Funds deducted from balance.");
+        customAlert({
+          title: 'Withdrawal Sent',
+          message: 'Withdrawal request sent! Funds deducted from balance.',
+          variant: 'success',
+        });
         setShowWithdraw(false);
         fetchDetailedWallet();
       } else {
-        alert("Withdrawal failed: " + data.error);
+        customAlert({
+          title: 'Withdrawal Failed',
+          message: 'Withdrawal failed: ' + data.error,
+          variant: 'error',
+        });
       }
     } catch (e) {
-      alert("Request failed.");
+      customAlert({
+        title: 'Request Failed',
+        message: 'Request failed.',
+        variant: 'error',
+      });
     } finally {
       setIsWithdrawing(false);
     }
@@ -174,7 +199,11 @@ export default function StudioClient({ username, session, initialSettings }: { u
       const newBlob = await response.json();
       setPendingProfileImage(newBlob.url);
     } catch (e) {
-      alert("Upload failed");
+      customAlert({
+        title: 'Upload Failed',
+        message: 'Upload failed.',
+        variant: 'error',
+      });
     } finally {
       setIsUploading(false);
     }
@@ -766,8 +795,15 @@ export default function StudioClient({ username, session, initialSettings }: { u
                         <div className="p-4 flex justify-between items-center text-xs text-muted font-medium bg-surface">
                           {new Date(art.timestamp).toLocaleDateString()}
                           <button
-                            onClick={() => {
-                                if (confirm('Delete this highlight forever?')) {
+                            onClick={async () => {
+                                const ok = await confirm({
+                                  title: 'Delete this highlight?',
+                                  message: 'This recording will be permanently removed from your vault.',
+                                  confirmLabel: 'Delete',
+                                  cancelLabel: 'Keep it',
+                                  variant: 'danger',
+                                });
+                                if (ok) {
                                   handleDeleteArtifact(art.id);
                                 }
                             }}
@@ -785,6 +821,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </motion.div>
         )}
       </AnimatePresence>
+      {ConfirmDialogEl}
+      {AlertDialog}
     </div>
   );
 }

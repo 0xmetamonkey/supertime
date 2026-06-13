@@ -16,6 +16,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { useTheme } from '../../components/ThemeProvider';
+import { useAlertDialog } from '../../components/AlertDialog';
 
 interface SettingsClientProps {
   username: string;
@@ -37,6 +38,7 @@ interface SettingsClientProps {
 export default function SettingsClient({ username, initialSettings }: SettingsClientProps) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
 
   const [pendingVideoRate, setPendingVideoRate] = useState(initialSettings.videoRate);
   const [pendingAudioRate, setPendingAudioRate] = useState(initialSettings.audioRate);
@@ -71,7 +73,11 @@ export default function SettingsClient({ username, initialSettings }: SettingsCl
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (e) {
-      alert("Failed to save settings");
+      customAlert({
+        title: 'Save Failed',
+        message: 'Failed to save settings. Please try again.',
+        variant: 'error',
+      });
     } finally {
       setIsSaving(false);
     }
@@ -219,102 +225,23 @@ export default function SettingsClient({ username, initialSettings }: SettingsCl
             <SectionHeader id="integrations" title="Video Integrations" icon={<Calendar className="w-5 h-5 text-gray-400" />} />
 
             <div className="space-y-4">
-              {/* Google Meet Integration Card */}
               <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-900/50 border border-gray-150 dark:border-border rounded-xl">
                 <div>
-                  <h4 className="text-sm font-medium text-gray-900 dark:text-foreground">Google Calendar & Meet</h4>
-                  <p className="text-xs text-gray-400 mt-0.5">Automate unique Google Meet links for bookings</p>
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-foreground">Supercalls Native Engine</h4>
+                  <p className="text-xs text-gray-400 mt-0.5">Built-in recording, screen sharing, and atomic booking locks.</p>
                 </div>
                 <div className="flex items-center">
-                  {isGoogleConnected ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1 bg-green-50 dark:bg-green-950/30 px-2 py-1 rounded-md">
-                        <Check className="w-3.5 h-3.5" /> Linked
-                      </span>
-                      <button
-                        onClick={async () => {
-                          if (confirm('Disconnect Google Calendar?')) {
-                            await fetch('/api/auth/google/disconnect', { method: 'POST' });
-                            setIsGoogleConnected(false);
-                            setVideoProvider('supercalls');
-                          }
-                        }}
-                        className="text-xs text-gray-400 hover:text-red-500 font-medium ml-2"
-                      >
-                        Disconnect
-                      </button>
-                    </div>
-                  ) : (
-                    <a
-                      href="/api/auth/google"
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 dark:bg-foreground text-white dark:text-background text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
-                    >
-                      Connect <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
+                  <span className="text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1 bg-green-50 dark:bg-green-950/30 px-2 py-1 rounded-md">
+                    <Check className="w-3.5 h-3.5" /> Active
+                  </span>
                 </div>
               </div>
-
-              {/* Zoom Integration Card */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-900/50 border border-gray-150 dark:border-border rounded-xl">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 dark:text-foreground">Zoom Video Rooms</h4>
-                  <p className="text-xs text-gray-400 mt-0.5">Generate dynamic personal Zoom meeting rooms</p>
-                </div>
-                <div className="flex items-center">
-                  {isZoomConnected ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1 bg-green-50 dark:bg-green-950/30 px-2 py-1 rounded-md">
-                        <Check className="w-3.5 h-3.5" /> Linked
-                      </span>
-                      <button
-                        onClick={async () => {
-                          if (confirm('Disconnect Zoom?')) {
-                            await fetch('/api/auth/zoom/disconnect', { method: 'POST' });
-                            setIsZoomConnected(false);
-                            setVideoProvider('supercalls');
-                          }
-                        }}
-                        className="text-xs text-gray-400 hover:text-red-500 font-medium ml-2"
-                      >
-                        Disconnect
-                      </button>
-                    </div>
-                  ) : (
-                    <a
-                      href="/api/auth/zoom"
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 dark:bg-foreground text-white dark:text-background text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
-                    >
-                      Connect <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Video Provider Preference Selector */}
-            <div className="border-t border-gray-100 dark:border-border pt-4">
-              <label className="block text-xs font-medium text-gray-400 mb-2">Preferred Live Meeting Method</label>
-              <select
-                value={videoProvider}
-                onChange={(e) => setVideoProvider(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-border rounded-xl p-3 font-medium text-sm outline-none bg-white dark:bg-background"
-              >
-                <option value="supercalls">Supercalls (Zero-Setup, default)</option>
-                <option value="googlemeet" disabled={!isGoogleConnected}>
-                  Google Meet {!isGoogleConnected && '(Connect calendar first)'}
-                </option>
-                <option value="zoom" disabled={!isZoomConnected}>
-                  Zoom Rooms {!isZoomConnected && '(Connect Zoom first)'}
-                </option>
-              </select>
-              <p className="text-[10px] text-gray-400 mt-2">
-                Clients will receive booking links according to this preference. If the selected service is disconnected or unavailable, Supertime falls back to Supercalls.
-              </p>
             </div>
           </div>
         </div>
       </div>
+      {AlertDialog}
     </div>
   );
 }
+

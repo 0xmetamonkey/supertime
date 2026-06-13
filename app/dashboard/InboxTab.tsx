@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { MessageSquare, ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useAlertDialog } from '../components/AlertDialog';
 
 export default function InboxTab({ username }: { username: string }) {
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(false);
   const router = useRouter();
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
 
   useEffect(() => {
     // Check if push is already permitted
@@ -38,13 +40,25 @@ export default function InboxTab({ username }: { username: string }) {
           body: JSON.stringify({ token, username })
         });
         setPushEnabled(true);
-        alert('Push notifications enabled successfully!');
+        customAlert({
+          title: 'Notifications Enabled',
+          message: 'Push notifications enabled successfully!',
+          variant: 'success',
+        });
       } else {
-        alert('Please allow notification permissions in your browser.');
+        customAlert({
+          title: 'Permission Denied',
+          message: 'Please allow notification permissions in your browser.',
+          variant: 'warning',
+        });
       }
     } catch (e) {
       console.error('Push setup failed', e);
-      alert('Failed to setup push notifications.');
+      customAlert({
+        title: 'Setup Failed',
+        message: 'Failed to setup push notifications.',
+        variant: 'error',
+      });
     }
   };
 
@@ -117,6 +131,7 @@ export default function InboxTab({ username }: { username: string }) {
           ))}
         </div>
       )}
+      {AlertDialog}
     </div>
   );
 }

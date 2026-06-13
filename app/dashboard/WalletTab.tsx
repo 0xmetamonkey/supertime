@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CreditCard, Wallet, TrendingUp } from 'lucide-react';
+import { useAlertDialog } from '../components/AlertDialog';
 
 interface WalletTabProps {
   withdrawable: number;
@@ -12,6 +13,7 @@ interface WalletTabProps {
 
 export default function WalletTab({ withdrawable, balance }: WalletTabProps) {
   const router = useRouter();
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -61,13 +63,26 @@ export default function WalletTab({ withdrawable, balance }: WalletTabProps) {
             });
             const verifyData = await verifyRes.json();
             if (verifyData.success) {
-              alert("Energy Loaded! Your credits are ready.");
-              window.location.reload();
+              customAlert({
+                title: 'Top Up Success',
+                message: 'Energy Loaded! Your credits are ready.',
+                variant: 'success',
+              }).then(() => {
+                window.location.reload();
+              });
             } else {
-              alert("Payment Verification Failed.");
+              customAlert({
+                title: 'Verification Failed',
+                message: 'Payment Verification Failed.',
+                variant: 'error',
+              });
             }
           } catch (err) {
-            alert("Payment failed during verification.");
+            customAlert({
+              title: 'Verification Error',
+              message: 'Payment failed during verification.',
+              variant: 'error',
+            });
           }
         },
         theme: { color: "#D652FF" }
@@ -75,11 +90,19 @@ export default function WalletTab({ withdrawable, balance }: WalletTabProps) {
 
       const rzp1 = new (window as any).Razorpay(options);
       rzp1.on('payment.failed', function (response: any) {
-        alert("Transaction Aborted: " + response.error.description);
+        customAlert({
+          title: 'Payment Aborted',
+          message: "Transaction Aborted: " + response.error.description,
+          variant: 'warning',
+        });
       });
       rzp1.open();
     } catch (e: any) {
-      alert(`Could not initiate payment: ${e.message}`);
+      customAlert({
+        title: 'Recharge Error',
+        message: `Could not initiate payment: ${e.message}`,
+        variant: 'error',
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -87,7 +110,11 @@ export default function WalletTab({ withdrawable, balance }: WalletTabProps) {
 
   const handleWithdrawRequest = async () => {
     if (!upiId || withdrawAmount <= 0) {
-      alert("Invalid details.");
+      customAlert({
+        title: 'Invalid Details',
+        message: 'Please check your UPI ID and withdraw amount.',
+        variant: 'warning',
+      });
       return;
     }
     setIsProcessing(true);
@@ -99,14 +126,26 @@ export default function WalletTab({ withdrawable, balance }: WalletTabProps) {
       });
       const data = await res.json();
       if (data.success) {
-        alert("Settlement Request Sent. Funds deducted.");
-        setShowWithdrawModal(false);
-        window.location.reload();
+        customAlert({
+          title: 'Settlement Requested',
+          message: 'Settlement Request Sent. Funds deducted.',
+          variant: 'success',
+        }).then(() => {
+          window.location.reload();
+        });
       } else {
-        alert(data.error || "Withdrawal failed.");
+        customAlert({
+          title: 'Withdrawal Failed',
+          message: data.error || "Withdrawal failed.",
+          variant: 'error',
+        });
       }
     } catch (e) {
-      alert("Network error.");
+      customAlert({
+        title: 'Network Error',
+        message: 'Network error. Please try again.',
+        variant: 'error',
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -281,6 +320,7 @@ export default function WalletTab({ withdrawable, balance }: WalletTabProps) {
           </motion.div>
         )}
       </AnimatePresence>
+      {AlertDialog}
     </div>
   );
 }

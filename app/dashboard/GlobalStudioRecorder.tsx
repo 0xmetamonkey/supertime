@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useAnimation, PanInfo } from 'framer-motion';
 import { Mic, Square, Loader2, Radio, Sparkles, Pause, GripVertical, Play, Activity } from 'lucide-react';
+import { useAlertDialog } from '../components/AlertDialog';
 
 export default function GlobalStudioRecorder({ username }: { username: string }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -10,6 +11,7 @@ export default function GlobalStudioRecorder({ username }: { username: string })
   const [transcript, setTranscript] = useState('');
   const [duration, setDuration] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
   
   // Floating & Docking State
   const [isDocked, setIsDocked] = useState(false);
@@ -110,7 +112,11 @@ export default function GlobalStudioRecorder({ username }: { username: string })
       startTimer();
     } catch (err) {
       console.error("Error accessing microphone:", err);
-      alert("Could not access microphone.");
+      customAlert({
+        title: 'Microphone Error',
+        message: 'Could not access microphone.',
+        variant: 'error',
+      });
     }
   };
 
@@ -252,11 +258,18 @@ export default function GlobalStudioRecorder({ username }: { username: string })
       });
 
       if (!postRes.ok) throw new Error("Post creation failed");
-
-      alert("Audio Feast Published!");
+      customAlert({
+        title: 'Feast Published',
+        message: 'Audio Feast Published!',
+        variant: 'success',
+      });
     } catch (err) {
       console.error("Save error:", err);
-      alert("Failed to save audio feast.");
+      customAlert({
+        title: 'Save Failed',
+        message: 'Failed to save audio feast.',
+        variant: 'error',
+      });
     } finally {
       setIsSaving(false);
       setIsExpanded(false);
@@ -414,6 +427,7 @@ export default function GlobalStudioRecorder({ username }: { username: string })
           </button>
         </motion.div>
       </motion.div>
+      {AlertDialog}
     </>
   );
 }

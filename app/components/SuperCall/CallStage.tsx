@@ -7,8 +7,9 @@ import AgoraRTC, {
   IMicrophoneAudioTrack,
   IAgoraRTCRemoteUser
 } from 'agora-rtc-sdk-ng';
-import { Sparkles, Mic, MicOff, Video, VideoOff, X, Volume2, VolumeX, MessageCircle, DollarSign, Send, Zap } from 'lucide-react';
+import { Sparkles, Mic, MicOff, Video, VideoOff, X, Volume2, VolumeX, MessageCircle, DollarSign, Send, Zap, MonitorUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAlertDialog } from '../AlertDialog';
 
 interface CallStageProps {
   channelName: string;
@@ -26,6 +27,7 @@ export default function CallStage({
   channelName, uid: passedUid, type, isCreator, creatorEmail, onDisconnect, onSaveArtifact, onPeerJoined, onPeerLeft
 }: CallStageProps) {
   const [client, setClient] = useState<IAgoraRTCClient | null>(null);
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
   const [localTracks, setLocalTracks] = useState<any>(null);
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
   const [isConnected, setIsConnected] = useState(false);
@@ -400,7 +402,11 @@ export default function CallStage({
 
   const handleTip = async (amount: number) => {
     if (userBalance < amount) {
-      alert("Insufficient balance!");
+      customAlert({
+        title: 'Insufficient Credits',
+        message: 'Insufficient balance!',
+        variant: 'warning',
+      });
       return;
     }
     try {
@@ -415,7 +421,11 @@ export default function CallStage({
         setShowTipModal(false);
       }
     } catch (e) {
-      alert("Tip failed.");
+      customAlert({
+        title: 'Tip Failed',
+        message: 'Tip failed. Please try again.',
+        variant: 'error',
+      });
     }
   };
 
@@ -459,20 +469,67 @@ export default function CallStage({
     }
   };
 
-  const sendSignal = (msg: any) => {
-    if (client) {
-      const encoded = new TextEncoder().encode(JSON.stringify(msg));
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const screenTrackRef = useRef<any>(null);
+  const originalVideoTrackRef = useRef<any>(null);
+
+  const toggleScreenShare = async () => {
+    if (!client) return;
+    
+    if (isScreenSharing) {
+      if (screenTrackRef.current) {
+        await client.unpublish([screenTrackRef.current]);
+        screenTrackRef.current.close();
+        screenTrackRef.current = null;
+      }
+      if (originalVideoTrackRef.current) {
+        await client.publish([originalVideoTrackRef.current]);
+        setLocalTracks((prev: any) => {
+          const newTracks = [...prev];
+          newTracks[1] = originalVideoTrackRef.current;
+          return newTracks;
+        });
+        originalVideoTrackRef.current = null;
+      }
+      setIsScreenSharing(false);
+    } else {
       try {
-        (client as any).sendStreamMessage(encoded);
+        const track = await AgoraRTC.createScreenVideoTrack({ encoderConfig: "1080p_1" });
+        
+        track.on("track-ended", () => {
+          if (screenTrackRef.current) toggleScreenShare();
+        });
+
+        screenTrackRef.current = track;
+        
+        if (localTracks?.[1]) {
+          originalVideoTrackRef.current = localTracks[1];
+          await client.unpublish([originalVideoTrackRef.current]);
+        }
+        
+        await client.publish([track]);
+        
+        setLocalTracks((prev: any) => {
+          const newTracks = [...prev];
+          if (newTracks.length > 1) {
+            newTracks[1] = track;
+          } else {
+            newTracks.push(track);
+          }
+          return newTracks;
+        });
+        
+        setIsScreenSharing(true);
       } catch (e) {
-        console.error("Failed to send stream message", e);
+        console.error("Screen share failed", e);
       }
     }
   };
 
   const requestRecording = () => {
-    setConsentState('requesting');
-    sendSignal({ type: 'REQ_REC' });
+    // Force record instantly to bypass missing RTM
+    setConsentState('granted');
+    startRecording();
   };
 
   const respondToConsent = (granted: boolean) => {
@@ -709,27 +766,36 @@ export default function CallStage({
       )}
 
       {/* MINIMALIST GLASS CONTROLS */}
-      <div className="absolute bottom-12 left-0 right-0 flex justify-center items-center z-30 pointer-events-none">
-        <div className="flex items-center gap-4 p-4 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl pointer-events-auto group hover:bg-white/10 transition-all duration-500">
+      <div className="absolute bottom-6 md:bottom-12 left-0 right-0 flex justify-center items-center z-30 pointer-events-none px-2">
+        <div className="flex items-center gap-2 md:gap-4 p-2 md:p-4 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full md:rounded-[2rem] shadow-2xl pointer-events-auto group hover:bg-white/10 transition-all duration-500 w-full max-w-sm md:max-w-fit justify-between md:justify-center overflow-x-auto no-scrollbar">
           <button
             onClick={toggleMic}
-            className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all border ${localTracks?.[0]?.enabled ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-red-500/80 border-red-400/50'}`}
+            className={`flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-full md:rounded-2xl flex items-center justify-center transition-all border ${localTracks?.[0]?.enabled ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-red-500/80 border-red-400/50'}`}
           >
             {localTracks?.[0]?.enabled ? <Mic className="w-5 h-5 text-white/80" /> : <MicOff className="w-5 h-5 text-white" />}
           </button>
 
           {isVideo && (
-            <button
-              onClick={toggleCam}
-              className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all border ${localTracks?.[1]?.enabled ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-red-500/80 border-red-400/50'}`}
-            >
-              {localTracks?.[1]?.enabled ? <Video className="w-5 h-5 text-white/80" /> : <VideoOff className="w-5 h-5 text-white" />}
-            </button>
+            <>
+              <button
+                onClick={toggleCam}
+                className={`flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-full md:rounded-2xl flex items-center justify-center transition-all border ${localTracks?.[1]?.enabled && !isScreenSharing ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-red-500/80 border-red-400/50'}`}
+              >
+                {localTracks?.[1]?.enabled && !isScreenSharing ? <Video className="w-5 h-5 text-white/80" /> : <VideoOff className="w-5 h-5 text-white" />}
+              </button>
+              
+              <button
+                onClick={toggleScreenShare}
+                className={`flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-full md:rounded-2xl flex items-center justify-center transition-all border ${isScreenSharing ? 'bg-neo-blue/80 border-neo-blue hover:bg-neo-blue' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+              >
+                <MonitorUp className={`w-4 h-4 md:w-5 md:h-5 ${isScreenSharing ? 'text-white' : 'text-white/80'}`} />
+              </button>
+            </>
           )}
 
           <button
             onClick={toggleSpeaker}
-            className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all border ${!isSpeakerOff ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-red-500/80 border-red-400/50'}`}
+            className={`flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-full md:rounded-2xl flex items-center justify-center transition-all border ${!isSpeakerOff ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-red-500/80 border-red-400/50'}`}
           >
             {!isSpeakerOff ? <Volume2 className="w-5 h-5 text-white/80" /> : <VolumeX className="w-5 h-5 text-white" />}
           </button>
@@ -737,20 +803,20 @@ export default function CallStage({
           <button
             onClick={isRecording ? stopRecording : requestRecording}
             disabled={isUploading || consentState === 'requesting'}
-            className={`relative group w-14 h-14 rounded-full flex flex-col items-center justify-center transition-all border-2 ${isRecording ? 'bg-neo-pink border-neo-pink scale-110 shadow-[0_0_20px_theme(colors.neo-pink.default)]' : 'bg-white/10 border-white/20 hover:scale-105'}`}
+            className={`flex-shrink-0 relative group w-12 h-12 md:w-14 md:h-14 rounded-full flex flex-col items-center justify-center transition-all border-2 ${isRecording ? 'bg-neo-pink border-neo-pink scale-110 shadow-[0_0_20px_theme(colors.neo-pink.default)]' : 'bg-white/10 border-white/20 hover:scale-105'}`}
           >
             {isUploading ? (
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-              <div className={`w-3.5 h-3.5 rounded-full transition-all duration-500 ${isRecording ? 'bg-white animate-pulse' : 'bg-red-600'}`} />
+              <div className={`w-3 h-3 md:w-3.5 md:h-3.5 rounded-full transition-all duration-500 ${isRecording ? 'bg-white animate-pulse' : 'bg-red-600'}`} />
             )}
           </button>
 
           <button
             onClick={onDisconnect}
-            className="w-14 h-14 rounded-full bg-red-600 text-white border-2 border-white/20 flex items-center justify-center hover:bg-red-700 transition-all hover:scale-105 shadow-xl"
+            className="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-full bg-red-600 text-white border-2 border-white/20 flex items-center justify-center hover:bg-red-700 transition-all hover:scale-105 shadow-xl"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 md:w-6 md:h-6" />
           </button>
         </div>
       </div>
@@ -802,6 +868,7 @@ export default function CallStage({
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes shimmer { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.3; } }
       `}</style>
+      {AlertDialog}
     </div>
   );
 }

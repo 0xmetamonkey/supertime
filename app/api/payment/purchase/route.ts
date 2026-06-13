@@ -81,6 +81,11 @@ export async function POST(req: NextRequest) {
             host
           });
           meetingUrl = bookingResult?.meetingUrl || '';
+          
+          // Secure the lock permanently now that it's paid
+          const lockKey = `booking_lock:${creatorUsername.toLowerCase()}:${bookingDetails.date}:${bookingDetails.time}`;
+          await kv.set(lockKey, 'booked_paid');
+          
           console.log('[Purchase API] 🎥 Meeting created via createBooking:', meetingUrl);
         } catch (bookingErr) {
           console.error('[Purchase API] ❌ Failed to create booking:', bookingErr);
@@ -101,7 +106,7 @@ export async function POST(req: NextRequest) {
 
         if (creatorEmail) {
           const grossAmount = amount || 0;
-          const COMMISSION_RATE = 0.10; // 10%
+          const COMMISSION_RATE = 0.20; // 20% flat rate platform wide
           const commission = Math.round(grossAmount * COMMISSION_RATE);
           const netAmount = grossAmount - commission;
 
@@ -205,7 +210,7 @@ export async function POST(req: NextRequest) {
                     <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
                       <tr><td style="color: #6b7280; padding: 6px 0;">Product</td><td style="text-align: right; font-weight: 500; padding: 6px 0;">${productName}</td></tr>
                       <tr><td style="color: #6b7280; padding: 6px 0;">Gross</td><td style="text-align: right; font-weight: 500; padding: 6px 0;">₹${amount}</td></tr>
-                      <tr><td style="color: #6b7280; padding: 6px 0;">Your Earnings</td><td style="text-align: right; font-weight: bold; color: #10b981; padding: 6px 0;">₹${Math.round(amount * 0.90)}</td></tr>
+                      <tr><td style="color: #6b7280; padding: 6px 0;">Your Earnings</td><td style="text-align: right; font-weight: bold; color: #10b981; padding: 6px 0;">₹${Math.round(amount * 0.80)}</td></tr>
                     </table>
                   </div>
                   <a href="${baseUrl}/studio" style="display: block; text-align: center; background: #111827; color: #ffffff; text-decoration: none; font-weight: 500; font-size: 13px; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
@@ -249,6 +254,15 @@ export async function POST(req: NextRequest) {
     // ─── CREATE ORDER ───
     if (!amount || amount < 1) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    }
+
+    // ATOMIC DOUBLE-BOOKING LOCK (15 min expiry for checkout window)
+    if (bookingDetails && bookingDetails.date && bookingDetails.time && creatorUsername) {
+      const lockKey = `booking_lock:${creatorUsername.toLowerCase()}:${bookingDetails.date}:${bookingDetails.time}`;
+      const lockAcquired = await kv.set(lockKey, 'locked_pending_payment', { nx: true, ex: 900 });
+      if (!lockAcquired) {
+        return NextResponse.json({ error: 'This timeslot has just been taken by someone else or is pending payment. Please choose another time.' }, { status: 409 });
+      }
     }
 
     const instance = new Razorpay({

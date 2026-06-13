@@ -16,6 +16,8 @@ import {
   FileText,
   MessageSquare,
   User,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useClerk, UserButton } from "@clerk/nextjs";
 
@@ -28,6 +30,7 @@ import SettingsClient from '../studio/settings/SettingsClient';
 import ProfileEditor from './ProfileEditor';
 import GlobalStudioRecorder from './GlobalStudioRecorder';
 import InboxTab from './InboxTab';
+import { useTheme } from '../components/ThemeProvider';
 
 interface UIProps {
   session: any;
@@ -38,11 +41,12 @@ interface UIProps {
   initialSettings?: any;
 }
 
-type Tab = 'overview' | 'storefront' | 'tools' | 'wallet' | 'settings' | 'feast' | 'inbox';
+type Tab = 'overview' | 'storefront' | 'wallet' | 'settings' | 'feast' | 'inbox';
 
 export default function DashboardClient({ session, username: initialUsername, role: initialRole, initialBalance, initialWithdrawable, initialSettings }: UIProps) {
   const router = useRouter();
   const { signOut } = useClerk();
+  const { theme, setTheme } = useTheme();
 
   // Platform Identity State
   const [username, setUsername] = useState(initialUsername);
@@ -64,7 +68,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['overview', 'storefront', 'tools', 'wallet', 'settings', 'feast', 'inbox'].includes(tabParam)) {
+    if (tabParam && ['overview', 'storefront', 'wallet', 'settings', 'feast', 'inbox'].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
     }
   }, []);
@@ -202,7 +206,6 @@ export default function DashboardClient({ session, username: initialUsername, ro
     { label: 'Inbox', icon: MessageSquare, id: 'inbox' as const },
     ...(isCreator ? [
       { label: 'Storefront', icon: Store, id: 'storefront' as const },
-      { label: 'Tools', icon: Wrench, id: 'tools' as const },
     ] : []),
     { label: 'Wallet', icon: Wallet, id: 'wallet' as const },
     ...(isCreator ? [
@@ -217,7 +220,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
         <div className="p-6">
           <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => router.push('/')}>
             <span className="text-lg font-medium tracking-tight text-foreground">Supertime</span>
-            <span className="text-[9px] font-bold uppercase tracking-widest bg-neo-pink text-white px-1.5 py-0.5 rounded-full shadow-sm">Beta</span>
+            <span className="text-[9px] font-bold uppercase tracking-widest bg-foreground text-background px-1.5 py-0.5 rounded-full shadow-sm">Beta</span>
           </div>
         </div>
 
@@ -237,7 +240,14 @@ export default function DashboardClient({ session, username: initialUsername, ro
           ))}
         </nav>
 
-        <div className="p-4">
+        <div className="p-4 space-y-1">
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-muted hover:bg-background hover:text-foreground rounded-md transition-all"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+          </button>
           <button
             onClick={() => signOut(() => { window.location.href = "/"; })}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-muted hover:bg-background hover:text-foreground rounded-md transition-all"
@@ -340,7 +350,14 @@ export default function DashboardClient({ session, username: initialUsername, ro
                 >
                   {copiedLink ? <><CheckCircle className="w-4 h-4 text-green-500" /> Shared</> : <><Share className="w-4 h-4" /> Share</>}
                 </button>
-                <div className="ml-2 flex items-center">
+                <button
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  className="p-2 rounded-full hover:bg-surface text-muted hover:text-foreground transition-colors shrink-0 lg:hidden"
+                  aria-label="Toggle Theme"
+                >
+                  {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </button>
+                <div className="ml-1 flex items-center">
                   <UserButton afterSignOutUrl="/" />
                 </div>
               </>
@@ -372,11 +389,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
               />
             )}
 
-            {activeTab === 'tools' && (
-              <ToolsTab
-                username={username}
-              />
-            )}
+
 
             {activeTab === 'storefront' && (
               <StorefrontTab

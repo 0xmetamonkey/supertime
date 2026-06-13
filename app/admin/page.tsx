@@ -1,5 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useConfirmDialog } from '../components/ConfirmDialog';
+import { useAlertDialog } from '../components/AlertDialog';
 
 type User = {
   email: string;
@@ -15,6 +17,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const { confirm, ConfirmDialog } = useConfirmDialog();
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
+
   const [config, setConfig] = useState<any>(null);
 
   useEffect(() => {
@@ -28,14 +33,25 @@ export default function AdminDashboard() {
       setUsers(data.users || []);
       setConfig(data.config);
     } catch (e) {
-      alert("Failed to load admin data");
+      customAlert({
+        title: 'Error',
+        message: 'Failed to load admin data.',
+        variant: 'error',
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleAction = async (action: string, email: string, amount?: number) => {
-    if (!confirm(`Are you sure you want to ${action} ${email}?`)) return;
+    const ok = await confirm({
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} user?`,
+      message: `Are you sure you want to ${action} ${email}?`,
+      confirmLabel: action.charAt(0).toUpperCase() + action.slice(1),
+      cancelLabel: 'Cancel',
+      variant: action === 'delete' || action === 'disable' ? 'danger' : 'default',
+    });
+    if (!ok) return;
     setActionLoading(true);
     try {
       const res = await fetch('/api/admin/action', {
@@ -43,13 +59,25 @@ export default function AdminDashboard() {
         body: JSON.stringify({ action, email, amount })
       });
       if (res.ok) {
-        alert("Success!");
+        customAlert({
+          title: 'Success',
+          message: 'Action completed successfully!',
+          variant: 'success',
+        });
         fetchData();
       } else {
-        alert("Action failed");
+        customAlert({
+          title: 'Action Failed',
+          message: 'Failed to execute the requested admin action.',
+          variant: 'error',
+        });
       }
     } catch (e) {
-      alert("Error");
+      customAlert({
+        title: 'Error',
+        message: 'An error occurred while executing the action.',
+        variant: 'error',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -130,6 +158,8 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+      {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

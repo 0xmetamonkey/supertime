@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import ProfileView from '../components/ProfileView';
 import { useRouter } from 'next/navigation';
+import { useAlertDialog } from '../components/AlertDialog';
 
 interface ProfileEditorProps {
   username: string;
@@ -53,6 +54,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
 
   // Preview mode: desktop or mobile
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('mobile');
+  const { alert: customAlert, AlertDialog } = useAlertDialog();
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) return;
@@ -66,7 +68,11 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
       setProfileImage(newBlob.url);
     } catch (e) {
       console.error("Profile photo upload failed:", e);
-      alert("Upload failed. Please try again.");
+      customAlert({
+        title: 'Upload Failed',
+        message: 'Upload failed. Please try again.',
+        variant: 'error',
+      });
     } finally {
       setIsUploading(false);
     }
@@ -101,7 +107,11 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
       router.refresh(); // Tells Next.js to re-fetch the server component state
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (e) {
-      alert("Failed to save profile");
+      customAlert({
+        title: 'Save Failed',
+        message: 'Failed to save profile. Please try again.',
+        variant: 'error',
+      });
     } finally {
       setIsSaving(false);
     }
@@ -112,7 +122,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
       {/* LEFT: EDIT FORM */}
       <div className="lg:col-span-3 space-y-6">
         {/* PROFILE IMAGE */}
-        <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
+        <div id="profile-photo-section" className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
           <div className="mb-6">
             <h3 className="text-sm font-medium text-gray-900 dark:text-foreground flex items-center gap-2">
               <Upload className="w-4 h-4 text-gray-400" /> Profile Photo
@@ -176,7 +186,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
         </div>
 
         {/* SOCIALS */}
-        <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
+        <div id="social-links-section" className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
           <div className="mb-6">
             <h3 className="text-sm font-medium text-gray-900 dark:text-foreground flex items-center gap-2">
               <Globe className="w-4 h-4 text-gray-400" /> Social Links
@@ -206,7 +216,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
         </div>
 
         {/* FAQs */}
-        <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
+        <div id="faqs-section" className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
           <div className="mb-6 flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-900 dark:text-foreground flex items-center gap-2">
               <HelpCircle className="w-4 h-4 text-gray-400" /> FAQs
@@ -351,6 +361,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
           </p>
         </div>
       </div>
+      {AlertDialog}
     </div>
   );
 }
