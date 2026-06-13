@@ -1,71 +1,127 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap');
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --neo-blue: #4461FF;
-  --neo-pink: #FF00F5;
-  --neo-green: #00FF1F;
-  --neo-yellow: #CEFF1A;
-}
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-neo-blue: var(--neo-blue);
-  --color-neo-pink: var(--neo-pink);
-  --color-neo-green: var(--neo-green);
-  --color-neo-yellow: var(--neo-yellow);
-  --font-sans: 'Outfit', var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-surface: var(--surface);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
 }
 
-html, body {
+:root {
+  --background: #F8F8F6;
+  --foreground: #111111;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --surface: #ffffff;
+  --accent: #111111;
+}
+
+.dark {
+  --background: #111111;
+  --foreground: #ffffff;
+  --muted: #9ca3af;
+  --border: #333333;
+  --surface: #1a1a1a;
+  --accent: #ffffff;
+}
+
+/* ── Base Reset ── */
+html,
+body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Outfit', sans-serif;
   overflow-x: hidden;
   max-width: 100vw;
-  position: relative;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.neo-box {
-  border-width: 4px;
-  border-color: black;
-  box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 1);
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+/* ── Form Autofill Reset (Fixes white-on-white in Dark Mode) ── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--background) inset !important;
+  -webkit-text-fill-color: var(--foreground) !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
-.neo-box-hover:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 12px 12px 0px 0px rgba(0, 0, 0, 1);
+/* ── Structural Utilities ── */
+
+/* Standard card container — layout only, no decoration */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
 }
 
-.neo-btn {
-  border-width: 4px;
-  border-color: black;
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
-  font-weight: 900;
-  text-transform: uppercase;
+/* Primary button — structural, no color opinion */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-weight: 600;
   font-size: 0.875rem;
-  line-height: 1.25rem;
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+  border-radius: 8px;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+  border: none;
 }
 
-.neo-btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: none;
+.btn:hover {
+  opacity: 0.85;
 }
 
-/* Hide Next.js Dev Indicators/Toolbar */
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--surface);
+}
+
+/* ── Scrollbar ── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* ── Hide Next.js Dev Indicators ── */
 body>[data-nextjs-toast],
 body>[data-nextjs-dialog-overlay],
 nextjs-portal {
@@ -75,44 +131,25 @@ nextjs-portal {
   pointer-events: none !important;
 }
 
-@keyframes infinite-scroll {
+/* ── Clerk: Strip to neutral defaults ── */
+.cl-footer,
+.cl-internal-footer,
+.cl-internal-ph6z3v,
+[data-clerk-theme="light"] .cl-internal-ph6z3v {
+  display: none !important;
+}
+
+/* ── Animation: Only functional ones ── */
+@keyframes fade-in {
   from {
-    transform: translateX(0);
+    opacity: 0;
   }
 
   to {
-    transform: translateX(-50%);
+    opacity: 1;
   }
 }
 
-.animate-infinite-scroll {
-  animation: infinite-scroll 40s linear infinite;
-}
-
-.outline-text {
-  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.2);
-  color: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-left: 2px solid black;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: black;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #333;
-}
-
-.neo-box-sm {
-  border-width: 2px;
-  border-color: black;
-  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
 }

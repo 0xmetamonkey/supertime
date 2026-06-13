@@ -1,20 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerManager from "./components/ServiceWorkerManager";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
 export const viewport: Viewport = {
-  themeColor: '#000000',
+  themeColor: '#ffffff',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -22,11 +17,18 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: "Supertime | supertime.wtf",
-  description: "Monetize your time instantly.",
+  title: "Supertime — Sell your time",
+  description: "A marketplace where anyone can sell their time for money.",
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/icon.png',
+  },
+  verification: {
+    google: 'ZPKkisFhFaYoSi1Y-uk3Q-zVlsTa-3x_WgMfigwQsFY',
+  },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     title: 'Supertime',
   },
   manifest: '/manifest.json',
@@ -35,12 +37,18 @@ export const metadata: Metadata = {
   },
 };
 
+import { ClerkProvider } from "@clerk/nextjs";
+import { ThemeProvider } from "./components/ThemeProvider";
+import { LanguageProvider } from "./components/LanguageContext";
+import GlobalChatListenerWrapper from "./components/GlobalChatListenerWrapper";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
+<<<<<<< HEAD
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
@@ -49,5 +57,72 @@ export default function RootLayout({
         {children}
       </body>
     </html>
+=======
+    <ClerkProvider
+      appearance={{
+        layout: {
+          socialButtonsVariant: "blockButton",
+          logoPlacement: "inside",
+          shimmer: false,
+        },
+        variables: {
+          colorPrimary: "#111111",
+          colorTextOnPrimaryBackground: "white",
+          colorBackground: "white",
+          colorText: "#111111",
+          colorInputBackground: "white",
+          colorInputText: "#111111",
+          borderRadius: "8px",
+        },
+        elements: {
+          formButtonPrimary: "bg-black hover:bg-zinc-800 text-white font-semibold transition-opacity",
+          card: "border border-gray-200 rounded-xl shadow-sm",
+          headerTitle: "font-semibold text-xl",
+          headerSubtitle: "text-gray-500 text-sm",
+          socialButtonsBlockButton: "border border-gray-200 rounded-lg font-medium hover:bg-gray-50 transition-colors",
+          socialButtonsBlockButtonText: "font-medium",
+          formFieldLabel: "font-medium text-sm text-gray-700",
+          formFieldInput: "border border-gray-200 rounded-lg p-3 focus:ring-1 focus:ring-black",
+          footerActionText: "text-gray-500",
+          footerActionLink: "font-medium text-black hover:text-gray-700",
+          identityPreviewText: "font-medium",
+          identityPreviewEditButtonIcon: "text-black",
+          userButtonAvatarBox: "border border-gray-200",
+          userButtonTrigger: "focus:shadow-none",
+          footer: "hidden",
+          internal_footer: "hidden",
+        }
+      }}
+    >
+      <html lang="en" suppressHydrationWarning>
+        <head>
+          <meta name="zoom-domain-verification" content="ZOOM_verify_16ae31b7f3954bf48e30084ba1a6977b" />
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                try {
+                  if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark')
+                  } else {
+                    document.documentElement.classList.remove('dark')
+                  }
+                } catch (_) {}
+              `,
+            }}
+          />
+        </head>
+        <body
+          className={`${inter.variable} font-sans antialiased bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-200`}
+        >
+          <ThemeProvider>
+            <LanguageProvider>
+              {children}
+              <GlobalChatListenerWrapper />
+            </LanguageProvider>
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
+>>>>>>> 08ca4b6a09d3c4cbc0408e49b5f0049cd694b703
   );
 }

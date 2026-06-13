@@ -13,7 +13,11 @@ const hasKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
 
 export async function POST(req: NextRequest) {
   try {
+<<<<<<< HEAD
     const { action, from, to, type, callerName } = await req.json();
+=======
+    const { action, from, fromName, to, type } = await req.json();
+>>>>>>> 08ca4b6a09d3c4cbc0408e49b5f0049cd694b703
 
     if (action === 'call') {
       // Generate unique channel name
@@ -23,7 +27,11 @@ export async function POST(req: NextRequest) {
 
       const signalData = {
         from,
+<<<<<<< HEAD
         callerName: safeCallerName,
+=======
+        fromName,
+>>>>>>> 08ca4b6a09d3c4cbc0408e49b5f0049cd694b703
         type,
         timestamp: Date.now(),
         channelName
@@ -40,6 +48,43 @@ export async function POST(req: NextRequest) {
         }
 
         await kv.set(`call_signal:${to}`, JSON.stringify(signalData), { ex: 60 });
+
+        // Send FCM Push Notification
+        try {
+          const targetKey = `user:${to.toLowerCase()}:fcm_token`;
+          const fcmToken = await kv.get(targetKey);
+
+          console.log(`[Signal API] 🔍 FCM Token lookup for ${to}:`, {
+            key: targetKey,
+            found: !!fcmToken
+          });
+
+          if (fcmToken && typeof fcmToken === 'string') {
+            const { messaging } = await import('@/app/lib/firebase-admin');
+            const message = {
+              token: fcmToken,
+              notification: {
+                title: `Incoming ${type} Call`,
+                body: `${fromName || 'Someone'} is calling you...`,
+              },
+              data: {
+                channelName,
+                from,
+                fromName: fromName || '',
+                to: to, // Added target username
+                type,
+                action: 'incoming-call'
+              }
+            };
+
+            const response = await messaging.send(message);
+            console.log(`[Signal API] ✅ FCM push sent successfully to ${to}. ID:`, response);
+          } else {
+            console.warn(`[Signal API] ⚠️ No FCM token found for user ${to}. Push skipped.`);
+          }
+        } catch (fcmError) {
+          console.error('[Signal API] ❌ FCM Send Failure:', fcmError);
+        }
       } else {
         console.log(`[MockKV] Setting signal for ${to}:`, signalData);
         global.mockSignalStore.set(`call_signal:${to}`, signalData);
@@ -69,6 +114,22 @@ export async function POST(req: NextRequest) {
       if (hasKV) {
         await kv.del(`call_signal:${targetUser}`);
         if (to) await kv.del(`call_signal:${to}`);
+
+        // Signal background SW to hide notification
+        try {
+          const target = to || from;
+          const fcmToken = await kv.get(`user:${target.toLowerCase()}:fcm_token`);
+          if (fcmToken && typeof fcmToken === 'string') {
+            const { messaging } = await import('@/app/lib/firebase-admin');
+            await messaging.send({
+              token: fcmToken,
+              data: {
+                action: 'cancel-call'
+              },
+              android: { priority: 'high' }
+            });
+          }
+        } catch (e) { }
       } else {
         console.log(`[MockKV] Deleting signal for ${targetUser}`);
         global.mockSignalStore.delete(`call_signal:${targetUser}`);
@@ -113,7 +174,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         incoming: {
           from: signal.from,
+<<<<<<< HEAD
           callerName: signal.callerName,
+=======
+          fromName: signal.fromName,
+>>>>>>> 08ca4b6a09d3c4cbc0408e49b5f0049cd694b703
           type: signal.type,
           channelName: signal.channelName
         }

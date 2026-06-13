@@ -17,13 +17,14 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
   // We keep the state valid for now but will simplify UI
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'upi'>('card');
 
-  useEffect(() => {
-    // Load Razorpay Script
+  const loadRazorpay = () => new Promise((resolve) => {
+    if ((window as any).Razorpay) return resolve(true);
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
     document.body.appendChild(script);
-  }, []);
+  });
 
   const fetchBalance = async () => {
     try {
@@ -37,8 +38,13 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
   };
 
   const handleRecharge = async (amount: number) => {
+    if (amount <= 0) return;
     setLoading(true);
     try {
+      const isLoaded = await loadRazorpay();
+      if (!isLoaded) {
+        throw new Error("Razorpay SDK failed to load. Please check your connection.");
+      }
       // 1. Create Order
       const orderRes = await fetch('/api/payment/create-order', {
         method: 'POST',
@@ -120,11 +126,19 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
   return (
     <>
       <button
+<<<<<<< HEAD
         onClick={() => router.push('/wallet')}
         className="flex items-center gap-2 bg-white border-4 border-black px-4 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none translate-x-[-2px] translate-y-[-2px]"
       >
         <span className="text-black font-black text-sm tabular-nums">
           {balance === null ? '...' : balance} <span className="text-[10px]">TKN</span>
+=======
+        onClick={() => router.push('/dashboard?tab=wallet')}
+        className="flex items-center gap-2 bg-white dark:bg-black border-4 border-black dark:border-white px-4 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_theme(colors.neo-pink)] transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none translate-x-[-2px] translate-y-[-2px]"
+      >
+        <span className="text-black dark:text-white font-black text-sm tabular-nums">
+          {balance === null ? '...' : balance} <span className="text-[10px]">Credits</span>
+>>>>>>> 08ca4b6a09d3c4cbc0408e49b5f0049cd694b703
         </span>
         <div className="w-6 h-6 bg-neo-green border-2 border-black flex items-center justify-center text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] group-hover:bg-neo-yellow">
           +

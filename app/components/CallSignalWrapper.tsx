@@ -3,16 +3,10 @@
 import { useEffect, useState } from 'react';
 import { AblyProvider, useCallSignaling } from '@/app/lib/ably';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface CallSignalWrapperProps {
   userId: string;
-  children: (props: {
-    isConnected: boolean;
-    incomingCall: { from: string; type: 'audio' | 'video'; channelName: string } | null;
-    initiateCall: (targetUserId: string, type: 'audio' | 'video') => Promise<string>;
-    acceptCall: () => { from: string; type: 'audio' | 'video'; channelName: string } | null;
-    rejectCall: () => Promise<void>;
-    cancelCall: (targetUserId: string) => Promise<void>;
-  }) => React.ReactNode;
+  children: (signaling: any) => React.ReactNode;
 }
 
 function CallSignalContent({ userId, children }: CallSignalWrapperProps) {

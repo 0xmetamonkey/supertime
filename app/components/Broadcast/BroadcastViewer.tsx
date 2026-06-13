@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import AgoraRTC, { IAgoraRTCClient, IRemoteVideoTrack, IRemoteAudioTrack } from 'agora-rtc-sdk-ng';
-import { MessageCircle, Send, DollarSign, Phone, Users, X } from 'lucide-react';
+import { MessageCircle, Send, DollarSign, Phone, Users, X, Volume2, VolumeX } from 'lucide-react';
+import { useBroadcastChat } from '@/app/lib/ably';
 
 interface BroadcastViewerProps {
   channelName: string;
@@ -11,6 +12,7 @@ interface BroadcastViewerProps {
   onLeave: () => void;
   onRequestCall: (type: 'audio' | 'video') => void;
   userBalance: number;
+  userDisplayName?: string;
 }
 
 interface ChatMessage {
@@ -22,26 +24,74 @@ interface ChatMessage {
   timestamp: number;
 }
 
+// Tip sound effect - Programmatic "Ding" for guaranteed feedback
+const playTipSound = () => {
+  try {
+    const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
+    if (!AudioContextClass) return;
+
+    const audioCtx = new AudioContextClass();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    // High-pitched "Coin" sound (two-tone sequence)
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(1600, audioCtx.currentTime + 0.1);
+
+    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.4);
+
+    // Also attempt to play the file if it exists as a layer
+    const audio = new Audio('/sounds/tip.mp3');
+    audio.volume = 0.4;
+    audio.play().catch(() => { });
+  } catch (e) {
+    console.error('AudioContext failed:', e);
+  }
+};
+
 export default function BroadcastViewer({
   channelName,
   uid,
   creatorUsername,
   onLeave,
   onRequestCall,
-  userBalance
+  userBalance,
+  userDisplayName
 }: BroadcastViewerProps) {
   const [client] = useState<IAgoraRTCClient>(() => AgoraRTC.createClient({ mode: 'live', codec: 'vp8', role: 'audience' }));
   const [remoteVideo, setRemoteVideo] = useState<IRemoteVideoTrack | null>(null);
-  const [remoteAudio, setRemoteAudio] = useState<IRemoteAudioTrack | null>(null);
+  const [remoteAudioTracks, setRemoteAudioTracks] = useState<IRemoteAudioTrack[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [viewerCount, setViewerCount] = useState(1);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
+  const { messages, setMessages, sendMessage: sendAblyMessage } = useBroadcastChat(channelName, userDisplayName || (uid.startsWith('guest-') ? `Guest-${uid.slice(6, 10)}` : 'Viewer'));
   const [showTipModal, setShowTipModal] = useState(false);
   const [tipAmount, setTipAmount] = useState(50);
 
+  const [isSpeakerOff, setIsSpeakerOff] = useState(false);
+
+  const toggleSpeaker = () => {
+    remoteAudioTracks.forEach(track => {
+      if (isSpeakerOff) {
+        track.play();
+      } else {
+        track.stop();
+      }
+    });
+    setIsSpeakerOff(!isSpeakerOff);
+  };
+
   const videoRef = useRef<HTMLDivElement>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const sessionStartTimeRef = useRef<number>(Date.now());
 
   // Join as viewer (audience)
   useEffect(() => {
@@ -60,15 +110,19 @@ export default function BroadcastViewer({
           if (mediaType === 'video') {
             setRemoteVideo(user.videoTrack || null);
           }
-          if (mediaType === 'audio') {
-            setRemoteAudio(user.audioTrack || null);
-            user.audioTrack?.play();
+          if (mediaType === 'audio' && user.audioTrack) {
+            const track = user.audioTrack;
+            setRemoteAudioTracks(prev => [...prev, track]);
+            track.play();
           }
         });
 
         client.on('user-unpublished', (user, mediaType) => {
           if (mediaType === 'video') setRemoteVideo(null);
-          if (mediaType === 'audio') setRemoteAudio(null);
+          if (mediaType === 'audio' && user.audioTrack) {
+            const track = user.audioTrack;
+            setRemoteAudioTracks(prev => prev.filter(t => t !== track));
+          }
         });
 
         client.on('user-joined', () => setViewerCount(v => v + 1));
@@ -98,64 +152,59 @@ export default function BroadcastViewer({
     }
   }, [remoteVideo]);
 
-  // Auto-scroll chat
+  // Auto-scroll chat manually (safer than scrollIntoView on mobile)
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
-  // Poll for new messages
+  // Initial fetch of message history
   useEffect(() => {
     if (!isConnected) return;
 
-    let lastTimestamp = 0;
-    const pollMessages = async () => {
+    const fetchHistory = async () => {
       try {
-        const res = await fetch(`/api/broadcast/chat?channelName=${encodeURIComponent(channelName)}&since=${lastTimestamp}`);
+        const res = await fetch(`/api/broadcast/chat?channelName=${encodeURIComponent(channelName)}`);
         const data = await res.json();
-        if (data.messages?.length > 0) {
+        if (data.messages) {
           setMessages(prev => {
             const existingIds = new Set(prev.map(m => m.id));
             const newMsgs = data.messages.filter((m: any) => !existingIds.has(m.id));
-            return [...prev, ...newMsgs];
+            return [...newMsgs, ...prev].sort((a, b) => a.timestamp - b.timestamp);
           });
-          lastTimestamp = Math.max(...data.messages.map((m: any) => m.timestamp));
         }
-      } catch (e) {
-        console.error('[Chat] Poll failed:', e);
-      }
+      } catch (e) { }
     };
-
-    const interval = setInterval(pollMessages, 2000); // Poll every 2 seconds
-    pollMessages(); // Initial poll
-
-    return () => clearInterval(interval);
+    fetchHistory();
   }, [channelName, isConnected]);
 
-  // Send chat message via API
+  // Tip sound effect when new tipped messages arrive (Recency check enabled)
+  useEffect(() => {
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg?.isTip && lastMsg.timestamp > sessionStartTimeRef.current) {
+      playTipSound();
+    }
+  }, [messages.length]);
+
+  // Send chat message via Ably
   const sendMessage = async () => {
     if (!chatInput.trim()) return;
 
     const text = chatInput;
     setChatInput('');
 
-    // Add locally immediately for responsiveness
-    const localMsg = {
-      id: Math.random().toString(36).slice(2),
-      from: 'You',
-      text,
-      timestamp: Date.now()
-    };
-    setMessages(prev => [...prev, localMsg]);
-
-    // Send to API
     try {
-      await fetch('/api/broadcast/chat', {
+      const msg = await sendAblyMessage(text);
+      // Persist to API for history
+      fetch('/api/broadcast/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: msg.id,
           channelName,
           message: text,
-          from: uid.startsWith('guest-') ? `Guest-${uid.slice(6, 10)}` : 'Viewer'
+          from: userDisplayName || (uid.startsWith('guest-') ? `Guest-${uid.slice(6, 10)}` : 'Viewer')
         })
       });
     } catch (e) {
@@ -189,16 +238,36 @@ export default function BroadcastViewer({
       }]);
 
       setShowTipModal(false);
-      // TODO: Notify creator via Ably
+
+      // Notify via Ably and Persist
+      try {
+        const announcement = `Sent ${tipAmount} TKN tip! 🎉`;
+        const msg = await sendAblyMessage(announcement, true, tipAmount);
+
+        await fetch('/api/broadcast/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: msg.id,
+            channelName,
+            message: announcement,
+            from: userDisplayName || (uid.startsWith('guest-') ? `Guest-${uid.slice(6, 10)}` : 'Viewer'),
+            isTip: true,
+            tipAmount: tipAmount
+          })
+        });
+      } catch (e) {
+        console.error('[Chat] Tip announcement failed:', e);
+      }
     } catch (e) {
       console.error('Tip failed:', e);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[500] bg-black flex flex-col md:flex-row">
+    <div className="fixed inset-0 z-[500] bg-black flex flex-col md:flex-row overflow-hidden h-[100dvh]">
       {/* Video Area */}
-      <div className="flex-1 relative">
+      <div className="h-[40%] md:h-full md:flex-1 relative border-b-4 md:border-b-0 md:border-r-4 border-black overflow-hidden bg-zinc-900 shrink-0">
         {/* Top Bar */}
         <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -228,53 +297,62 @@ export default function BroadcastViewer({
         </div>
 
         {/* Action Buttons (Mobile Bottom) */}
-        <div className="absolute bottom-4 right-4 flex items-center gap-3">
+        <div className="absolute bottom-4 right-4 flex items-center gap-2">
+          <button
+            onClick={toggleSpeaker}
+            className={`p-3 rounded-full border-2 border-black transition-all ${!isSpeakerOff ? 'bg-white/20 text-white backdrop-blur-md' : 'bg-red-500 text-white'}`}
+          >
+            {!isSpeakerOff ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+          </button>
           <button
             onClick={() => setShowTipModal(true)}
-            className="bg-neo-yellow text-black px-4 py-2 font-black text-sm flex items-center gap-2 border-2 border-black"
+            className="p-3 bg-neo-yellow text-black rounded-full border-2 border-black"
           >
-            <DollarSign className="w-4 h-4" /> TIP
+            <DollarSign className="w-5 h-5" />
           </button>
           <button
             onClick={() => onRequestCall('video')}
-            className="bg-neo-pink text-white px-4 py-2 font-black text-sm flex items-center gap-2 border-2 border-black"
+            className="p-3 bg-neo-pink text-white rounded-full border-2 border-black"
           >
-            <Phone className="w-4 h-4" /> 1:1 CALL
+            <Phone className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Chat Sidebar (Desktop) */}
-      <div className="hidden md:flex w-80 bg-zinc-900 border-l-4 border-black flex-col">
-        <div className="p-4 border-b-2 border-zinc-800">
-          <div className="flex items-center gap-2">
-            <MessageCircle className="w-5 h-5 text-neo-green" />
-            <span className="text-white font-black uppercase text-sm">Live Chat</span>
+      {/* Chat Sidebar */}
+      <div className="flex-1 md:flex-none md:w-80 bg-zinc-900/50 flex flex-col min-h-0 relative">
+        <div className="p-4 border-b border-zinc-800">
+          <div className="flex items-center gap-2 opacity-50">
+            <MessageCircle className="w-4 h-4 text-white" />
+            <span className="text-white font-bold uppercase text-[10px] tracking-widest">Chat</span>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div
+          ref={chatContainerRef}
+          className="flex-1 overflow-y-auto p-4 space-y-3 touch-pan-y"
+          style={{ overscrollBehavior: 'contain' }}
+        >
           {messages.map(msg => (
             <div
               key={msg.id}
-              className={`p-2 rounded ${msg.isTip ? 'bg-neo-yellow/20 border border-neo-yellow' : 'bg-zinc-800'}`}
+              className="px-1"
             >
               {msg.isTip && (
-                <div className="flex items-center gap-1 mb-1">
-                  <DollarSign className="w-4 h-4 text-neo-yellow" />
-                  <span className="text-neo-yellow text-xs font-black">+{msg.tipAmount} TKN</span>
+                <div className="flex items-center gap-1 mb-1 opacity-80">
+                  <span className="text-neo-yellow text-[10px] font-black uppercase tracking-tighter">Tip +{msg.tipAmount}</span>
                 </div>
               )}
-              <p className="text-white text-sm">
-                <span className="font-bold text-neo-pink">{msg.from}:</span> {msg.text}
+              <p className="text-zinc-200 text-sm leading-snug">
+                <span className="font-bold text-neo-pink/80 mr-1.5">{msg.from}</span>
+                <span className="opacity-90">{msg.text}</span>
               </p>
             </div>
           ))}
-          <div ref={chatEndRef} />
         </div>
 
-        {/* Chat Input */}
-        <div className="p-4 border-t-2 border-zinc-800">
+        {/* Chat Input - Anchored at bottom */}
+        <div className="p-4 border-t-2 border-zinc-800 bg-zinc-900 z-10 shrink-0">
           <div className="flex gap-2">
             <input
               type="text"
@@ -282,11 +360,11 @@ export default function BroadcastViewer({
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
               placeholder="Say something..."
-              className="flex-1 bg-zinc-800 text-white px-3 py-2 text-sm outline-none"
+              className="flex-1 bg-zinc-800 text-white px-3 py-2 text-sm outline-none border-2 border-transparent focus:border-neo-green"
             />
             <button
               onClick={sendMessage}
-              className="bg-neo-green text-black px-4 py-2"
+              className="bg-neo-green text-black px-4 py-2 font-bold"
             >
               <Send className="w-4 h-4" />
             </button>
@@ -338,6 +416,9 @@ export default function BroadcastViewer({
           </div>
         </div>
       )}
+      <style jsx global>{`
+        video { object-fit: cover !important; width: 100% !important; height: 100% !important; }
+      `}</style>
     </div>
   );
 }

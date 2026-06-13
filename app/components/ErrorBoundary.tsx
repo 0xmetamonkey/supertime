@@ -45,9 +45,9 @@ export default class ErrorBoundary extends Component<Props, State> {
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-white text-black font-bold rounded-full hover:bg-zinc-200 transition-all uppercase text-xs"
+            className="px-8 py-4 bg-white text-black font-black rounded-full hover:scale-105 transition-transform uppercase text-sm tracking-widest shadow-[0_0_30px_rgba(255,255,255,0.2)]"
           >
-            Reload Page
+            Retry Connection
           </button>
         </div>
       );

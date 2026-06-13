@@ -1,8 +1,10 @@
 'use client';
+// Force Vercel rebuild to catch bio prop
 
 import { useEffect, useState } from 'react';
 import { AblyProvider, useCallSignaling } from '@/app/lib/ably';
 import CreatorClient from './CreatorClient';
+import { IncomingCallRing } from '@/app/components/IncomingCallRing';
 
 interface CreatorWrapperProps {
   username: string;
@@ -19,20 +21,35 @@ interface CreatorWrapperProps {
   templates?: any[];
   availability?: any;
   artifacts?: any[];
+  faqs?: any[];
   roomType?: 'audio' | 'video';
   isRoomFree?: boolean;
   studioMode?: 'solitude' | 'theatre' | 'private';
+  bio?: string;
+  subscriptionPrice?: number;
+  subscriptionBenefits?: string[];
 }
 
 function CreatorWithSignaling(props: CreatorWrapperProps & { clientId: string }) {
   const signaling = useCallSignaling(props.clientId);
 
   return (
-    <CreatorClient
-      {...props}
-      // Inject Ably signaling for call initiation
-      _ablySignaling={signaling}
-    />
+    <>
+      <IncomingCallRing
+        incomingCall={signaling.incomingCall}
+        onAccept={async () => {
+          signaling.acceptCall();
+        }}
+        onReject={async () => {
+          await signaling.rejectCall();
+        }}
+      />
+      <CreatorClient
+        {...props}
+        // Inject Ably signaling for call initiation
+        _ablySignaling={signaling}
+      />
+    </>
   );
 }
 
@@ -44,11 +61,18 @@ export default function CreatorWrapper(props: CreatorWrapperProps) {
   }, []);
 
   // Generate a client ID for the visitor
-  const clientId = props.user?.id || props.user?.email || `visitor-${Math.random().toString(36).slice(2, 8)}`;
+  // CRITICAL: If owner, we MUST use the username slug so callers (who use props.username) can find us.
+  const clientId = props.isOwner
+    ? props.username.toLowerCase()
+    : (props.user?.id || props.user?.email || `visitor-${Math.random().toString(36).slice(2, 8)}`).toLowerCase();
 
   if (!mounted) {
-    // SSR fallback - render without Ably
-    return <CreatorClient {...props} />;
+    // SSR fallback - Wrap with AblyProvider (even if client isn't fully ready yet) to avoid useContext errors
+    return (
+      <AblyProvider clientId={clientId}>
+        <CreatorClient {...props} />
+      </AblyProvider>
+    );
   }
 
   return (

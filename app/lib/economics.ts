@@ -21,7 +21,7 @@ export async function getDetailedWallet(email: string) {
   const withdrawable = (await kv.get<number>(`withdrawable:${email.toLowerCase()}`)) ?? 0;
   return {
     balance,       // Spending credits
-    withdrawable,  // Earned INR (TKN equivalent)
+    withdrawable,  // Earned INR (Credits equivalent)
   };
 }
 
@@ -29,19 +29,19 @@ export async function getDetailedWallet(email: string) {
  * Split Logic: 60/40 Split
  * Ensures rounding down to avoid fractional artifacts
  */
-export function calculateSessionSplit(totalTokens: number) {
-  const speakerShare = Math.floor(totalTokens * SPEAKER_SHARE_PERCENT);
-  const platformShare = Math.floor(totalTokens * PLATFORM_FEE_PERCENT);
+export function calculateSessionSplit(totalCredits: number) {
+  const speakerShare = Math.floor(totalCredits * SPEAKER_SHARE_PERCENT);
+  const platformShare = Math.floor(totalCredits * PLATFORM_FEE_PERCENT);
 
-  // Note: If totalTokens is small (e.g. 1), rounding both down might leave a residue.
+  // Note: If totalCredits is small (e.g. 1), rounding both down might leave a residue.
   // We prioritize speaker share getting the floor, and platform gets the rest 
   // OR we follow the 60/40 rule strictly as requested.
-  // User: "Ensure the math rounds down to the nearest integer to avoid fractional token errors."
+  // User: "Ensure the math rounds down to the nearest integer to avoid fractional credit errors."
 
   return {
     speakerShare,
     platformShare,
-    residue: totalTokens - speakerShare - platformShare
+    residue: totalCredits - speakerShare - platformShare
   };
 }
 
@@ -62,13 +62,24 @@ export async function processSplitPayment(fromEmail: string, toEmail: string, am
   // 2. Calculate Split
   const { speakerShare, platformShare } = calculateSessionSplit(amount);
 
-  // 3. Update Balances
-  // We use a multi/pipeline if possible, but standard KV sets are okay for this scale
+  // 3. Update Sender Balances
   const finalSenderBalance = currentFullBalance - amount;
   await kv.set(`balance:${from}`, finalSenderBalance);
 
+  const senderWithdrawable = (await kv.get<number>(`withdrawable:${from}`)) ?? 0;
+  const senderTopup = currentFullBalance - senderWithdrawable;
+  if (amount > senderTopup) {
+    const withdrawableSpent = amount - senderTopup;
+    const newSenderWithdrawable = Math.max(0, senderWithdrawable - withdrawableSpent);
+    await kv.set(`withdrawable:${from}`, newSenderWithdrawable);
+  }
+
+  // Update Receiver Balances
   const currentWithdrawable = (await kv.get<number>(`withdrawable:${to}`)) ?? 0;
   await kv.set(`withdrawable:${to}`, currentWithdrawable + speakerShare);
+
+  const currentReceiverBalance = (await kv.get<number>(`balance:${to}`)) ?? 0;
+  await kv.set(`balance:${to}`, currentReceiverBalance + speakerShare);
 
   // 4. Update Platform Revenue
   const totalPlatformRevenue = (await kv.get<number>(`platform:revenue`)) ?? 0;
@@ -96,6 +107,9 @@ export async function recordWithdrawalRequest(email: string, amount: number, upi
 
   // 2. Deduct immediately
   await kv.set(`withdrawable:${userEmail}`, currentWithdrawable - amount);
+
+  const currentFullBalance = (await kv.get<number>(`balance:${userEmail}`)) ?? 0;
+  await kv.set(`balance:${userEmail}`, Math.max(0, currentFullBalance - amount));
 
   // 3. Create Request
   const request: WithdrawalRequest = {

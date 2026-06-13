@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Ably from 'ably';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   const clientId = req.nextUrl.searchParams.get('clientId');
 
@@ -23,11 +25,16 @@ export async function GET(req: NextRequest) {
       clientId,
       capability: {
         // User can subscribe to their own channel for incoming calls
-        [`user:${clientId}`]: ['subscribe', 'presence'],
+        [`user:${clientId.toLowerCase()}`]: ['subscribe', 'presence'],
         // User can publish to any user's channel to initiate calls
         ['user:*']: ['publish'],
-        // User can join room channels
+        // User can join room/broadcast channels
         ['room:*']: ['subscribe', 'publish', 'presence'],
+        ['broadcast:*']: ['subscribe', 'publish', 'presence'],
+        // Team chat channels
+        ['team:*']: ['subscribe', 'publish', 'presence'],
+        // Direct messaging channels
+        ['dm:*']: ['subscribe', 'publish', 'presence'],
       }
     });
 

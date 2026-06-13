@@ -7,12 +7,15 @@ import AgoraRTC, {
   IMicrophoneAudioTrack,
   IAgoraRTCRemoteUser
 } from 'agora-rtc-sdk-ng';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Mic, MicOff, Video, VideoOff, X, Volume2, VolumeX, MessageCircle, DollarSign, Send, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface CallStageProps {
   channelName: string;
   uid: string | number;
   type: string | null;
+  creatorEmail?: string;
+  isCreator?: boolean;
   onDisconnect: () => void;
   onSaveArtifact?: (url: string) => void;
   onPeerJoined?: () => void;
@@ -20,7 +23,7 @@ interface CallStageProps {
 }
 
 export default function CallStage({
-  channelName, uid: passedUid, type, onDisconnect, onSaveArtifact, onPeerJoined, onPeerLeft
+  channelName, uid: passedUid, type, isCreator, creatorEmail, onDisconnect, onSaveArtifact, onPeerJoined, onPeerLeft
 }: CallStageProps) {
   const [client, setClient] = useState<IAgoraRTCClient | null>(null);
   const [localTracks, setLocalTracks] = useState<any>(null);
@@ -59,6 +62,29 @@ export default function CallStage({
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef({ startX: 0, startY: 0, lastX: 0, lastY: 0 });
 
+  const [isSpeakerOff, setIsSpeakerOff] = useState(false);
+
+  // Chat & Tipping State
+  const [showChat, setShowChat] = useState(false);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [showTipModal, setShowTipModal] = useState(false);
+  const [userBalance, setUserBalance] = useState<number>(0);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  const toggleSpeaker = () => {
+    remoteUsers.forEach(user => {
+      if (user.audioTrack) {
+        if (isSpeakerOff) {
+          user.audioTrack.play();
+        } else {
+          user.audioTrack.stop();
+        }
+      }
+    });
+    setIsSpeakerOff(!isSpeakerOff);
+  };
+
   // Guard against concurrent connection attempts
   const isConnectingRef = useRef(false);
 
@@ -88,12 +114,59 @@ export default function CallStage({
 
   const isVideo = type === 'video';
   const tracksRef = useRef<any[]>([]);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const c = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+    // 'chat' scenario prioritized earpiece on mobile.
+    // We create the client with mode 'rtc' for low latency 2-way audio.
+    const c = AgoraRTC.createClient({
+      mode: 'rtc',
+      codec: 'vp8'
+    });
+
+    // Explicitly set audio scenario and profile for mobile earpiece prioritization
+    try {
+      if ((c as any).setAudioScenario) {
+        console.log('[AGORA] 🎧 Setting audio scenario to CHAT');
+        (c as any).setAudioScenario('chat');
+      }
+
+      if ((c as any).setAudioProfile) {
+        console.log('[AGORA] 🎧 Setting audio profile to speech_standard');
+        (c as any).setAudioProfile('speech_standard');
+      }
+    } catch (e) {
+      console.warn('[AGORA] Audio hint failed:', e);
+    }
+
     setClient(c);
     c.enableAudioVolumeIndicator();
-    return () => { c.leave(); };
+
+    // Monitor connection health
+    const handleStateChange = (curState: string, revState: string, reason?: string) => {
+      console.log(`[AGORA] 🌐 State: ${curState}, Reason: ${reason}`);
+
+      if (curState === 'RECONNECTING' || (curState === 'DISCONNECTED' && reason === 'INTERRUPTED')) {
+        setIsReconnecting(true);
+      } else if (curState === 'CONNECTED') {
+        setIsReconnecting(false);
+        setErrorMessage(null);
+      }
+
+      if (curState === 'FAILED') {
+        setErrorMessage(`Connection failed: ${reason || 'Unknown reason'}. Please try reloading.`);
+        setIsReconnecting(false);
+      }
+    };
+
+    c.on('connection-state-change', handleStateChange);
+
+    return () => {
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      c.off('connection-state-change', handleStateChange);
+      c.leave();
+    };
   }, []);
 
   useEffect(() => {
@@ -101,12 +174,21 @@ export default function CallStage({
     let active = true;
 
     // Listeners for remote user events
-    // We attach these BEFORE calling connect() so we don't miss any events during join
     const handleUserPublished = async (user: IAgoraRTCRemoteUser, mediaType: 'audio' | 'video') => {
       if (user.uid === uid) return;
       console.log(`[CALL] 📥 Remote user published: ${user.uid} (${mediaType})`);
+
+      // If we were in a grace period, clear it
+      if (reconnectTimeoutRef.current) {
+        console.log('[CALL] ⚡ Peer re-joined during grace period. Clearing timeout.');
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+        setIsReconnecting(false);
+      }
+
       try {
         await client.subscribe(user, mediaType);
+        // ... existing subscription logic ...
         console.log(`[CALL] ✨ Subscribed to ${user.uid} (${mediaType})`);
 
         // Update state to trigger re-render
@@ -135,6 +217,7 @@ export default function CallStage({
     };
 
     const handleUserLeft = (user: IAgoraRTCRemoteUser) => {
+      console.log(`[CALL] 📤 Remote user left: ${user.uid}`);
       setRemoteUsers(prev => {
         const next = prev.filter(u => u.uid !== user.uid);
         if (prev.length > 0 && next.length === 0) {
@@ -144,8 +227,16 @@ export default function CallStage({
       });
 
       if (!channelName.startsWith('room-')) {
-        console.log('[CALL] 🛡️ Ending private session as peer has left');
-        onDisconnect();
+        // GRACE PERIOD: On mobile, network can flicker. Don't DC immediately.
+        setIsReconnecting(true);
+        console.log('[CALL] 🛡️ Peer left private session. Starting 15s grace period...');
+
+        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+
+        reconnectTimeoutRef.current = setTimeout(() => {
+          console.log('[CALL] ⏳ Grace period expired. Ending session.');
+          onDisconnect();
+        }, 15000); // 15 second window to recover
       }
     };
 
@@ -155,20 +246,21 @@ export default function CallStage({
       setVolumes(newVols);
     };
 
-    const handleStreamMessage = (uid: string | number, data: Uint8Array) => {
+    const handleStreamMessage = (msgUid: string | number, payload: Uint8Array) => {
       try {
-        const decoded = new TextDecoder().decode(data);
-        const json = JSON.parse(decoded);
-        console.log('[CALL] 📨 Received metadata signal:', json);
-        if (json.type === 'REQ_REC') setConsentState('pending_approval');
-        else if (json.type === 'RES_REC_OK') setConsentState('granted');
-        else if (json.type === 'RES_REC_NO') {
+        const text = new TextDecoder().decode(payload);
+        const msg = JSON.parse(text);
+        console.log("[CALL] 📨 Stream message received:", msg);
+        if (msg.type === 'REQ_REC') {
+          setConsentState('pending_approval');
+        } else if (msg.type === 'RES_REC_OK') {
+          setConsentState('granted');
+        } else if (msg.type === 'RES_REC_NO') {
           setConsentState('denied');
-          setIsRecording(false);
-          alert("Recording consent was denied.");
+          setTimeout(() => setConsentState('idle'), 3000);
         }
       } catch (e) {
-        console.error("[CALL] ❌ Metadata parse error", e);
+        console.error("Failed to parse stream message", e);
       }
     };
 
@@ -187,6 +279,11 @@ export default function CallStage({
       try {
         console.log(`[CALL] 1. Requesting token for ${channelName}...`);
         const res = await fetch(`/api/agora/token?channelName=${encodeURIComponent(channelName)}&uid=${uid}`);
+
+        if (!res.ok) {
+          throw new Error(`Token server error: ${res.status}`);
+        }
+
         const data = await res.json();
 
         console.log(`[CALL] 2. Token received. UID from API: ${data.uid}, channel: ${data.channelName}`);
@@ -196,9 +293,22 @@ export default function CallStage({
 
         console.log(`[CALL] 3. Initializing media tracks...`);
         const audioConfig: any = { AEC: true, AGC: true, ANS: true };
-        const tracks = isVideo
-          ? await AgoraRTC.createMicrophoneAndCameraTracks(audioConfig, undefined)
-          : [await AgoraRTC.createMicrophoneAudioTrack(audioConfig)];
+
+        let tracks: any[] = [];
+        try {
+          tracks = isVideo
+            ? await AgoraRTC.createMicrophoneAndCameraTracks(audioConfig, undefined)
+            : [await AgoraRTC.createMicrophoneAudioTrack(audioConfig)];
+        } catch (mediaError: any) {
+          console.error("[CALL] Media Access Failed:", mediaError);
+          if (mediaError.code === "PERMISSION_DENIED" || mediaError.name === "NotAllowedError") {
+            throw new Error("Microphone/Camera access denied. Please allow permissions in your browser settings.");
+          }
+          if (mediaError.code === "DEVICE_NOT_FOUND" || mediaError.name === "NotFoundError") {
+            throw new Error("No Microphone/Camera found. Please check your devices.");
+          }
+          throw new Error("Could not access media devices: " + (mediaError.message || "Unknown error"));
+        }
 
         if (!active) {
           tracks.forEach(t => t.close());
@@ -211,18 +321,24 @@ export default function CallStage({
         // CRITICAL: Use the UID from the token API response, not our local uid
         // This ensures the token was generated for the exact UID we're joining with
         const joinUid = data.uid;
-        console.log(`[CALL] 4. Joining channel ${channelName} with UID ${joinUid}...`);
+        console.log(`[CALL] 4. Joining Agora. AppId: ${data.appId}, Channel: ${channelName}, UID: ${joinUid}`);
         await client.join(data.appId, channelName, data.token, joinUid);
         setIsConnected(true);
 
-        console.log(`[CALL] 5. Publishing tracks...`);
+        console.log(`[CALL] 5. Publishing local tracks...`);
         await client.publish(tracks);
-        console.log(`[CALL] 🚀 Connection established with UID ${joinUid}`);
+        console.log(`[CALL] ✅ Local tracks published. You are now live in the channel.`);
+
+        console.log(`[CALL] ✅ Local tracks published. You are now live in the channel.`);
 
       } catch (err: any) {
         console.error("[CALL] FATAL ERROR:", err);
         setErrorMessage(err.message || "Unknown Connection Failure");
-        if (tracksRef.current) tracksRef.current.forEach(t => t.close());
+        if (tracksRef.current) {
+          tracksRef.current.forEach(t => t.close());
+          tracksRef.current = [];
+          setLocalTracks(null);
+        }
       } finally {
         isConnectingRef.current = false;
       }
@@ -232,16 +348,76 @@ export default function CallStage({
 
     return () => {
       active = false;
-      client.off('user-published', handleUserPublished);
-      client.off('user-unpublished', handleUserUnpublished);
-      client.off('user-left', handleUserLeft);
-      client.off('volume-indicator', handleVolumeIndicator);
-      client.off('stream-message', handleStreamMessage);
-
-      tracksRef.current.forEach(t => { t.stop(); t.close(); });
+      if (tracksRef.current) {
+        tracksRef.current.forEach(t => { t.stop(); t.close(); });
+        tracksRef.current = [];
+      }
+      setLocalTracks(null);
       client.leave();
     };
   }, [client, channelName, passedUid, isVideo]);
+
+  // Chat Polling Logic
+  useEffect(() => {
+    if (!isConnected) return;
+    const fetchMsgs = async () => {
+      try {
+        const res = await fetch(`/api/broadcast/chat?channelName=${channelName}`);
+        const data = await res.json();
+        if (data.messages) setMessages(data.messages);
+      } catch (e) { }
+    };
+    fetchMsgs();
+    const interval = setInterval(fetchMsgs, 2000);
+    return () => clearInterval(interval);
+  }, [isConnected, channelName]);
+
+  // Fetch Wallet Balance
+  useEffect(() => {
+    if (!isCreator && isConnected) {
+      fetch('/api/wallet').then(res => res.json()).then(data => setUserBalance(data.balance || 0));
+    }
+  }, [isCreator, isConnected]);
+
+  const sendMessage = async (textOverride?: string, isTip = false, amount = 0) => {
+    const text = textOverride || chatInput;
+    if (!text && !isTip) return;
+
+    try {
+      await fetch('/api/broadcast/chat', {
+        method: 'POST',
+        body: JSON.stringify({
+          channelName,
+          text,
+          from: isCreator ? 'Creator' : 'Fan',
+          isTip,
+          tipAmount: amount
+        })
+      });
+      if (!textOverride) setChatInput('');
+    } catch (e) { }
+  };
+
+  const handleTip = async (amount: number) => {
+    if (userBalance < amount) {
+      alert("Insufficient balance!");
+      return;
+    }
+    try {
+      const res = await fetch('/api/wallet', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'deduct_split', amount, recipientEmail: creatorEmail })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUserBalance(data.balance);
+        sendMessage(`Tipped ${amount} TKN!`, true, amount);
+        setShowTipModal(false);
+      }
+    } catch (e) {
+      alert("Tip failed.");
+    }
+  };
 
   // Exponential backoff retry logic
   const handleRetry = async () => {
@@ -265,44 +441,32 @@ export default function CallStage({
   };
 
   const toggleMic = async () => {
-    if (!client || !localTracks?.[0]) return;
+    if (!localTracks?.[0]) return;
     const track = localTracks[0];
-    if (track.enabled) {
-      if (client.connectionState === 'CONNECTED') {
-        await client.unpublish(track);
-      }
-      await track.setEnabled(false);
-    } else {
-      await track.setEnabled(true);
-      if (client.connectionState === 'CONNECTED') {
-        await client.publish(track);
-      }
-    }
+    const newState = !track.enabled;
+    console.log(`[CALL] 🎙️ Toggling Mic: ${newState ? 'ON' : 'OFF'}`);
+    await track.setEnabled(newState);
     setLocalTracks([...localTracks]);
   };
 
   const toggleCam = async () => {
-    if (isVideo && client && localTracks?.[1]) {
+    if (isVideo && localTracks?.[1]) {
       const track = localTracks[1];
-      if (track.enabled) {
-        if (client.connectionState === 'CONNECTED') {
-          await client.unpublish(track);
-        }
-        await track.setEnabled(false);
-      } else {
-        await track.setEnabled(true);
-        if (client.connectionState === 'CONNECTED') {
-          await client.publish(track);
-        }
-      }
+      const newState = !track.enabled;
+      console.log(`[CALL] 📷 Toggling Cam: ${newState ? 'ON' : 'OFF'}`);
+      await track.setEnabled(newState);
       setLocalTracks([...localTracks]);
     }
   };
 
   const sendSignal = (msg: any) => {
-    if (client && dataStreamIdRef.current !== null) {
+    if (client) {
       const encoded = new TextEncoder().encode(JSON.stringify(msg));
-      (client as any).sendStreamMessage(dataStreamIdRef.current, encoded);
+      try {
+        (client as any).sendStreamMessage(encoded);
+      } catch (e) {
+        console.error("Failed to send stream message", e);
+      }
     }
   };
 
@@ -323,30 +487,42 @@ export default function CallStage({
     }
   }, [consentState, onSaveArtifact]);
 
+  // Recording Logic (Optimized)
+  const [recordDuration, setRecordDuration] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
   const startRecording = async () => {
     try {
-      const stream = new MediaStream();
+      console.log("[REC] ⏺️ Initializing premium recording engine...");
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const destination = audioCtx.createMediaStreamDestination();
 
-      // Add local tracks
-      if (localTracks) {
-        localTracks.forEach((track: any) => {
-          const mediaTrack = track.getMediaStreamTrack();
-          if (mediaTrack) stream.addTrack(mediaTrack);
-        });
+      if (localTracks?.[0]) {
+        const localSource = audioCtx.createMediaStreamSource(new MediaStream([localTracks[0].getMediaStreamTrack()]));
+        localSource.connect(destination);
       }
 
-      // Add remote tracks (mixing would be better but this is MVP)
       remoteUsers.forEach(user => {
-        if (user.audioTrack) stream.addTrack(user.audioTrack.getMediaStreamTrack());
-        if (user.videoTrack) stream.addTrack(user.videoTrack.getMediaStreamTrack());
+        if (user.audioTrack) {
+          const remoteSource = audioCtx.createMediaStreamSource(new MediaStream([user.audioTrack.getMediaStreamTrack()]));
+          remoteSource.connect(destination);
+        }
       });
 
-      if (stream.getTracks().length === 0) {
-        alert("No active tracks to record");
-        return;
-      }
+      const recordedStream = new MediaStream();
+      destination.stream.getAudioTracks().forEach(track => recordedStream.addTrack(track));
 
-      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
+      const videoTrack = remoteUsers.find(u => u.videoTrack)?.videoTrack?.getMediaStreamTrack() ||
+        localTracks?.[1]?.getMediaStreamTrack();
+
+      if (videoTrack) recordedStream.addTrack(videoTrack);
+
+      const mimeType = ['video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'].find(type => MediaRecorder.isTypeSupported(type)) || '';
+      const recorder = new MediaRecorder(recordedStream, {
+        mimeType,
+        videoBitsPerSecond: 2500000
+      });
+
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
 
@@ -355,14 +531,17 @@ export default function CallStage({
       };
 
       recorder.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+        const blob = new Blob(chunksRef.current, { type: mimeType || 'video/webm' });
         await uploadRecording(blob);
+        audioCtx.close();
       };
 
       recorder.start();
       setIsRecording(true);
+      setRecordDuration(0);
+      timerRef.current = setInterval(() => setRecordDuration(d => d + 1), 1000);
     } catch (e) {
-      console.error("Recording start failed", e);
+      console.error("Recording failed", e);
       setConsentState('idle');
     }
   };
@@ -372,181 +551,263 @@ export default function CallStage({
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       setConsentState('idle');
+      if (timerRef.current) clearInterval(timerRef.current);
     }
   };
 
   const uploadRecording = async (blob: Blob) => {
     setIsUploading(true);
     try {
-      const filename = `recording-${Date.now()}.webm`;
-      const res = await fetch(`/api/upload?filename=${filename}`, {
-        method: 'POST',
-        body: blob
-      });
+      const filename = `call-${Date.now()}.webm`;
+      const res = await fetch(`/api/upload?filename=${filename}`, { method: 'POST', body: blob });
       const data = await res.json();
       if (data.url && onSaveArtifact) {
         onSaveArtifact(data.url);
       }
-    } catch (e) {
-      console.error("Upload failed", e);
-    } finally {
-      setIsUploading(false);
-    }
+    } catch (e) { } finally { setIsUploading(false); }
   };
 
-  const mainRemoteUser = remoteUsers.find(u => u.videoTrack) || remoteUsers[0];
+  const formatDuration = (s: number) => {
+    const min = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${min}:${sec.toString().padStart(2, '0')}`;
+  };
 
-  console.log(`[CALL] Render: isVideo=${isVideo}, isConnected=${isConnected}, localTracks=${!!localTracks}, remoteUsers=${remoteUsers.length}`);
+  const remotePeer = remoteUsers[0];
+  const remoteVolume = volumes[remotePeer?.uid?.toString() || ''] || 0;
 
   return (
-    <div className="fixed inset-0 bg-black text-white font-sans overflow-hidden select-none">
-
-      <div className="absolute top-0 inset-x-0 z-30 p-8 flex justify-between items-start pointer-events-none">
-        <div className="flex flex-col gap-2 pointer-events-auto">
-          <div className="px-4 py-1.5 bg-neo-green/10 text-neo-green border-[1px] border-neo-green/20 font-black uppercase text-[10px] tracking-[0.2em] backdrop-blur-md">
-            Session Established
+    <div className="fixed inset-0 z-[500] bg-black overflow-hidden select-none">
+      {/* ERROR OVERLAY - PREVENTS CRASHES BY SHOWING UI INSTEAD */}
+      {/* ERROR OVERLAY - PREVENTS CRASHES BY SHOWING UI INSTEAD */}
+      {errorMessage && (
+        <div className="absolute inset-0 z-[1000] bg-zinc-950/90 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-300">
+          <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border-2 border-red-500/20">
+            <span className="text-3xl">⚠️</span>
           </div>
-        </div>
-      </div>
-
-      {/* REMOTE / PRIMARY DISPLAY */}
-      <div className="absolute inset-0 z-0 bg-zinc-950 flex flex-col items-center justify-center p-6 pb-40">
-        {errorMessage ? (
-          <div className="flex flex-col items-center justify-center h-full max-w-md text-center px-6">
-            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-6 text-3xl">⚠️</div>
-            <h2 className="text-xl font-black uppercase italic tracking-tighter mb-2 text-red-500">Connection Failed</h2>
-            <p className="text-zinc-400 text-sm mb-8 leading-relaxed font-medium">{errorMessage}</p>
+          <h3 className="text-red-500 font-black uppercase text-3xl tracking-tighter mb-4 drop-shadow-lg">Engine Error</h3>
+          <p className="text-zinc-300 mb-8 max-w-md font-medium text-lg border-l-4 border-red-500 pl-4 text-left bg-black/50 p-4 rounded-r-lg">
+            {errorMessage}
+          </p>
+          <div className="flex flex-col gap-3 w-full max-w-xs">
             <button
-              onClick={handleRetry}
-              disabled={isRetrying}
-              className="neo-btn bg-white text-black px-8 py-3 font-black uppercase italic tracking-widest text-xs hover:bg-neo-yellow transition-colors disabled:opacity-50"
+              onClick={() => window.location.reload()}
+              className="bg-white text-black w-full py-4 font-black uppercase tracking-widest rounded-full hover:scale-105 transition-transform"
             >
-              {isRetrying ? `Retrying... (${retryCount}/3)` : 'Retry Connection'}
+              Restart App
+            </button>
+            <button
+              onClick={onDisconnect}
+              className="bg-zinc-800 text-white w-full py-4 font-black uppercase tracking-widest rounded-full hover:bg-zinc-700 transition-colors"
+            >
+              Exit Call
             </button>
           </div>
-        ) : !remoteUsers.length ? (
-          <div className="relative w-full h-full flex flex-col items-center justify-center">
-            {/* Premium Fullscreen Video Preview */}
-            {isVideo && localTracks?.[1] ? (
-              <div className="w-full h-full bg-zinc-900 overflow-hidden relative">
-                <VideoPlayer track={localTracks[1]} />
+        </div>
+      )}
+
+      {/* IMMERSIVE BACKGROUND (REMOTE PEER) */}
+      <div className="absolute inset-0 z-0 bg-zinc-950 flex items-center justify-center">
+        {remotePeer ? (
+          remotePeer.videoTrack ? (
+            <VideoPlayer track={remotePeer.videoTrack} />
+          ) : (
+            <div className="relative w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-zinc-900 to-black">
+              {/* Energy Orb Audio UI */}
+              <div className="relative group">
+                <div
+                  className="absolute inset-0 bg-neo-pink blur-[100px] opacity-20 rounded-full animate-pulse transition-all duration-300"
+                  style={{ transform: `scale(${1 + remoteVolume / 100})` }}
+                />
+                <div
+                  className="w-48 h-48 rounded-full bg-white/5 border border-white/10 backdrop-blur-2xl flex items-center justify-center relative overflow-hidden shadow-2xl transition-transform duration-75"
+                  style={{ transform: `scale(${1 + remoteVolume / 200})` }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-tr from-neo-pink/20 to-neo-blue/20 opacity-50" />
+                  <Sparkles className="w-16 h-16 text-white/40 animate-spin-slow" />
+                </div>
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full">
-                <div className="text-zinc-500 font-bold uppercase tracking-[0.4em] animate-pulse text-xs italic">Awaiting connection...</div>
-              </div>
-            )}
-          </div>
+              <p className="mt-12 text-white/40 text-[10px] font-black uppercase tracking-[0.4em] italic animate-pulse">
+                Exchanging Energy
+              </p>
+            </div>
+          )
         ) : (
-          <div className={`w-full h-full grid gap-6 ${remoteUsers.length === 1 ? 'grid-cols-1' : (remoteUsers.length <= 4 ? 'grid-cols-2' : 'grid-cols-3')} overflow-y-auto custom-scrollbar pt-20`}>
-            {remoteUsers.map((user) => (
-              <div key={user.uid} className="w-full h-full relative bg-zinc-900">
-                {user.videoTrack ? (
-                  <VideoPlayer track={user.videoTrack} />
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full">
-                    <div className="w-32 h-32 rounded-full bg-zinc-800 flex items-center justify-center text-4xl border border-white/5">
-                      👤
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="flex flex-col items-center gap-8">
+            <div className="flex flex-col items-center gap-6">
+              <div className="w-2 h-2 bg-neo-pink rounded-full animate-ping" />
+              <span className="text-white/20 text-[10px] font-black uppercase tracking-[0.5em] italic">Awaiting connection...</span>
+            </div>
+
+            {/* Safety Valve for slow connections */}
+            {!isConnected && (
+              <button
+                onClick={onDisconnect}
+                className="mt-4 px-6 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black text-white/30 uppercase tracking-widest hover:bg-white/10 hover:text-white/60 transition-all active:scale-95"
+              >
+                Cancel Attempt
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {/* LOCAL SELF VIEW */}
+      {/* TOP STATUS OVERLAYS (REC & RECONNECTING) */}
+      <div className="absolute top-0 left-0 right-0 p-4 md:p-8 flex flex-col items-end gap-2 z-50 pointer-events-none">
+        {isRecording && (
+          <div className="pointer-events-auto bg-red-600 px-3 py-1 rounded-full border border-white/20 flex items-center gap-2 shadow-2xl animate-in fade-in slide-in-from-right-4">
+            <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+            <span className="text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
+              REC • {formatDuration(recordDuration)}
+            </span>
+          </div>
+        )}
+        {isReconnecting && (
+          <div className="pointer-events-auto flex flex-col items-end gap-2">
+            <div className="bg-neo-yellow text-black px-4 py-2 rounded-xl border-2 border-black flex items-center gap-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] animate-bounce">
+              <div className="w-2 h-2 rounded-full bg-black animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                Reconnecting...
+              </span>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-zinc-900 border border-white/20 text-white text-[9px] font-black uppercase tracking-widest px-4 py-1.5 rounded-lg shadow-xl hover:bg-zinc-800"
+            >
+              Manual Recovery
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* DRAGGABLE SELF VIEW (GLASS PIL) */}
       {isVideo && localTracks?.[1] && (
         <div
           onMouseDown={onDragStart}
           onMouseMove={onDragMove}
           onMouseUp={onDragEnd}
-          onMouseLeave={onDragEnd}
           onTouchStart={onDragStart}
           onTouchMove={onDragMove}
           onTouchEnd={onDragEnd}
           style={{
             transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
-            transition: dragging ? 'none' : 'transform 0.1s ease-out'
+            transition: dragging ? 'none' : 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
-          className="absolute bottom-32 right-6 w-32 h-44 bg-zinc-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-10 cursor-move touch-none"
+          className="absolute bottom-32 right-8 w-28 h-40 bg-black/40 backdrop-blur-3xl border border-white/20 rounded-[2.5rem] overflow-hidden shadow-2xl z-20 cursor-move touch-none group"
         >
           {localTracks[1].enabled ? (
             <VideoPlayer track={localTracks[1]} />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-zinc-950">
-              <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-xl border border-white/10">
-                😊
+            <div className="w-full h-full flex items-center justify-center bg-zinc-900">
+              <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xl">
+                👤
               </div>
             </div>
           )}
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 w-8 h-1 bg-white/10 rounded-full" />
         </div>
       )}
 
-      {/* CONTROLS */}
-      <div className="absolute bottom-10 inset-x-0 flex justify-center gap-6 z-20">
-        <div className="flex bg-zinc-900/80 backdrop-blur-xl p-2 rounded-full border border-white/10 shadow-2xl gap-3">
-          <button onClick={toggleMic} className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${localTracks?.[0]?.enabled ? 'bg-white/10 text-white' : 'bg-red-500 text-white'}`}>
-            <span className="text-xl">{localTracks?.[0]?.enabled ? '🎙️' : '🔇'}</span>
-          </button>
-          {isVideo && (
-            <button onClick={toggleCam} className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${localTracks?.[1]?.enabled ? 'bg-white/10 text-white' : 'bg-red-500 text-white'}`}>
-              <span className="text-xl">{localTracks?.[1]?.enabled ? '📹' : '🚫'}</span>
-            </button>
-          )}
-          <button onClick={onDisconnect} className="w-14 h-14 rounded-full bg-red-600 flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform">
-            <span className="text-xl">📞</span>
+      {/* MINIMALIST GLASS CONTROLS */}
+      <div className="absolute bottom-12 left-0 right-0 flex justify-center items-center z-30 pointer-events-none">
+        <div className="flex items-center gap-4 p-4 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl pointer-events-auto group hover:bg-white/10 transition-all duration-500">
+          <button
+            onClick={toggleMic}
+            className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all border ${localTracks?.[0]?.enabled ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-red-500/80 border-red-400/50'}`}
+          >
+            {localTracks?.[0]?.enabled ? <Mic className="w-5 h-5 text-white/80" /> : <MicOff className="w-5 h-5 text-white" />}
           </button>
 
-          <div className="w-[1px] h-8 bg-white/10 my-auto" />
+          {isVideo && (
+            <button
+              onClick={toggleCam}
+              className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all border ${localTracks?.[1]?.enabled ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-red-500/80 border-red-400/50'}`}
+            >
+              {localTracks?.[1]?.enabled ? <Video className="w-5 h-5 text-white/80" /> : <VideoOff className="w-5 h-5 text-white" />}
+            </button>
+          )}
+
+          <button
+            onClick={toggleSpeaker}
+            className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all border ${!isSpeakerOff ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-red-500/80 border-red-400/50'}`}
+          >
+            {!isSpeakerOff ? <Volume2 className="w-5 h-5 text-white/80" /> : <VolumeX className="w-5 h-5 text-white" />}
+          </button>
 
           <button
             onClick={isRecording ? stopRecording : requestRecording}
             disabled={isUploading || consentState === 'requesting'}
-            className={`w-14 h-14 rounded-full flex flex-col items-center justify-center transition-all ${isRecording ? 'bg-red-500 animate-pulse' : (consentState === 'requesting' ? 'bg-zinc-700' : 'bg-white/10 text-white hover:bg-white/20')}`}
+            className={`relative group w-14 h-14 rounded-full flex flex-col items-center justify-center transition-all border-2 ${isRecording ? 'bg-neo-pink border-neo-pink scale-110 shadow-[0_0_20px_theme(colors.neo-pink.default)]' : 'bg-white/10 border-white/20 hover:scale-105'}`}
           >
-            <span className="text-xl">{isUploading || consentState === 'requesting' ? '⌛' : (isRecording ? '⏹️' : '⏺️')}</span>
-            <span className="text-[8px] font-bold mt-[-4px]">{isUploading ? 'SAVING' : (consentState === 'requesting' ? 'WAIT' : (isRecording ? 'STOP' : 'REC'))}</span>
+            {isUploading ? (
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <div className={`w-3.5 h-3.5 rounded-full transition-all duration-500 ${isRecording ? 'bg-white animate-pulse' : 'bg-red-600'}`} />
+            )}
+          </button>
+
+          <button
+            onClick={onDisconnect}
+            className="w-14 h-14 rounded-full bg-red-600 text-white border-2 border-white/20 flex items-center justify-center hover:bg-red-700 transition-all hover:scale-105 shadow-xl"
+          >
+            <X className="w-6 h-6" />
           </button>
         </div>
       </div>
 
-      {/* CONSENT MODAL */}
-      {consentState === 'pending_approval' && (
-        <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 text-center">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-sm animate-in zoom-in duration-300">
-            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">⏺️</div>
-            <h2 className="text-xl font-bold mb-2">Recording Consent</h2>
-            <p className="text-zinc-400 text-sm mb-6">The creator would like to record this session for the Artifact Library. Do you consent to being recorded?</p>
-            <div className="flex gap-4">
-              <button
-                onClick={() => respondToConsent(false)}
-                className="flex-1 py-3 bg-zinc-800 text-white font-bold rounded-2xl hover:bg-zinc-700 transition-colors"
-              >
-                Decline
-              </button>
-              <button
-                onClick={() => respondToConsent(true)}
-                className="flex-1 py-3 bg-[#CEFF1A] text-black font-black rounded-2xl hover:bg-[#dfff5e] transition-colors"
-              >
-                I Consent
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* CONSENT MODAL (REIMAGINED AS GLASS CARD) */}
+      <AnimatePresence>
+        {consentState === 'pending_approval' && (
+          <motion.div
+            initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            animate={{ opacity: 1, backdropFilter: 'blur(20px)' }}
+            exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            className="fixed inset-0 z-[600] bg-black/40 flex items-center justify-center p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              className="w-full max-w-sm bg-zinc-900/80 backdrop-blur-3xl border border-white/10 rounded-[3rem] p-10 shadow-[0_32px_64px_rgba(0,0,0,0.5)] text-center relative overflow-hidden"
+            >
+              <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-neo-pink to-transparent animate-shimmer" />
+              <div className="w-20 h-20 bg-neo-pink/20 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+                <div className="w-10 h-10 bg-neo-pink rounded-full animate-pulse shadow-[0_0_30px_theme(colors.neo-pink.default)]" />
+              </div>
+              <h2 className="text-2xl font-black uppercase italic tracking-tight text-white mb-3">REC Request</h2>
+              <p className="text-zinc-400 text-sm font-medium leading-relaxed mb-10 px-4">
+                The creator wants to save this session to their <span className="text-neo-pink">Private Vault</span>. You will always be asked first.
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => respondToConsent(false)}
+                  className="flex-1 py-4 bg-white/5 text-white/40 text-xs font-black uppercase tracking-widest rounded-2xl border border-white/10 hover:bg-white/10 transition-all active:scale-95"
+                >
+                  Skip
+                </button>
+                <button
+                  onClick={() => respondToConsent(true)}
+                  className="flex-1 py-4 bg-white text-black text-xs font-black uppercase tracking-widest rounded-2xl shadow-xl hover:bg-neo-pink hover:text-white transition-all active:scale-95"
+                >
+                  Consent
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style jsx global>{`
-        video { object-fit: cover !important; width: 100% !important; height: 100% !important; border-radius: inherit; }
+        video { object-fit: cover !important; width: 100% !important; height: 100% !important; }
+        .animate-spin-slow { animation: spin 8s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes shimmer { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.3; } }
       `}</style>
     </div>
   );
 }
 
-
-
-function VideoPlayer({ track }: { track: any }) {
+// Optimized Video Component
+const VideoPlayer = React.memo(({ track }: { track: any }) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!track || !ref.current) return;
@@ -554,4 +815,5 @@ function VideoPlayer({ track }: { track: any }) {
     return () => { track.stop(); };
   }, [track]);
   return <div ref={ref} className="w-full h-full" />;
-}
+});
+VideoPlayer.displayName = 'VideoPlayer';

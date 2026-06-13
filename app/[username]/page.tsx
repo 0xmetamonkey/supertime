@@ -1,14 +1,15 @@
-import { auth } from "../../auth";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import CreatorWrapper from "./CreatorWrapper";
 import { kv } from "@vercel/kv";
 import { Metadata } from 'next';
 import { trackEvent } from "../lib/analytics";
+import { resolveUsername } from "../actions";
 
 type Props = {
   params: Promise<{ username: string }>
 }
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 0; // Always fetch fresh data (fundraiser status, etc.)
 
 export async function generateMetadata(
   { params }: Props
@@ -28,8 +29,27 @@ export async function generateMetadata(
 export default async function CreatorPage({ params }: Props) {
   const { username: rawUsername } = await params;
   const username = rawUsername.toLowerCase();
-  const session = await auth();
-  const email = session?.user?.email?.toLowerCase(); // normalize session email
+
+  // Guard against hijacking static routes
+  if (['privacy', 'terms', 'api', 'dashboard', 'studio'].includes(username)) {
+    const { notFound } = await import('next/navigation');
+    return notFound();
+  }
+
+  const { userId, sessionClaims } = await auth();
+  let email = (sessionClaims as any)?.email?.toLowerCase(); // normalize session email
+
+  // Fallback in case Clerk claim is lagging
+  if (userId && !email) {
+    try {
+      const user = await currentUser();
+      email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase();
+    } catch (e) {
+      console.error("[Creator Profile Page] Clerk currentUser fallback failed:", e);
+    }
+  }
+
+  const visitorUsername = email ? await resolveUsername(email) : null;
 
   let isOwner = false;
   let ownerEmail: string | null = null;
@@ -55,9 +75,18 @@ export default async function CreatorPage({ params }: Props) {
     isOwner = true;
   }
 
+  // FUNDRAISER TAKEOVER: If creator has an active fundraiser, show it instead of profile
+  if (ownerEmail && !isOwner && process.env.KV_URL) {
+    const fundraiser: any = await kv.get(`fundraise:${username}`);
+    if (fundraiser && fundraiser.isActive) {
+      const { redirect } = await import('next/navigation');
+      redirect(`/fundraise/${username}`);
+    }
+  }
+
   if (!ownerEmail) {
     return (
-      <div className="min-h-screen bg-white text-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
         {/* Animated Background Elements */}
         <div className="absolute top-40 -left-20 w-80 h-80 bg-neo-blue/10 rounded-full blur-3xl" />
         <div className="absolute bottom-20 -right-20 w-[500px] h-[500px] bg-neo-pink/10 rounded-full blur-3xl" />
@@ -87,6 +116,10 @@ export default async function CreatorPage({ params }: Props) {
   let isAcceptingCalls = true;
   let templates: any[] = [];
   let artifacts: any[] = [];
+  let faqs: any[] = [];
+  let bio = "";
+  let subscriptionPrice = 199;
+  let subscriptionBenefits: string[] = [];
 
   if (ownerEmail && process.env.KV_URL) {
     isVerified = !!(await kv.get(`user:${ownerEmail}:verified`));
@@ -98,11 +131,17 @@ export default async function CreatorPage({ params }: Props) {
     const pImage = await kv.get(`user:${ownerEmail}:profileImage`);
     const liveStatus = await kv.get(`user:${ownerEmail}:isLive`);
     const acceptingCalls = await kv.get(`user:${ownerEmail}:isAcceptingCalls`);
+    console.log('[CreatorPage] Debug:', { username, ownerEmail, acceptingCalls });
     const roomType = await kv.get(`user:${ownerEmail}:roomType`);
     const isRoomFree = await kv.get(`user:${ownerEmail}:isRoomFree`);
     const studioMode = await kv.get(`user:${ownerEmail}:mode`) || 'solitude';
     const tpls = await kv.get(`user:${ownerEmail}:templates`) as any[];
     const arts = await kv.get(`user:${ownerEmail}:artifacts`) as any[];
+    const fqs = await kv.get(`user:${ownerEmail}:faqs`) as any[];
+    const fetchedBio = await kv.get(`user:${ownerEmail}:bio`) as string;
+    const fetchedSubPrice = await kv.get(`user:${ownerEmail}:subscriptionPrice`);
+    const fetchedSubBenefits = await kv.get(`user:${ownerEmail}:subscriptionBenefits`) as string[];
+
     if (vRate !== null) videoRate = Number(vRate);
     if (aRate !== null) audioRate = Number(aRate);
     if (pImage) profileImage = String(pImage);
@@ -112,6 +151,11 @@ export default async function CreatorPage({ params }: Props) {
     else isAcceptingCalls = !!acceptingCalls;
     if (tpls) templates = tpls;
     if (arts) artifacts = arts;
+    if (fqs) faqs = fqs;
+    if (fetchedBio) bio = fetchedBio;
+    if (fetchedSubPrice !== null) subscriptionPrice = Number(fetchedSubPrice);
+    if (fetchedSubBenefits) subscriptionBenefits = fetchedSubBenefits;
+
     (socials as any).roomType = roomType || 'audio';
     (socials as any).isRoomFree = isRoomFree === null ? true : !!isRoomFree;
     (socials as any).studioMode = studioMode;
@@ -125,7 +169,7 @@ export default async function CreatorPage({ params }: Props) {
   return (
     <CreatorWrapper
       username={username}
-      user={session?.user}
+      user={userId ? { id: userId, email: email, username: visitorUsername, imageUrl: "" } : null}
       isOwner={isOwner}
       ownerEmail={ownerEmail || ""}
       isVerified={isVerified}
@@ -137,6 +181,10 @@ export default async function CreatorPage({ params }: Props) {
       isAcceptingCalls={isAcceptingCalls}
       templates={templates}
       artifacts={artifacts}
+      faqs={faqs}
+      bio={bio}
+      subscriptionPrice={subscriptionPrice}
+      subscriptionBenefits={subscriptionBenefits}
       roomType={(socials as any).roomType}
       isRoomFree={(socials as any).isRoomFree}
     />

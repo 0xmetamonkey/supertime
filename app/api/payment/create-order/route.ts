@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
-import { auth } from '../../../../auth';
+import { currentUser, auth } from "@clerk/nextjs/server";
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session || !session.user) {
+  const { sessionClaims } = await auth();
+  let email = (sessionClaims as any)?.email;
+  if (!email) {
+    const user = await currentUser();
+    email = user?.emailAddresses?.[0]?.emailAddress;
+  }
+
+  if (!email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -15,11 +21,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
 
-    // Initialize inside the handler to avoid build-time errors when env vars are missing
-    const instance = new Razorpay({
-      key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-      key_secret: process.env.RAZORPAY_KEY_SECRET!,
-    });
+    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim() || '';
+    const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim() || '';
 
     const options = {
       amount: amount * 100, // Razorpay takes amount in paise (1 INR = 100 paise)
@@ -27,13 +30,25 @@ export async function POST(req: NextRequest) {
       receipt: `receipt_${Date.now()}`,
     };
 
-    const order = await instance.orders.create(options);
+    const res = await fetch('https://api.razorpay.com/v1/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + btoa(`${keyId}:${keySecret}`),
+      },
+      body: JSON.stringify(options),
+    });
+
+    const order = await res.json();
+    if (!res.ok) {
+      throw new Error(order.error?.description || 'Failed to create Razorpay order');
+    }
 
     return NextResponse.json({
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+      keyId: keyId
     });
   } catch (error: any) {
     console.error("Razorpay Order Error:", error);

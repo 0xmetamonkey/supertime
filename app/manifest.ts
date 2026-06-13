@@ -2,11 +2,12 @@ import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Supertime',
+    name: 'Supertime Studio',
     short_name: 'Supertime',
-    description: 'Get paid for your time via video & audio calls.',
-    start_url: '/',
+    description: 'Get paid for your global time via video & audio calls.',
+    start_url: '/studio',
     display: 'standalone',
+    orientation: 'portrait',
     background_color: '#000000',
     theme_color: '#000000',
     icons: [
@@ -26,5 +27,13 @@ export default function manifest(): MetadataRoute.Manifest {
         type: 'image/png',
       },
     ],
+    categories: ['lifestyle', 'business', 'social'],
+    screenshots: [
+      {
+        src: '/abstract_energy_bg.png', // Placeholder or real screenshot
+        type: 'image/png',
+        sizes: '664x664',
+      }
+    ]
   }
 }

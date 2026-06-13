@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { trackEvent, AnalyticsEvent } from '@/app/lib/analytics';
-import { auth } from '@/auth';
+import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST(req: Request) {
   try {
-    const session = await auth();
+    const user = await currentUser();
     const { event, username, metadata } = await req.json();
 
     if (!username) {
