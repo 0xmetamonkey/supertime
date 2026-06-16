@@ -307,8 +307,13 @@ export default function StudioClient({ username, session, initialSettings }: { u
             <h1 className="text-xl font-medium tracking-tight">Studio</h1>
           </div>
           <div className="flex items-center gap-6">
-            <WalletManager onBalanceChange={setBalance} />
-            <button onClick={() => signOut(() => { window.location.href = "/"; })} className="text-xs text-muted hover:text-red-500 transition-colors">Logout</button>
+            <Link
+              href="/dashboard"
+              className="px-4 py-2 bg-surface text-foreground border border-border rounded-xl flex items-center justify-center hover:bg-background transition-all font-medium text-sm gap-2"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              Dashboard
+            </Link>
           </div>
         </nav>
 
@@ -436,14 +441,13 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </div>
 
           <div className="flex items-center gap-6">
-            {!isCalling && <WalletManager onBalanceChange={setBalance} />}
-
-            <button
-              onClick={() => signOut(() => { window.location.href = "/"; })}
-              className="hidden md:flex w-10 h-10 bg-surface text-foreground border border-border rounded-xl items-center justify-center hover:bg-background transition-all"
+            <Link
+              href="/dashboard"
+              className="hidden md:flex px-4 py-2 bg-surface text-foreground border border-border rounded-xl items-center justify-center hover:bg-background transition-all font-medium text-sm gap-2"
             >
-              <LogOut className="w-5 h-5" />
-            </button>
+              <LayoutDashboard className="w-4 h-4" />
+              Dashboard
+            </Link>
 
             <button
               onClick={() => setShowMobileMenu(true)}

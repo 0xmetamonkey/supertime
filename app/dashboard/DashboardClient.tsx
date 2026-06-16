@@ -29,6 +29,7 @@ import ProfileEditor from './ProfileEditor';
 import GlobalStudioRecorder from './GlobalStudioRecorder';
 import InboxTab from './InboxTab';
 import FundraiserManager from './FundraiserManager';
+import SettingsClient from '../studio/settings/SettingsClient';
 
 interface UIProps {
   session: any;
