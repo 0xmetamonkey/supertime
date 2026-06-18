@@ -17,6 +17,7 @@ import {
   MessageSquare,
   User,
   Heart,
+  Zap,
 } from 'lucide-react';
 import { useClerk, UserButton } from "@clerk/nextjs";
 
@@ -239,7 +240,13 @@ export default function DashboardClient({ session, username: initialUsername, ro
           ))}
         </nav>
 
-        <div className="p-4">
+        <div className="p-4 space-y-2">
+          <button
+            onClick={() => window.location.href = "/pricing"}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-md transition-all"
+          >
+            <Zap className="w-4 h-4" /> Upgrade to Pro
+          </button>
           <button
             onClick={() => signOut(() => { window.location.href = "/"; })}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-muted hover:bg-background hover:text-foreground rounded-md transition-all"

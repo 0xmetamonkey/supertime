@@ -38,6 +38,7 @@ const BroadcastHost = dynamic(() => import('../components/Broadcast/BroadcastHos
 import { checkAvailability, completeOnboarding } from '../actions';
 import { useClerk } from "@clerk/nextjs";
 import WalletManager from '../components/WalletManager';
+import GlobalStudioRecorder from '../dashboard/GlobalStudioRecorder';
 
 export default function StudioClient({ username, session, initialSettings }: { username: string | null, session: any, initialSettings?: any }) {
   const router = useRouter();
@@ -363,6 +364,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
             </div>
           </div>
         </div>
+        {effectiveUsername && <GlobalStudioRecorder username={effectiveUsername} />}
       </main>
     );
   }
@@ -789,6 +791,9 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Floating Studio Recorder */}
+      {effectiveUsername && <GlobalStudioRecorder username={effectiveUsername} />}
     </div>
   );
 }
