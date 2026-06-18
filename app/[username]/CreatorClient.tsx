@@ -1408,7 +1408,7 @@ export default function CreatorClient({
                               const htmlContent = post.content
                                 .replace(/\n/g, '<br/>')
                                 .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="w-full h-auto rounded-xl border border-border my-4" />')
-                                .replace(/<video([^>]*)>/g, (m, p1) => p1.includes('controlsList') ? m : `<video${p1} controlsList="nodownload">`);
+                                .replace(/<video([^>]*)>/g, (m: string, p1: string) => p1.includes('controlsList') ? m : `<video${p1} controlsList="nodownload">`);
                               
                               return post.audioUrl ? (
                                 <div className="bg-surface border border-border/50 rounded-xl p-5 shadow-sm relative">

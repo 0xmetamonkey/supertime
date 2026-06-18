@@ -325,6 +325,13 @@ export default function CallStage({
         await client.join(data.appId, channelName, data.token, joinUid);
         setIsConnected(true);
 
+        try {
+          const streamId = (client as any).createDataStream({ ordered: true, reliable: true });
+          dataStreamIdRef.current = streamId;
+        } catch (streamErr) {
+          console.warn("[CALL] Failed to create data stream:", streamErr);
+        }
+
         console.log(`[CALL] 5. Publishing local tracks...`);
         await client.publish(tracks);
         console.log(`[CALL] ✅ Local tracks published. You are now live in the channel.`);
@@ -353,6 +360,7 @@ export default function CallStage({
         tracksRef.current = [];
       }
       setLocalTracks(null);
+      dataStreamIdRef.current = null;
       client.leave();
     };
   }, [client, channelName, passedUid, isVideo]);
@@ -484,7 +492,8 @@ export default function CallStage({
       setIsScreenSharing(false);
     } else {
       try {
-        const track = await AgoraRTC.createScreenVideoTrack({ encoderConfig: "1080p_1" });
+        const screenTrackResult = await AgoraRTC.createScreenVideoTrack({ encoderConfig: "1080p_1" });
+        const track = Array.isArray(screenTrackResult) ? screenTrackResult[0] : screenTrackResult;
         
         track.on("track-ended", () => {
           if (screenTrackRef.current) toggleScreenShare();
@@ -513,6 +522,16 @@ export default function CallStage({
       } catch (e) {
         console.error("Screen share failed", e);
       }
+    }
+  };
+
+  const sendSignal = (msg: any) => {
+    if (!client || dataStreamIdRef.current === null) return;
+    try {
+      const payload = new TextEncoder().encode(JSON.stringify(msg));
+      (client as any).sendStreamMessage(dataStreamIdRef.current, payload);
+    } catch (e) {
+      console.error("Failed to send stream message", e);
     }
   };
 

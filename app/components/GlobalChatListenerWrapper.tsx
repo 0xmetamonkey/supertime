@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { kv } from "@vercel/kv";
+import { resolveUsername } from "../actions";
 import GlobalChatListener from "./GlobalChatListener";
 
 export default async function GlobalChatListenerWrapper() {
@@ -16,13 +17,8 @@ export default async function GlobalChatListenerWrapper() {
   
   if (!email) return null;
 
-  let username = '';
-  try {
-    const userData = await kv.hgetall(`user:${email}`);
-    username = (userData as any)?.username || email.split('@')[0];
-  } catch {
-    username = email.split('@')[0];
-  }
+  const resolvedUsername = email ? await resolveUsername(email) : null;
+  const username = resolvedUsername || (email ? email.split('@')[0] : '');
 
   return <GlobalChatListener username={username} />;
 }

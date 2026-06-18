@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { auth, currentUser } from '@clerk/nextjs/server';
+import { resolveUsername } from '../../../actions';
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,12 +18,8 @@ export async function GET(req: NextRequest) {
         email = user?.emailAddresses?.[0]?.emailAddress || '';
       }
 
-      try {
-        const userData = await kv.hgetall(`user:${email}`);
-        username = (userData as any)?.username || email.split('@')[0];
-      } catch {
-        username = email.split('@')[0];
-      }
+      const resolvedUsername = email ? await resolveUsername(email) : null;
+      username = resolvedUsername || (email ? email.split('@')[0] : '');
     }
     
     username = username.toLowerCase();
