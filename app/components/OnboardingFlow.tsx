@@ -121,7 +121,7 @@ export function OnboardingFlow({ initialEmail }: OnboardingFlowProps) {
           isAcceptingCalls: true
         }),
       });
-      router.push('/studio');
+      router.push('/dashboard');
     } catch (e) {
       setError('Failed to save settings');
     } finally {

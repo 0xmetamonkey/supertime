@@ -5,6 +5,7 @@ import { Zap, Send, ArrowLeft, Wifi, WifiOff } from 'lucide-react';
 import Ably from 'ably';
 import { UserButton } from "@clerk/nextjs";
 import { TEAM_MEMBERS } from '../config';
+import Link from 'next/link';
 
 interface ChatMessage {
   id: string;
@@ -244,7 +245,13 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
           </div>
           <div>
             <h1 className="font-semibold text-foreground text-lg leading-none">
-              {recipient ? `@${recipient}` : 'Team Chat'}
+              {recipient ? (
+                <Link href={`/${recipient}`} className="hover:text-neo-pink transition-colors">
+                  @{recipient}
+                </Link>
+              ) : (
+                'Team Chat'
+              )}
             </h1>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs text-muted">
@@ -320,7 +327,9 @@ export default function ChatClient({ user, recipient }: { user: { id: string; us
                         : 'bg-surface border border-border text-foreground rounded-2xl rounded-tl-sm'
                         } px-4 py-3 shadow-sm`}>
                         {!isMe && (
-                          <p className="font-semibold text-xs text-neo-pink mb-1">{msg.from}</p>
+                          <Link href={`/${msg.from}`} className="font-semibold text-xs text-neo-pink mb-1 hover:underline block">
+                            {msg.from}
+                          </Link>
                         )}
                         <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
                           {(() => {

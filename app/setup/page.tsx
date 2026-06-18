@@ -25,7 +25,7 @@ export default async function SetupPage() {
 
   const username = await resolveUsername(email);
   if (username) {
-    redirect("/studio");
+    redirect("/dashboard");
   }
 
   return (

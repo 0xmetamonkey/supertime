@@ -2,6 +2,23 @@ import React, { useEffect, useState } from 'react';
 import { MessageSquare, ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+function formatMessageDate(timestamp: number | string | Date): string {
+  const date = new Date(timestamp);
+  const now = new Date();
+  
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  if (compareDate.getTime() === today.getTime()) {
+    return 'Today';
+  } else if (compareDate.getTime() === yesterday.getTime()) {
+    return 'Yesterday';
+  } else {
+    return date.toLocaleDateString();
+  }
+}
+
 export default function InboxTab({ username }: { username: string }) {
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,8 +111,12 @@ export default function InboxTab({ username }: { username: string }) {
               className="group flex items-center justify-between p-4 bg-background border border-border rounded-xl hover:border-foreground/20 cursor-pointer transition-colors"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-surface border border-border rounded-full flex items-center justify-center shrink-0">
-                  <span className="font-semibold text-foreground uppercase">{conv.with.charAt(0)}</span>
+                <div className="w-12 h-12 bg-surface border border-border rounded-full overflow-hidden flex items-center justify-center shrink-0">
+                  {conv.profileImage ? (
+                    <img src={conv.profileImage} alt={conv.with} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="font-semibold text-foreground uppercase">{conv.with.charAt(0)}</span>
+                  )}
                 </div>
                 <div>
                   <h4 className="font-medium text-foreground">@{conv.with}</h4>
@@ -107,7 +128,7 @@ export default function InboxTab({ username }: { username: string }) {
               </div>
               <div className="flex items-center gap-4">
                 <span className="text-xs text-muted">
-                  {new Date(conv.timestamp).toLocaleDateString()}
+                  {formatMessageDate(conv.timestamp)}
                 </span>
                 <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center group-hover:bg-foreground group-hover:text-background transition-colors text-muted">
                   <ArrowRight className="w-4 h-4" />

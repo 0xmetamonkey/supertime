@@ -50,6 +50,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     coverImage: '',
     templates: [],
     faqs: [],
+    products: [],
     roomType: 'audio',
     isRoomFree: true,
     videoProvider: 'supercalls',
@@ -77,6 +78,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     const bio = await kv.get(`user:${email}:bio`) as string;
     const subscriptionPrice = await kv.get(`user:${email}:subscriptionPrice`);
     const subscriptionBenefits = await kv.get(`user:${email}:subscriptionBenefits`) as string[];
+    const products = username ? await kv.get(`user_products:${username}`) as any[] : null;
 
     if (vRate !== null) initialSettings.videoRate = Number(vRate);
     if (aRate !== null) initialSettings.audioRate = Number(aRate);
@@ -96,6 +98,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     if (isRoomFree !== null) initialSettings.isRoomFree = !!isRoomFree;
     if (templates) initialSettings.templates = templates;
     if (faqs) initialSettings.faqs = faqs;
+    if (products) initialSettings.products = products;
     if (displayName) initialSettings.displayName = displayName;
     if (bio) initialSettings.bio = bio;
     if (subscriptionPrice !== null) initialSettings.subscriptionPrice = Number(subscriptionPrice);

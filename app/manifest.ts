@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'Supertime Studio',
     short_name: 'Supertime',
     description: 'Get paid for your global time via video & audio calls.',
-    start_url: '/studio',
+    start_url: '/dashboard',
     display: 'standalone',
     orientation: 'portrait',
     background_color: '#000000',

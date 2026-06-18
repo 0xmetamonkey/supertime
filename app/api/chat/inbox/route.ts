@@ -47,11 +47,24 @@ export async function GET(req: NextRequest) {
           const msgs = await kv.get<any[]>(key);
           if (msgs && msgs.length > 0) {
             const lastMsg = msgs[msgs.length - 1];
+            
+            let otherUserProfileImage = '';
+            try {
+              const otherUserEmail = await kv.get<string>(`owner:${otherUser.toLowerCase()}`);
+              if (otherUserEmail) {
+                const img = await kv.get<string>(`user:${otherUserEmail}:profileImage`);
+                if (img) otherUserProfileImage = img;
+              }
+            } catch (e) {
+              console.error('Error fetching inbox profile image:', e);
+            }
+
             conversations.push({
               with: otherUser,
               lastMessage: lastMsg.text,
               timestamp: lastMsg.timestamp,
-              from: lastMsg.from
+              from: lastMsg.from,
+              profileImage: otherUserProfileImage
             });
           }
         }
