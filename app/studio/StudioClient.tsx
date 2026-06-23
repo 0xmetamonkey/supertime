@@ -85,6 +85,25 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
   const [isAcceptingCalls, setIsAcceptingCalls] = useState(initialSettings?.isAcceptingCalls ?? true);
   const [showDashboard, setShowDashboard] = useState(false);
+  
+  const [showObsModal, setShowObsModal] = useState(false);
+  const [obsStreamData, setObsStreamData] = useState<any>(null);
+  const [generatingKey, setGeneratingKey] = useState(false);
+
+  const fetchObsKey = async () => {
+    setGeneratingKey(true);
+    try {
+      const res = await fetch('/api/mux/create-stream', { method: 'POST' });
+      const data = await res.json();
+      if (data.streamKey) {
+        setObsStreamData(data);
+      }
+    } catch (e) {
+      console.error("Failed to generate OBS key", e);
+    } finally {
+      setGeneratingKey(false);
+    }
+  };
 
   useEffect(() => {
     if (ablySignaling?.activeCall) {
@@ -622,6 +641,14 @@ export default function StudioClient({ username, session, initialSettings }: { u
           >
             {isLive ? 'End Stream' : 'Go Live'}
           </button>
+          {!isLive && (
+            <button
+              onClick={() => setShowObsModal(true)}
+              className="flex-1 md:flex-none px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border border-border bg-surface text-foreground hover:bg-background flex items-center justify-center gap-2"
+            >
+              <Video className="w-4 h-4" /> OBS
+            </button>
+          )}
           <button
             onClick={handleToggleCalls}
             className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border ${isAcceptingCalls ? 'bg-foreground text-background border-transparent' : 'bg-surface text-muted border-border hover:bg-background'}`}
@@ -787,6 +814,95 @@ export default function StudioClient({ username, session, initialSettings }: { u
                   </div>
                 )}
               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* OBS STREAMING MODAL */}
+      <AnimatePresence>
+        {showObsModal && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
+            className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 z-[1100] bg-background/95 backdrop-blur-3xl border border-border flex flex-col shadow-2xl rounded-3xl overflow-hidden md:w-full md:max-w-lg"
+          >
+            <div className="flex justify-between items-center p-6 border-b border-border bg-surface/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-background border border-border rounded-xl flex items-center justify-center shadow-sm">
+                  <Video className="w-5 h-5 text-indigo-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground tracking-tight">Stream via OBS</h3>
+                  <p className="text-xs text-muted">Broadcast to your public profile.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowObsModal(false)}
+                className="w-10 h-10 rounded-xl bg-background border border-border text-muted hover:text-foreground hover:border-foreground flex items-center justify-center transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 md:p-8 space-y-6">
+              {!obsStreamData ? (
+                <div className="text-center space-y-4">
+                  <p className="text-sm text-muted">Generate a secure stream key to connect OBS or any RTMP software to Supertime.</p>
+                  <button
+                    onClick={fetchObsKey}
+                    disabled={generatingKey}
+                    className="w-full bg-foreground text-background py-3 rounded-xl font-semibold shadow-sm hover:opacity-90 disabled:opacity-50 transition-all"
+                  >
+                    {generatingKey ? 'Generating...' : 'Generate Stream Key'}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div>
+                    <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 block">Server URL</label>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        readOnly 
+                        value="rtmp://global-live.mux.com/app" 
+                        className="flex-1 bg-surface border border-border rounded-xl px-4 py-3 text-sm font-mono text-foreground outline-none"
+                      />
+                      <button 
+                        onClick={() => navigator.clipboard.writeText("rtmp://global-live.mux.com/app")}
+                        className="p-3 bg-surface border border-border rounded-xl text-foreground hover:bg-background transition-all"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 block">Stream Key</label>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="password"
+                        readOnly 
+                        value={obsStreamData.streamKey} 
+                        className="flex-1 bg-surface border border-border rounded-xl px-4 py-3 text-sm font-mono text-foreground outline-none"
+                      />
+                      <button 
+                        onClick={() => navigator.clipboard.writeText(obsStreamData.streamKey)}
+                        className="p-3 bg-surface border border-border rounded-xl text-foreground hover:bg-background transition-all"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    <p className="text-xs text-red-500 mt-2 font-medium">Keep this key secret. Anyone with this key can broadcast to your profile.</p>
+                  </div>
+
+                  <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl flex items-start gap-3">
+                    <div className="mt-0.5"><Activity className="w-4 h-4 text-blue-500" /></div>
+                    <p className="text-xs text-blue-500 font-medium leading-relaxed">
+                      Once you click "Start Streaming" in OBS, your Supertime profile will automatically go live. You do not need to click "Go Live" in the studio here.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
