@@ -11,10 +11,11 @@ import { useChatConnection, type ChatUser } from './useChatConnection';
 interface ActiveChatWindowProps {
   user: ChatUser;
   recipient: string;
+  balance?: number;
   onBack?: () => void;
 }
 
-export default function ActiveChatWindow({ user, recipient, onBack }: ActiveChatWindowProps) {
+export default function ActiveChatWindow({ user, recipient, balance = 0, onBack }: ActiveChatWindowProps) {
   const chat = useChatConnection(user, recipient);
 
   // ── Call State ──
@@ -24,6 +25,8 @@ export default function ActiveChatWindow({ user, recipient, onBack }: ActiveChat
   const [callError, setCallError] = useState('');
   const [isPeerConnected, setIsPeerConnected] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+  const [showLowBalanceModal, setShowLowBalanceModal] = useState(false);
+  const [requiredRate, setRequiredRate] = useState(0);
   const SuperCallRef = useRef<any>(null);
 
   // Lazy-load SuperCall component
@@ -61,6 +64,21 @@ export default function ActiveChatWindow({ user, recipient, onBack }: ActiveChat
     if (isCalling) return;
 
     try {
+      // 1. Fetch recipient's rates
+      const rateRes = await fetch(`/api/user/rates?username=${recipient}`);
+      let reqRate = type === 'video' ? 100 : 50; // Fallback defaults
+      if (rateRes.ok) {
+        const rateData = await rateRes.json();
+        reqRate = type === 'video' ? rateData.videoRate : rateData.audioRate;
+      }
+
+      // 2. Check balance
+      if (balance < reqRate) {
+        setRequiredRate(reqRate);
+        setShowLowBalanceModal(true);
+        return;
+      }
+
       // Use the signal API to initiate the call (same as CreatorClient fallback path)
       const response = await fetch('/api/call/signal', {
         method: 'POST',
@@ -88,7 +106,7 @@ export default function ActiveChatWindow({ user, recipient, onBack }: ActiveChat
       console.error('[Chat Call] Error initiating call:', e);
       showCallError('Connection error. Please try again.');
     }
-  }, [isCalling, user.username, recipient]);
+  }, [isCalling, user.username, recipient, balance]);
 
   const handleEndCall = useCallback(async () => {
     setIsCalling(false);
@@ -267,6 +285,42 @@ export default function ActiveChatWindow({ user, recipient, onBack }: ActiveChat
           )}
         </div>
       )}
+
+      {/* ── Low Balance Modal ── */}
+      <AnimatePresence>
+        {showLowBalanceModal && (
+          <div className="fixed inset-0 z-[600] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-surface border border-border rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl relative p-6 text-center"
+            >
+              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Zap className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="text-xl font-bold mb-2 text-foreground">Low Balance</h3>
+              <p className="text-sm text-muted mb-6">
+                You need at least <strong className="text-foreground">{requiredRate} tokens</strong> to start this call. Your current balance is {balance} tokens.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowLowBalanceModal(false)}
+                  className="flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm border border-border bg-background hover:bg-surface transition-colors"
+                >
+                  Cancel
+                </button>
+                <a
+                  href="/dashboard?tab=wallet"
+                  className="flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm bg-foreground text-background hover:opacity-90 transition-opacity flex items-center justify-center"
+                >
+                  Top-up Tokens
+                </a>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

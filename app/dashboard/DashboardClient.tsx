@@ -405,6 +405,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
                   email: session.user.email || '',
                 }}
                 recipient={activeChatUser}
+                balance={balance}
                 onBack={() => setActiveChatUser(null)}
               />
             </div>
