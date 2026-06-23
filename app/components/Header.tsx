@@ -25,7 +25,7 @@ export default function Header() {
           <span className="text-lg font-bold tracking-tight">
             supertime
           </span>
-          <span className="text-[9px] font-bold uppercase tracking-widest bg-neo-pink text-white px-1.5 py-0.5 rounded-full shadow-sm">
+          <span className="text-[9px] font-bold uppercase tracking-widest bg-foreground/10 text-foreground px-1.5 py-0.5 rounded-full">
             Beta
           </span>
         </div>
