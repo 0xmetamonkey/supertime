@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { auth, currentUser } from '@clerk/nextjs/server';
+import { resolveUsername } from '../../../actions';
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,12 +18,8 @@ export async function GET(req: NextRequest) {
         email = user?.emailAddresses?.[0]?.emailAddress || '';
       }
 
-      try {
-        const userData = await kv.hgetall(`user:${email}`);
-        username = (userData as any)?.username || email.split('@')[0];
-      } catch {
-        username = email.split('@')[0];
-      }
+      const resolvedUsername = email ? await resolveUsername(email) : null;
+      username = resolvedUsername || (email ? email.split('@')[0] : '');
     }
     
     username = username.toLowerCase();
@@ -47,11 +44,24 @@ export async function GET(req: NextRequest) {
           const msgs = await kv.get<any[]>(key);
           if (msgs && msgs.length > 0) {
             const lastMsg = msgs[msgs.length - 1];
+            
+            let otherUserProfileImage = '';
+            try {
+              const otherUserEmail = await kv.get<string>(`owner:${otherUser.toLowerCase()}`);
+              if (otherUserEmail) {
+                const img = await kv.get<string>(`user:${otherUserEmail}:profileImage`);
+                if (img) otherUserProfileImage = img;
+              }
+            } catch (e) {
+              console.error('Error fetching inbox profile image:', e);
+            }
+
             conversations.push({
               with: otherUser,
               lastMessage: lastMsg.text,
               timestamp: lastMsg.timestamp,
-              from: lastMsg.from
+              from: lastMsg.from,
+              profileImage: otherUserProfileImage
             });
           }
         }

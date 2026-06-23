@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { kv } from "@vercel/kv";
+import { resolveUsername } from "../actions";
 import ChatClient from "./ChatClient";
 
 export default async function ChatPage({ searchParams }: { searchParams: Promise<{ to?: string }> }) {
@@ -25,13 +26,8 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
   const recipient = sp.to;
 
   // Resolve username from KV
-  let username = '';
-  try {
-    const userData = await kv.hgetall(`user:${email}`);
-    username = (userData as any)?.username || email.split('@')[0];
-  } catch {
-    username = email.split('@')[0];
-  }
+  const resolvedUsername = email ? await resolveUsername(email) : null;
+  const username = resolvedUsername || (email ? email.split('@')[0] : '');
 
   return (
     <ChatClient

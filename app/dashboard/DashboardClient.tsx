@@ -27,10 +27,12 @@ import ToolsTab from './ToolsTab';
 import StorefrontTab from './StorefrontTab';
 import FeastTab from './FeastTab';
 import ProfileEditor from './ProfileEditor';
+import SettingsClient from '../studio/settings/SettingsClient';
 import GlobalStudioRecorder from './GlobalStudioRecorder';
 import InboxTab from './InboxTab';
 import FundraiserManager from './FundraiserManager';
-import SettingsClient from '../studio/settings/SettingsClient';
+import MessagesPanel from '../components/chat/upgrade/MessagesPanel';
+import ActiveChatWindow from '../components/chat/upgrade/ActiveChatWindow';
 
 interface UIProps {
   session: any;
@@ -41,7 +43,7 @@ interface UIProps {
   initialSettings?: any;
 }
 
-type Tab = 'overview' | 'storefront' | 'wallet' | 'settings' | 'feast' | 'inbox' | 'fundraise';
+type Tab = 'overview' | 'storefront' | 'wallet' | 'settings' | 'feast' | 'inbox' | 'fundraise' | 'tools';
 
 export default function DashboardClient({ session, username: initialUsername, role: initialRole, initialBalance, initialWithdrawable, initialSettings }: UIProps) {
   const router = useRouter();
@@ -62,15 +64,29 @@ export default function DashboardClient({ session, username: initialUsername, ro
   const [balance, setBalance] = useState(initialBalance);
   const [withdrawable, setWithdrawable] = useState(initialWithdrawable);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [activeChatUser, setActiveChatUser] = useState<string | null>(null);
+
+  // Derived state: sidebar is collapsed when a chat is open
+  const isSidebarCollapsed = activeTab === 'inbox' && !!activeChatUser;
+  // Chat view mode: split-screen when a chat is active
+  const isChatSplitView = activeTab === 'inbox' && !!activeChatUser;
 
   // Sync tab from URL if present
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['overview', 'storefront', 'wallet', 'settings', 'feast', 'inbox', 'fundraise'].includes(tabParam)) {
+    if (tabParam && ['overview', 'storefront', 'wallet', 'settings', 'feast', 'inbox', 'fundraise', 'tools'].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
     }
   }, []);
+
+  // Clear activeChatUser when switching away from inbox
+  const handleTabChange = (tab: Tab) => {
+    if (tab !== 'inbox') {
+      setActiveChatUser(null);
+    }
+    setActiveTab(tab);
+  };
 
   const handleCompleteOnboarding = async () => {
     if (!claimInput || !selectedRole) return;
@@ -101,8 +117,8 @@ export default function DashboardClient({ session, username: initialUsername, ro
           className="max-w-md w-full bg-surface border border-border p-8 rounded-3xl shadow-2xl"
         >
           <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 bg-neo-pink/10 rounded-2xl flex items-center justify-center">
-              <span className="text-2xl font-bold text-neo-pink">S</span>
+            <div className="w-16 h-16 bg-foreground/5 rounded-2xl flex items-center justify-center">
+              <span className="text-2xl font-bold text-foreground">S</span>
             </div>
           </div>
 
@@ -114,10 +130,10 @@ export default function DashboardClient({ session, username: initialUsername, ro
               <div className="space-y-4">
                 <button
                   onClick={() => { setSelectedRole('creator'); setOnboardingStep(2); }}
-                  className="w-full flex items-center p-4 border border-border rounded-xl hover:border-neo-pink hover:bg-neo-pink/5 transition-all text-left group"
+                  className="w-full flex items-center p-4 border border-border rounded-xl hover:border-foreground hover:bg-foreground/5 transition-all text-left group"
                 >
-                  <div className="w-12 h-12 bg-surface border border-border rounded-lg flex items-center justify-center group-hover:bg-neo-pink/10 transition-colors shrink-0 mr-4">
-                    <Store className="w-6 h-6 text-foreground group-hover:text-neo-pink" />
+                  <div className="w-12 h-12 bg-surface border border-border rounded-lg flex items-center justify-center group-hover:bg-foreground/10 transition-colors shrink-0 mr-4">
+                    <Store className="w-6 h-6 text-foreground" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground">I am a Creator</h3>
@@ -127,10 +143,10 @@ export default function DashboardClient({ session, username: initialUsername, ro
 
                 <button
                   onClick={() => { setSelectedRole('fan'); setOnboardingStep(2); }}
-                  className="w-full flex items-center p-4 border border-border rounded-xl hover:border-neo-pink hover:bg-neo-pink/5 transition-all text-left group"
+                  className="w-full flex items-center p-4 border border-border rounded-xl hover:border-foreground hover:bg-foreground/5 transition-all text-left group"
                 >
-                  <div className="w-12 h-12 bg-surface border border-border rounded-lg flex items-center justify-center group-hover:bg-neo-pink/10 transition-colors shrink-0 mr-4">
-                    <MessageSquare className="w-6 h-6 text-foreground group-hover:text-neo-pink" />
+                  <div className="w-12 h-12 bg-surface border border-border rounded-lg flex items-center justify-center group-hover:bg-foreground/10 transition-colors shrink-0 mr-4">
+                    <MessageSquare className="w-6 h-6 text-foreground" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground">I am a Fan</h3>
@@ -158,7 +174,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
                     setClaimError('');
                   }}
                   placeholder="username"
-                  className="w-full pl-10 pr-4 py-4 bg-background border border-border rounded-xl text-lg text-foreground font-medium focus:outline-none focus:ring-2 focus:ring-neo-pink/50 transition-all"
+                  className="w-full pl-10 pr-4 py-4 bg-background border border-border rounded-xl text-lg text-foreground font-medium focus:outline-none focus:ring-2 focus:ring-foreground/50 transition-all"
                 />
               </div>
 
@@ -176,9 +192,9 @@ export default function DashboardClient({ session, username: initialUsername, ro
                 <button
                   onClick={handleCompleteOnboarding}
                   disabled={!claimInput || isClaiming}
-                  className="flex-1 bg-neo-pink text-white font-semibold py-4 rounded-xl hover:bg-neo-pink/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 bg-foreground text-background font-semibold py-4 rounded-xl hover:opacity-90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {isClaiming ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Complete Setup"}
+                  {isClaiming ? <div className="w-4 h-5 border-2 border-background/30 border-t-background rounded-full animate-spin" /> : "Complete Setup"}
                 </button>
               </div>
             </>
@@ -215,235 +231,301 @@ export default function DashboardClient({ session, username: initialUsername, ro
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex overflow-hidden transition-colors">
-      {/* SIDEBAR */}
-      <aside className="hidden lg:flex flex-col w-64 bg-surface border-r border-border h-screen sticky top-0 z-50 transition-colors">
-        <div className="p-6">
+      {/* COLLAPSIBLE SIDEBAR */}
+      <aside
+        className={`hidden lg:flex flex-col bg-surface border-r border-border h-screen sticky top-0 z-50 sidebar-collapsible ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}
+        style={{ width: isSidebarCollapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-expanded)' }}
+      >
+        <div className={`p-6 ${isSidebarCollapsed ? 'px-4 flex justify-center' : ''}`}>
           <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => router.push('/')}>
-            <span className="text-lg font-medium tracking-tight text-foreground">Supertime</span>
-            <span className="text-[9px] font-bold uppercase tracking-widest bg-neo-pink text-white px-1.5 py-0.5 rounded-full shadow-sm">Beta</span>
+            {isSidebarCollapsed ? (
+              <span className="text-lg font-bold text-foreground">S</span>
+            ) : (
+              <>
+                <span className="text-lg font-medium tracking-tight text-foreground sidebar-logo-text">Supertime</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest bg-foreground/10 text-foreground px-1.5 py-0.5 rounded-full sidebar-logo-text">Beta</span>
+              </>
+            )}
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className={`flex-1 space-y-1 ${isSidebarCollapsed ? 'p-2' : 'p-4'}`}>
           {menuItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-all text-sm font-medium ${activeTab === item.id
+              onClick={() => handleTabChange(item.id)}
+              className={`sidebar-nav-item relative w-full flex items-center gap-3 rounded-md transition-all text-sm font-medium ${
+                isSidebarCollapsed ? 'justify-center px-0 py-3' : 'px-4 py-2.5'
+              } ${activeTab === item.id
                 ? 'bg-background text-foreground'
                 : 'text-muted hover:bg-background hover:text-foreground'
-                }`}
+              }`}
             >
-              <item.icon className="w-4 h-4" />
-              {item.label}
+              <item.icon className="w-4 h-4 shrink-0" />
+              {!isSidebarCollapsed && <span className="sidebar-label">{item.label}</span>}
+              {isSidebarCollapsed && <span className="sidebar-tooltip">{item.label}</span>}
             </button>
           ))}
         </nav>
 
-        <div className="p-4 space-y-2">
+        <div className={`${isSidebarCollapsed ? 'p-2' : 'p-4'} space-y-2`}>
           <button
             onClick={() => window.location.href = "/pricing"}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-md transition-all"
+            className={`sidebar-nav-item relative w-full flex items-center gap-2 text-sm font-bold bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-md transition-all ${
+              isSidebarCollapsed ? 'justify-center px-0 py-3' : 'justify-center px-4 py-2.5'
+            }`}
           >
-            <Zap className="w-4 h-4" /> Upgrade to Pro
+            <Zap className="w-4 h-4 shrink-0" />
+            {!isSidebarCollapsed && <span>Upgrade to Pro</span>}
+            {isSidebarCollapsed && <span className="sidebar-tooltip">Upgrade</span>}
           </button>
           <button
             onClick={() => signOut(() => { window.location.href = "/"; })}
-            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-muted hover:bg-background hover:text-foreground rounded-md transition-all"
+            className={`sidebar-nav-item relative w-full flex items-center gap-3 text-sm font-medium text-muted hover:bg-background hover:text-foreground rounded-md transition-all ${
+              isSidebarCollapsed ? 'justify-center px-0 py-3' : 'px-4 py-2.5'
+            }`}
           >
-            <LogOut className="w-4 h-4" />
-            Logout
+            <LogOut className="w-4 h-4 shrink-0" />
+            {!isSidebarCollapsed && <span className="sidebar-label">Logout</span>}
+            {isSidebarCollapsed && <span className="sidebar-tooltip">Logout</span>}
           </button>
         </div>
       </aside>
 
-      {/* MOBILE NAV BOTTOM */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-50 px-2 py-3 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] dark:shadow-none transition-colors">
-        <div className="flex justify-around items-center">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'overview' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
-          >
-            <LayoutDashboard className="w-5 h-5" />
-            <span className="text-[10px] font-medium tracking-wide text-center">Home</span>
-          </button>
-          {isCreator && (
+      {/* MOBILE NAV BOTTOM — hidden when chat is open on mobile */}
+      {!isChatSplitView && (
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-50 px-2 py-3 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] dark:shadow-none transition-colors">
+          <div className="flex justify-around items-center">
             <button
-              onClick={() => setActiveTab('storefront')}
-              className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'storefront' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
+              onClick={() => handleTabChange('overview')}
+              className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'overview' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
             >
-              <Store className="w-5 h-5" />
-              <span className="text-[10px] font-medium tracking-wide text-center">Store</span>
+              <LayoutDashboard className="w-5 h-5" />
+              <span className="text-[10px] font-medium tracking-wide text-center">Home</span>
             </button>
-          )}
-          <button
-            onClick={() => setActiveTab('inbox')}
-            className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'inbox' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
-          >
-            <MessageSquare className="w-5 h-5" />
-            <span className="text-[10px] font-medium tracking-wide text-center">Inbox</span>
-          </button>
-          {isCreator && (
+            {isCreator && (
+              <button
+                onClick={() => handleTabChange('storefront')}
+                className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'storefront' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
+              >
+                <Store className="w-5 h-5" />
+                <span className="text-[10px] font-medium tracking-wide text-center">Store</span>
+              </button>
+            )}
             <button
-              onClick={() => setActiveTab('tools')}
-              className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'tools' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
+              onClick={() => handleTabChange('inbox')}
+              className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'inbox' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
             >
-              <Bot className="w-5 h-5" />
-              <span className="text-[10px] font-medium tracking-wide text-center">Tools</span>
+              <MessageSquare className="w-5 h-5" />
+              <span className="text-[10px] font-medium tracking-wide text-center">Inbox</span>
             </button>
-          )}
-          {isCreator && (
+            {isCreator && (
+              <button
+                onClick={() => handleTabChange('tools')}
+                className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'tools' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
+              >
+                <Bot className="w-5 h-5" />
+                <span className="text-[10px] font-medium tracking-wide text-center">Tools</span>
+              </button>
+            )}
+            {isCreator && (
+              <button
+                onClick={() => handleTabChange('fundraise')}
+                className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'fundraise' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
+              >
+                <Heart className="w-5 h-5" />
+                <span className="text-[10px] font-medium tracking-wide text-center">Fundraise</span>
+              </button>
+            )}
             <button
-              onClick={() => setActiveTab('fundraise')}
-              className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'fundraise' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
+              onClick={() => handleTabChange('wallet')}
+              className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'wallet' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
             >
-              <Heart className="w-5 h-5" />
-              <span className="text-[10px] font-medium tracking-wide text-center">Fundraise</span>
+              <Wallet className="w-5 h-5" />
+              <span className="text-[10px] font-medium tracking-wide text-center">Vault</span>
             </button>
-          )}
-          <button
-            onClick={() => setActiveTab('wallet')}
-            className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'wallet' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
-          >
-            <Wallet className="w-5 h-5" />
-            <span className="text-[10px] font-medium tracking-wide text-center">Vault</span>
-          </button>
-          {isCreator && (
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'settings' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
-            >
-              <Settings className="w-5 h-5" />
-              <span className="text-[10px] font-medium tracking-wide text-center">Settings</span>
-            </button>
-          )}
-        </div>
-      </nav>
+            {isCreator && (
+              <button
+                onClick={() => handleTabChange('settings')}
+                className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'settings' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
+              >
+                <Settings className="w-5 h-5" />
+                <span className="text-[10px] font-medium tracking-wide text-center">Settings</span>
+              </button>
+            )}
+          </div>
+        </nav>
+      )}
 
-      <main className="flex-1 h-screen overflow-y-auto custom-scrollbar bg-background pb-20 lg:pb-0 transition-colors">
-        <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md px-6 py-4 flex justify-between items-center lg:px-12 lg:py-8 border-b border-border transition-colors">
-          <h2 className="text-lg font-medium text-foreground">
-            {menuItems.find(m => m.id === activeTab)?.label}
-          </h2>
-          <div className="flex items-center gap-3">
-            {username && (
-              <>
-                <a
-                  href={`/${username}`}
-                  target="_blank"
-                  className="hidden md:flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
-                >
-                  supertime.wtf/{username}
-                </a>
-                <button
-                  onClick={async () => {
-                    const url = `https://supertime.wtf/${username}`;
-                    if (navigator.share) {
-                      try {
-                        await navigator.share({ url });
-                        setCopiedLink(true);
-                        setTimeout(() => setCopiedLink(false), 2000);
-                      } catch (e) {
+      {/* MAIN CONTENT AREA */}
+      {isChatSplitView ? (
+        /* ── CHAT SPLIT-SCREEN MODE ── */
+        <main className="flex-1 h-screen flex overflow-hidden bg-background transition-colors">
+          {/* Left: Messages Panel (conversation list) */}
+          <div className={`${activeChatUser ? 'hidden lg:flex' : 'flex'} flex-col`}>
+            <MessagesPanel
+              username={username || ''}
+              activeChatUser={activeChatUser}
+              onSelectChat={(chatUser) => setActiveChatUser(chatUser)}
+            />
+          </div>
+
+          {/* Right: Active Chat Window */}
+          {activeChatUser && session && (
+            <div className={`${activeChatUser ? 'flex' : 'hidden lg:flex'} flex-1 flex-col`}>
+              <ActiveChatWindow
+                user={{
+                  id: session.user.id,
+                  username: username || '',
+                  email: session.user.email || '',
+                }}
+                recipient={activeChatUser}
+                onBack={() => setActiveChatUser(null)}
+              />
+            </div>
+          )}
+
+          {/* Placeholder when no chat selected (desktop) */}
+          {!activeChatUser && (
+            <div className="hidden lg:flex flex-1 items-center justify-center bg-background">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-foreground/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <MessageSquare className="w-8 h-8 text-muted" />
+                </div>
+                <h3 className="font-semibold text-foreground text-lg mb-1">Select a conversation</h3>
+                <p className="text-muted text-sm">Choose a chat from the list to start messaging</p>
+              </div>
+            </div>
+          )}
+        </main>
+      ) : (
+        /* ── NORMAL DASHBOARD MODE ── */
+        <main className="flex-1 h-screen overflow-y-auto custom-scrollbar bg-background pb-20 lg:pb-0 transition-colors">
+          <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md px-6 py-4 flex justify-between items-center lg:px-12 lg:py-8 border-b border-border transition-colors">
+            <h2 className="text-lg font-medium text-foreground">
+              {menuItems.find(m => m.id === activeTab)?.label}
+            </h2>
+            <div className="flex items-center gap-3">
+              {username && (
+                <>
+                  <a
+                    href={`/${username}`}
+                    target="_blank"
+                    className="hidden md:flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
+                  >
+                    supertime.wtf/{username}
+                  </a>
+                  <button
+                    onClick={async () => {
+                      const url = `https://supertime.wtf/${username}`;
+                      if (navigator.share) {
+                        try {
+                          await navigator.share({ url });
+                          setCopiedLink(true);
+                          setTimeout(() => setCopiedLink(false), 2000);
+                        } catch (e) {
+                          navigator.clipboard.writeText(url);
+                          setCopiedLink(true);
+                          setTimeout(() => setCopiedLink(false), 2000);
+                        }
+                      } else {
                         navigator.clipboard.writeText(url);
                         setCopiedLink(true);
                         setTimeout(() => setCopiedLink(false), 2000);
                       }
-                    } else {
-                      navigator.clipboard.writeText(url);
-                      setCopiedLink(true);
-                      setTimeout(() => setCopiedLink(false), 2000);
-                    }
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-sm font-medium text-foreground hover:bg-surface transition-colors"
-                >
-                  {copiedLink ? <><CheckCircle className="w-4 h-4 text-green-500" /> Shared</> : <><Share className="w-4 h-4" /> Share</>}
-                </button>
-                <div className="ml-2 flex items-center">
-                  <UserButton afterSignOutUrl="/" />
-                </div>
-              </>
-            )}
-          </div>
-        </header>
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-sm font-medium text-foreground hover:bg-surface transition-colors"
+                  >
+                    {copiedLink ? <><CheckCircle className="w-4 h-4 text-green-500" /> Shared</> : <><Share className="w-4 h-4" /> Share</>}
+                  </button>
+                  <div className="ml-2 flex items-center">
+                    <UserButton afterSignOutUrl="/" />
+                  </div>
+                </>
+              )}
+            </div>
+          </header>
 
-        <div className="px-6 lg:px-12 pb-12 pt-8">
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants}
-            className="space-y-12"
-          >
-            {activeTab === 'overview' && (
-              <OverviewTab
-                username={username}
-                initialSettings={initialSettings}
-                balance={balance}
-                withdrawable={withdrawable}
-                setActiveTab={(tab: string) => setActiveTab(tab as Tab)}
-              />
-            )}
+          <div className="px-6 lg:px-12 pb-12 pt-8">
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={containerVariants}
+              className="space-y-12"
+            >
+              {activeTab === 'overview' && (
+                <OverviewTab
+                  username={username}
+                  initialSettings={initialSettings}
+                  balance={balance}
+                  withdrawable={withdrawable}
+                  setActiveTab={(tab: string) => handleTabChange(tab as Tab)}
+                />
+              )}
 
-            {activeTab === 'wallet' && (
-              <WalletTab
-                balance={balance}
-                withdrawable={withdrawable}
-              />
-            )}
+              {activeTab === 'wallet' && (
+                <WalletTab
+                  balance={balance}
+                  withdrawable={withdrawable}
+                />
+              )}
 
+              {activeTab === 'storefront' && (
+                <StorefrontTab
+                  username={username}
+                  initialSettings={initialSettings}
+                />
+              )}
 
+              {activeTab === 'feast' && (
+                <FeastTab
+                  username={username || ''}
+                />
+              )}
 
-            {activeTab === 'storefront' && (
-              <StorefrontTab
-                username={username}
-                initialSettings={initialSettings}
-              />
-            )}
+              {activeTab === 'inbox' && (
+                <InboxTab
+                  username={username || ''}
+                  onSelectChat={(chatUser: string) => setActiveChatUser(chatUser)}
+                />
+              )}
 
-            {activeTab === 'feast' && (
-              <FeastTab
-                username={username || ''}
-              />
-            )}
+              {activeTab === 'fundraise' && (
+                <FundraiserManager username={username || ''} />
+              )}
 
-            {activeTab === 'inbox' && (
-              <InboxTab username={username || ''} />
-            )}
-
-            {activeTab === 'fundraise' && (
-              <FundraiserManager username={username || ''} />
-            )}
-
-            {activeTab === 'settings' && (
-              <div className="space-y-12">
-                <div className="mb-12">
-                  <ProfileEditor username={username || ''} initialSettings={{
-                    profileImage: initialSettings?.profileImage || '',
+              {activeTab === 'settings' && (
+                <div className="space-y-12">
+                  <div className="mb-12">
+                    <ProfileEditor username={username || ''} initialSettings={{
+                      profileImage: initialSettings?.profileImage || '',
+                      socials: initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' },
+                      faqs: initialSettings?.faqs || [],
+                      templates: initialSettings?.templates || [],
+                      displayName: initialSettings?.displayName || '',
+                      bio: initialSettings?.bio || '',
+                    }} />
+                  </div>
+                  <div className="w-full h-px bg-border my-8" />
+                  <SettingsClient username={username || ''} initialSettings={{
+                    videoRate: initialSettings?.videoRate ?? 100,
+                    audioRate: initialSettings?.audioRate ?? 50,
                     socials: initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' },
-                    faqs: initialSettings?.faqs || [],
+                    profileImage: initialSettings?.profileImage || '',
                     templates: initialSettings?.templates || [],
-                    displayName: initialSettings?.displayName || '',
-                    bio: initialSettings?.bio || '',
+                    faqs: initialSettings?.faqs || [],
+                    roomType: initialSettings?.roomType || 'audio',
+                    isRoomFree: initialSettings?.isRoomFree ?? true,
+                    videoProvider: initialSettings?.videoProvider || 'supercalls',
+                    isGoogleConnected: initialSettings?.isGoogleConnected ?? false,
+                    isZoomConnected: initialSettings?.isZoomConnected ?? false,
                   }} />
                 </div>
-                <div className="w-full h-px bg-border my-8" />
-                <SettingsClient username={username || ''} initialSettings={{
-                  videoRate: initialSettings?.videoRate ?? 100,
-                  audioRate: initialSettings?.audioRate ?? 50,
-                  socials: initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' },
-                  profileImage: initialSettings?.profileImage || '',
-                  templates: initialSettings?.templates || [],
-                  faqs: initialSettings?.faqs || [],
-                  roomType: initialSettings?.roomType || 'audio',
-                  isRoomFree: initialSettings?.isRoomFree ?? true,
-                  videoProvider: initialSettings?.videoProvider || 'supercalls',
-                  isGoogleConnected: initialSettings?.isGoogleConnected ?? false,
-                  isZoomConnected: initialSettings?.isZoomConnected ?? false,
-                }} />
-              </div>
-            )}
-          </motion.div>
-        </div>
-      </main>
+              )}
+            </motion.div>
+          </div>
+        </main>
+      )}
 
       {/* Floating Studio Recorder */}
       {username && <GlobalStudioRecorder username={username} />}

@@ -19,11 +19,11 @@ export default async function LandingPage() {
     }
   }
 
-  // If logged in with username, go to studio
+  // If logged in with username, go to dashboard
   if (email) {
     const username = await resolveUsername(email);
     if (username) {
-      redirect("/studio");
+      redirect("/dashboard");
     }
   }
 

@@ -29,9 +29,20 @@ if (hasFirebaseConfig) {
 export { app, messaging };
 
 export const requestForToken = async () => {
-  if (!messaging) return null;
-
   try {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        console.log("Notification permission not granted.");
+        return null;
+      }
+    }
+
+    if (!messaging) {
+      console.warn("Firebase messaging is not initialized (missing config).");
+      return null;
+    }
+
     const currentToken = await getToken(messaging, {
       vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
     });
