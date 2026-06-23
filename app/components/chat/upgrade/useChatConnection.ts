@@ -11,7 +11,7 @@ export interface ChatMessage {
   text: string;
   timestamp: number;
   /** Rich message type — defaults to 'text' */
-  type?: 'text' | 'audio' | 'card' | 'gallery';
+  type?: 'text' | 'audio' | 'card' | 'gallery' | 'image';
   /** Optional metadata for rich messages */
   meta?: Record<string, any>;
 }
@@ -212,6 +212,60 @@ export function useChatConnection(user: ChatUser, recipient?: string) {
     }
   }, [input, user, recipient, addMessage]);
 
+  const sendMediaMessage = useCallback(async (file: File) => {
+    // 1. Upload file to /api/upload
+    try {
+      const res = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
+        method: 'POST',
+        body: file,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      const fileUrl = data.url;
+
+      const messageId = Math.random().toString(36).slice(2);
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+
+      const msg: ChatMessage = {
+        id: messageId,
+        from: user.username,
+        fromEmail: user.email,
+        text: isImage ? '' : file.name,
+        timestamp: Date.now(),
+        type: 'image',
+        meta: {
+          url: fileUrl,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          isVideo,
+        },
+      };
+
+      // Optimistic update
+      addMessage(msg);
+      playSound('send');
+
+      // Persist via API
+      await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: messageId,
+          message: msg.text,
+          from: user.username,
+          fromEmail: user.email,
+          to: recipient,
+          type: 'image',
+          meta: msg.meta,
+        }),
+      });
+    } catch (e) {
+      console.error('[Chat] Failed to send media:', e);
+    }
+  }, [user, recipient, addMessage]);
+
   const formatTime = useCallback((ts: number) => {
     const d = new Date(ts);
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -281,6 +335,7 @@ export function useChatConnection(user: ChatUser, recipient?: string) {
     isDM,
     addMessage,
     sendMessage,
+    sendMediaMessage,
     publishTyping,
     formatTime,
     formatDate,

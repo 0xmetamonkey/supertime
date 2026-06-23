@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Play, Pause, Check, CheckCheck, Image as ImageIcon } from 'lucide-react';
+import { Play, Pause, Check, CheckCheck, Image as ImageIcon, Download, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { TEAM_MEMBERS } from '../../../config';
 import type { ChatMessage } from './useChatConnection';
@@ -180,6 +180,65 @@ export default function MessageBubble({ message, isMe, formatTime }: MessageBubb
               </p>
             )}
             <PhotoGallery images={message.meta?.images} />
+          </>
+        )}
+
+        {/* Image / Video / Document attachment */}
+        {msgType === 'image' && message.meta?.url && (
+          <>
+            {message.meta.fileType?.startsWith('image/') ? (
+              <a
+                href={message.meta.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block mt-1 rounded-xl overflow-hidden max-w-[280px] hover:opacity-90 transition-opacity"
+              >
+                <img
+                  src={message.meta.url}
+                  alt={message.meta.fileName || 'Image'}
+                  className="w-full h-auto rounded-xl object-cover"
+                  style={{ maxHeight: '300px' }}
+                  loading="lazy"
+                />
+              </a>
+            ) : message.meta.fileType?.startsWith('video/') ? (
+              <div className="mt-1 rounded-xl overflow-hidden max-w-[280px]">
+                <video
+                  src={message.meta.url}
+                  controls
+                  className="w-full h-auto rounded-xl"
+                  style={{ maxHeight: '300px' }}
+                  preload="metadata"
+                />
+              </div>
+            ) : (
+              <a
+                href={message.meta.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 mt-1 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10 max-w-[280px]"
+              >
+                <div className="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
+                  <Download className="w-4.5 h-4.5 text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{message.meta.fileName || 'File'}</p>
+                  {message.meta.fileSize && (
+                    <p className="text-[10px] opacity-50 mt-0.5">
+                      {message.meta.fileSize < 1024 * 1024
+                        ? `${(message.meta.fileSize / 1024).toFixed(1)} KB`
+                        : `${(message.meta.fileSize / (1024 * 1024)).toFixed(1)} MB`}
+                    </p>
+                  )}
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 opacity-40 shrink-0" />
+              </a>
+            )}
+            {message.text && (
+              <p className="text-sm leading-relaxed break-words whitespace-pre-wrap mt-1.5">
+                {renderText(message.text)}
+              </p>
+            )}
           </>
         )}
 
