@@ -9,9 +9,12 @@ interface ChatHeaderProps {
   recipientImage?: string;
   isOnline?: boolean;
   onBack?: () => void;
+  onAudioCall?: () => void;
+  onVideoCall?: () => void;
+  isCallActive?: boolean;
 }
 
-export default function ChatHeader({ recipientName, recipientImage, isOnline, onBack }: ChatHeaderProps) {
+export default function ChatHeader({ recipientName, recipientImage, isOnline, onBack, onAudioCall, onVideoCall, isCallActive }: ChatHeaderProps) {
   const initial = recipientName.charAt(0).toUpperCase();
 
   return (
@@ -52,7 +55,7 @@ export default function ChatHeader({ recipientName, recipientImage, isOnline, on
             @{recipientName}
           </Link>
           <span className="text-xs text-muted leading-tight">
-            {isOnline ? 'Online' : 'Direct Message'}
+            {isCallActive ? 'In call...' : isOnline ? 'Online' : 'Direct Message'}
           </span>
         </div>
       </div>
@@ -60,14 +63,26 @@ export default function ChatHeader({ recipientName, recipientImage, isOnline, on
       {/* Right: Action Buttons */}
       <div className="flex items-center gap-1">
         <button
-          className="w-9 h-9 rounded-full flex items-center justify-center text-muted hover:text-foreground hover:bg-background transition-colors"
+          onClick={onAudioCall}
+          disabled={isCallActive}
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+            isCallActive
+              ? 'text-muted/40 cursor-not-allowed'
+              : 'text-muted hover:text-foreground hover:bg-background'
+          }`}
           title="Audio Call"
           aria-label="Audio Call"
         >
           <Phone className="w-4.5 h-4.5" />
         </button>
         <button
-          className="w-9 h-9 rounded-full flex items-center justify-center text-muted hover:text-foreground hover:bg-background transition-colors"
+          onClick={onVideoCall}
+          disabled={isCallActive}
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+            isCallActive
+              ? 'text-muted/40 cursor-not-allowed'
+              : 'text-muted hover:text-foreground hover:bg-background'
+          }`}
           title="Video Call"
           aria-label="Video Call"
         >
@@ -84,3 +99,4 @@ export default function ChatHeader({ recipientName, recipientImage, isOnline, on
     </div>
   );
 }
+

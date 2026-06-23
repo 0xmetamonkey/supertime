@@ -71,14 +71,50 @@ export default function DashboardClient({ session, username: initialUsername, ro
   // Chat view mode: split-screen when a chat is active
   const isChatSplitView = activeTab === 'inbox' && !!activeChatUser;
 
-  // Sync tab from URL if present
+  // Sync tab and active chat user from URL on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
+    const toParam = params.get('to');
+    
     if (tabParam && ['overview', 'storefront', 'wallet', 'settings', 'feast', 'inbox', 'fundraise', 'tools'].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
+    } else if (toParam) {
+      setActiveTab('inbox');
+    }
+    
+    if (toParam) {
+      setActiveChatUser(toParam);
     }
   }, []);
+
+  // Sync state changes back to URL parameters dynamically
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    let changed = false;
+
+    if (params.get('tab') !== activeTab) {
+      params.set('tab', activeTab);
+      changed = true;
+    }
+
+    if (activeTab === 'inbox' && activeChatUser) {
+      if (params.get('to') !== activeChatUser) {
+        params.set('to', activeChatUser);
+        changed = true;
+      }
+    } else {
+      if (params.has('to')) {
+        params.delete('to');
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
+    }
+  }, [activeTab, activeChatUser]);
 
   // Clear activeChatUser when switching away from inbox
   const handleTabChange = (tab: Tab) => {
@@ -380,6 +416,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
                   email: session.user.email || '',
                 }}
                 recipient={activeChatUser}
+                balance={balance}
                 onBack={() => setActiveChatUser(null)}
               />
             </div>

@@ -28,7 +28,9 @@ export default function GlobalChatListener({ username }: { username: string }) {
       // If we are already on the chat page with this person, don't show toast
       const searchParams = new URLSearchParams(window.location.search);
       const to = searchParams.get('to');
-      if (pathname === '/chat' && to?.toLowerCase() === data.from.toLowerCase()) {
+      const tab = searchParams.get('tab');
+      const isViewingChat = (pathname === '/chat') || (pathname === '/dashboard' && tab === 'inbox');
+      if (isViewingChat && to?.toLowerCase() === data.from.toLowerCase()) {
         return;
       }
       
@@ -78,7 +80,7 @@ export default function GlobalChatListener({ username }: { username: string }) {
             exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
             onClick={() => {
               setPopups(prev => prev.filter(p => p.id !== popup.id));
-              router.push(`/chat?to=${popup.from}`);
+              router.push(`/dashboard?tab=inbox&to=${popup.from}`);
             }}
             className="bg-surface border border-border shadow-2xl rounded-2xl p-4 flex items-start gap-3 w-80 cursor-pointer hover:bg-background transition-colors ring-1 ring-black/5 pointer-events-auto"
           >

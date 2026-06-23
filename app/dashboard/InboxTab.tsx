@@ -152,7 +152,7 @@ export default function InboxTab({ username, onSelectChat }: { username: string;
           {conversations.map((conv, i) => (
             <div 
               key={i} 
-              onClick={() => onSelectChat ? onSelectChat(conv.with) : router.push(`/chat?to=${conv.with}`)}
+              onClick={() => onSelectChat ? onSelectChat(conv.with) : router.push(`/dashboard?tab=inbox&to=${conv.with}`)}
               className="group flex items-center justify-between p-4 bg-background border border-border rounded-xl hover:border-foreground/20 cursor-pointer transition-colors"
             >
               <div className="flex items-center gap-4">

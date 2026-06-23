@@ -1110,7 +1110,7 @@ export default function CreatorClient({
               showError("This is a preview! Fans will use this to DM you.");
               return;
             }
-            router.push(`/chat?to=${username}`);
+            router.push(`/dashboard?tab=inbox&to=${username}`);
           }} className="w-full bg-surface border border-border rounded-2xl py-3.5 flex items-center justify-center gap-2 hover:bg-background transition-colors font-medium text-sm text-foreground shadow-sm">
             <MessageSquare className="w-4 h-4" /> Message
           </button>

@@ -73,7 +73,8 @@ self.addEventListener('notificationclick', (event) => {
   
   if (data.type === 'chat-message' || event.action === 'reply') {
     // Open the chat tab
-    const urlToOpen = new URL('/dashboard?tab=inbox', self.location.origin).href;
+    const toUser = data.from ? `&to=${encodeURIComponent(data.from)}` : '';
+    const urlToOpen = new URL(`/dashboard?tab=inbox${toUser}`, self.location.origin).href;
     event.waitUntil(clients.openWindow(urlToOpen));
     return;
   }

@@ -9,19 +9,22 @@ const TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
 export async function POST(req: NextRequest) {
   try {
-    const { id, message, from, fromEmail, to } = await req.json();
+    const { id, message, from, fromEmail, to, type, meta } = await req.json();
 
-    if (!message || !from) {
+    if ((!message && !type) || !from) {
       return NextResponse.json({ error: 'Missing message or from' }, { status: 400 });
     }
 
-    const newMessage = {
+    const newMessage: Record<string, any> = {
       id: id || Math.random().toString(36).slice(2),
       from,
       fromEmail: fromEmail || '',
-      text: message,
-      timestamp: Date.now()
+      text: message || '',
+      timestamp: Date.now(),
+      ...(type && { type }),
+      ...(meta && { meta }),
     };
+
 
     // Determine target key and channel
     let chatKey = TEAM_CHAT_KEY;
