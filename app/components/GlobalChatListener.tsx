@@ -35,9 +35,21 @@ export default function GlobalChatListener({ username }: { username: string }) {
       }
       
       if (data.type === 'dm' && data.from !== username) {
+        // Send delivered receipt back to sender
+        try {
+          const dmParticipants = [username.toLowerCase(), data.from.toLowerCase()].sort();
+          const dmChannel = client.channels.get(`dm:${dmParticipants.join(':')}`);
+          dmChannel.publish('delivered', { messageId: data.id }).catch(() => {});
+        } catch (err) {
+          console.error('[GlobalChatListener] Delivered receipt publish failed:', err);
+        }
+
         // Show custom popup
         const id = Math.random().toString(36);
         setPopups(prev => [...prev, { id, ...data }]);
+
+        // Signal unread chat to sidebar
+        window.dispatchEvent(new CustomEvent('supertime:unread-chat', { detail: { from: data.from } }));
         
         setTimeout(() => {
           setPopups(prev => prev.filter(p => p.id !== id));

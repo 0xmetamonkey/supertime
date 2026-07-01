@@ -100,17 +100,40 @@ function PhotoGallery({ images }: { images?: string[] }) {
   );
 }
 
+interface DeliveryTicksProps {
+  status?: 'sent' | 'delivered' | 'opened';
+}
+
 /** Delivery status ticks */
-function DeliveryTicks() {
+function DeliveryTicks({ status = 'sent' }: DeliveryTicksProps) {
+  if (status === 'opened') {
+    return (
+      <span className="delivery-tick ml-1.5 inline-flex">
+        <CheckCheck className="w-3.5 h-3.5 text-foreground" />
+      </span>
+    );
+  }
+  if (status === 'delivered') {
+    return (
+      <span className="delivery-tick ml-1.5 inline-flex">
+        <CheckCheck className="w-3.5 h-3.5 text-muted/60" />
+      </span>
+    );
+  }
+  // Default to sent (single grey tick)
   return (
     <span className="delivery-tick ml-1.5 inline-flex">
-      <CheckCheck className="w-3.5 h-3.5 text-blue-400" />
+      <Check className="w-3.5 h-3.5 text-muted/60" />
     </span>
   );
 }
 
+/** Maximum characters before a message is truncated with "Read more" */
+const TEXT_TRUNCATE_LIMIT = 500;
+
 export default function MessageBubble({ message, isMe, formatTime }: MessageBubbleProps) {
   const msgType = message.type || 'text';
+  const [expanded, setExpanded] = useState(false);
 
   // Parse mentions in text
   const renderText = (text: string) => {
@@ -122,6 +145,32 @@ export default function MessageBubble({ message, isMe, formatTime }: MessageBubb
           {part}
         </span>
       ) : part
+    );
+  };
+
+  /** Render text with optional truncation + Read more/less toggle */
+  const renderTruncatedText = (text: string, className: string) => {
+    const needsTruncation = text.length > TEXT_TRUNCATE_LIMIT;
+    const displayText = needsTruncation && !expanded
+      ? text.slice(0, TEXT_TRUNCATE_LIMIT)
+      : text;
+
+    return (
+      <>
+        <p className={className}>
+          {renderText(displayText)}
+          {needsTruncation && !expanded && '…'}
+        </p>
+        {needsTruncation && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="block text-xs font-semibold mt-1.5 underline underline-offset-2 hover:brightness-125 transition-all"
+            style={{ color: '#60a5fa' }}
+          >
+            {expanded ? '▲ Read less' : '▼ Read more'}
+          </button>
+        )}
+      </>
     );
   };
 
@@ -144,9 +193,7 @@ export default function MessageBubble({ message, isMe, formatTime }: MessageBubb
 
         {/* Text content */}
         {(msgType === 'text' || !msgType) && (
-          <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
-            {renderText(message.text)}
-          </p>
+          renderTruncatedText(message.text, "text-sm leading-relaxed break-words whitespace-pre-wrap")
         )}
 
         {/* Audio waveform */}
@@ -163,9 +210,7 @@ export default function MessageBubble({ message, isMe, formatTime }: MessageBubb
         {msgType === 'card' && (
           <>
             {message.text && (
-              <p className="text-sm leading-relaxed break-words whitespace-pre-wrap mb-2">
-                {renderText(message.text)}
-              </p>
+              renderTruncatedText(message.text, "text-sm leading-relaxed break-words whitespace-pre-wrap mb-2")
             )}
             <DataCardGrid cards={message.meta?.cards} />
           </>
@@ -175,9 +220,7 @@ export default function MessageBubble({ message, isMe, formatTime }: MessageBubb
         {msgType === 'gallery' && (
           <>
             {message.text && (
-              <p className="text-sm leading-relaxed break-words whitespace-pre-wrap mb-2">
-                {renderText(message.text)}
-              </p>
+              renderTruncatedText(message.text, "text-sm leading-relaxed break-words whitespace-pre-wrap mb-2")
             )}
             <PhotoGallery images={message.meta?.images} />
           </>
@@ -235,9 +278,7 @@ export default function MessageBubble({ message, isMe, formatTime }: MessageBubb
               </a>
             )}
             {message.text && (
-              <p className="text-sm leading-relaxed break-words whitespace-pre-wrap mt-1.5">
-                {renderText(message.text)}
-              </p>
+              renderTruncatedText(message.text, "text-sm leading-relaxed break-words whitespace-pre-wrap mt-1.5")
             )}
           </>
         )}
@@ -247,7 +288,7 @@ export default function MessageBubble({ message, isMe, formatTime }: MessageBubb
           <span className={`text-[10px] ${isMe ? 'opacity-50' : 'opacity-40'}`}>
             {formatTime(message.timestamp)}
           </span>
-          {isMe && <DeliveryTicks />}
+          {isMe && <DeliveryTicks status={message.status} />}
         </div>
       </div>
     </div>

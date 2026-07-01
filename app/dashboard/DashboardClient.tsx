@@ -64,6 +64,18 @@ export default function DashboardClient({ session, username: initialUsername, ro
   const [withdrawable, setWithdrawable] = useState(initialWithdrawable);
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeChatUser, setActiveChatUser] = useState<string | null>(null);
+  const [hasUnreadInbox, setHasUnreadInbox] = useState(false);
+
+  // Listen for unread chat events from GlobalChatListener
+  useEffect(() => {
+    const handler = () => {
+      if (activeTab !== 'inbox') {
+        setHasUnreadInbox(true);
+      }
+    };
+    window.addEventListener('supertime:unread-chat', handler);
+    return () => window.removeEventListener('supertime:unread-chat', handler);
+  }, [activeTab]);
 
   // Derived state: sidebar is collapsed when a chat is open
   const isSidebarCollapsed = activeTab === 'inbox' && !!activeChatUser;
@@ -119,6 +131,9 @@ export default function DashboardClient({ session, username: initialUsername, ro
   const handleTabChange = (tab: Tab) => {
     if (tab !== 'inbox') {
       setActiveChatUser(null);
+    }
+    if (tab === 'inbox') {
+      setHasUnreadInbox(false);
     }
     setActiveTab(tab);
   };
@@ -299,6 +314,12 @@ export default function DashboardClient({ session, username: initialUsername, ro
               <item.icon className="w-4 h-4 shrink-0" />
               {!isSidebarCollapsed && <span className="sidebar-label">{item.label}</span>}
               {isSidebarCollapsed && <span className="sidebar-tooltip">{item.label}</span>}
+              {item.id === 'inbox' && hasUnreadInbox && (
+                <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neo-pink opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-neo-pink" />
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -339,10 +360,16 @@ export default function DashboardClient({ session, username: initialUsername, ro
             )}
             <button
               onClick={() => handleTabChange('inbox')}
-              className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'inbox' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
+              className={`relative flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'inbox' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
             >
               <MessageSquare className="w-5 h-5" />
               <span className="text-[10px] font-medium tracking-wide text-center">Inbox</span>
+              {hasUnreadInbox && (
+                <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neo-pink opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-neo-pink" />
+                </span>
+              )}
             </button>
             {isCreator && (
               <button

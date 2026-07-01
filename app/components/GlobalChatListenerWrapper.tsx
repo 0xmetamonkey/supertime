@@ -4,7 +4,13 @@ import { resolveUsername } from "../actions";
 import GlobalChatListener from "./GlobalChatListener";
 
 export default async function GlobalChatListenerWrapper() {
-  const { userId, sessionClaims } = await auth();
+  let authResult;
+  try {
+    authResult = await auth();
+  } catch (e) {
+    return null;
+  }
+  const { userId, sessionClaims } = authResult;
   if (!userId) return null;
 
   let email = (sessionClaims as any)?.email || '';

@@ -6,13 +6,17 @@ if (!admin.apps.length) {
       ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n').replace(/^"|"$/g, '')
       : undefined;
 
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey,
-      }),
-    });
+    if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && privateKey) {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          project_id: process.env.FIREBASE_PROJECT_ID,
+          client_email: process.env.FIREBASE_CLIENT_EMAIL,
+          private_key: privateKey,
+        } as any),
+      });
+    } else {
+      console.warn('Firebase Admin credentials missing, skipping initialization');
+    }
   } catch (error) {
     console.error('Firebase admin initialization error', error);
   }

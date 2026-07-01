@@ -9,7 +9,7 @@ const TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
 export async function POST(req: NextRequest) {
   try {
-    const { id, message, from, fromEmail, to, type, meta } = await req.json();
+    const { id, message, from, fromEmail, to, type, meta, status } = await req.json();
 
     if ((!message && !type) || !from) {
       return NextResponse.json({ error: 'Missing message or from' }, { status: 400 });
@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
       fromEmail: fromEmail || '',
       text: message || '',
       timestamp: Date.now(),
+      status: status || 'sent',
       ...(type && { type }),
       ...(meta && { meta }),
     };
@@ -62,28 +63,36 @@ export async function POST(req: NextRequest) {
           try {
             const pushToken = await kv.get(`fcm_token:${to.toLowerCase()}`);
             if (pushToken) {
-              const admin = await import('firebase-admin');
-              if (!admin.apps.length) {
-                admin.initializeApp({
-                  credential: admin.credential.cert({
-                    projectId: process.env.FIREBASE_PROJECT_ID,
-                    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-                  }),
-                });
-              }
-              await admin.messaging().send({
-                token: pushToken as string,
-                notification: {
-                  title: `New message from @${from}`,
-                  body: message.length > 50 ? message.substring(0, 50) + '...' : message,
-                },
-                data: {
-                  type: 'chat-message',
-                  from,
+              const projectId = process.env.FIREBASE_PROJECT_ID;
+              const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+              const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+              
+              if (projectId && clientEmail && privateKey) {
+                const admin = await import('firebase-admin');
+                if (!admin.apps.length) {
+                  admin.initializeApp({
+                    credential: admin.credential.cert({
+                      project_id: projectId,
+                      client_email: clientEmail,
+                      private_key: privateKey.replace(/\\n/g, '\n'),
+                    } as any),
+                  });
                 }
-              });
-              console.log(`[Chat API] Successfully pushed FCM to ${to}`);
+                await admin.messaging().send({
+                  token: pushToken as string,
+                  notification: {
+                    title: `New message from @${from}`,
+                    body: message.length > 50 ? message.substring(0, 50) + '...' : message,
+                  },
+                  data: {
+                    type: 'chat-message',
+                    from,
+                  }
+                });
+                console.log(`[Chat API] Successfully pushed FCM to ${to}`);
+              } else {
+                console.warn('[Chat API] FCM push skipped: Firebase environment variables are not fully configured.');
+              }
             }
           } catch (fcmErr) {
              console.error('[Chat API] FCM push failed:', fcmErr);
@@ -150,7 +159,22 @@ export async function GET(req: NextRequest) {
     }
 
     const messages = await kv.get<any[]>(chatKey) || [];
-    const filtered = since ? messages.filter(m => m.timestamp > since) : messages;
+    
+    // Mark received messages as opened
+    let hasUpdates = false;
+    const updatedMessages = messages.map(m => {
+      if (from && to && m.from.toLowerCase() === to.toLowerCase() && m.status !== 'opened') {
+        hasUpdates = true;
+        return { ...m, status: 'opened' };
+      }
+      return m;
+    });
+
+    if (hasUpdates) {
+      await kv.set(chatKey, updatedMessages, { ex: 60 * 60 * 24 * 7 });
+    }
+
+    const filtered = since ? updatedMessages.filter(m => m.timestamp > since) : updatedMessages;
 
     return NextResponse.json({ messages: filtered });
   } catch (error) {
