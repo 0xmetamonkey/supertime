@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Wallet,
   Settings,
@@ -46,6 +46,7 @@ type Tab = 'overview' | 'storefront' | 'wallet' | 'settings' | 'feast' | 'inbox'
 
 export default function DashboardClient({ session, username: initialUsername, role: initialRole, initialBalance, initialWithdrawable, initialSettings }: UIProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signOut } = useClerk();
 
   // Platform Identity State
@@ -64,29 +65,49 @@ export default function DashboardClient({ session, username: initialUsername, ro
   const [withdrawable, setWithdrawable] = useState(initialWithdrawable);
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeChatUser, setActiveChatUser] = useState<string | null>(null);
-  const [hasUnreadInbox, setHasUnreadInbox] = useState(false);
+  const [unreadFrom, setUnreadFrom] = useState<Set<string>>(new Set());
+
+  const hasUnreadInbox = unreadFrom.size > 0;
 
   // Listen for unread chat events from GlobalChatListener
   useEffect(() => {
-    const handler = () => {
-      if (activeTab !== 'inbox') {
-        setHasUnreadInbox(true);
+    const handler = (e: Event) => {
+      const from = (e as CustomEvent).detail?.from?.toLowerCase();
+      if (from) {
+        setUnreadFrom(prev => {
+          const next = new Set(prev);
+          next.add(from);
+          return next;
+        });
       }
     };
     window.addEventListener('supertime:unread-chat', handler);
     return () => window.removeEventListener('supertime:unread-chat', handler);
-  }, [activeTab]);
+  }, []);
+
+  // Automatically mark the current active chat user as read
+  useEffect(() => {
+    if (activeTab === 'inbox' && activeChatUser) {
+      const recipientLower = activeChatUser.toLowerCase();
+      if (unreadFrom.has(recipientLower)) {
+        setUnreadFrom(prev => {
+          const next = new Set(prev);
+          next.delete(recipientLower);
+          return next;
+        });
+      }
+    }
+  }, [activeTab, activeChatUser, unreadFrom]);
 
   // Derived state: sidebar is collapsed when a chat is open
   const isSidebarCollapsed = activeTab === 'inbox' && !!activeChatUser;
   // Chat view mode: split-screen when a chat is active
   const isChatSplitView = activeTab === 'inbox' && !!activeChatUser;
 
-  // Sync tab and active chat user from URL on mount
+  // Sync tab and active chat user from URL parameters
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get('tab');
-    const toParam = params.get('to');
+    const tabParam = searchParams.get('tab');
+    const toParam = searchParams.get('to');
     
     if (tabParam && ['overview', 'storefront', 'wallet', 'settings', 'feast', 'inbox', 'fundraise', 'tools'].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
@@ -97,7 +118,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
     if (toParam) {
       setActiveChatUser(toParam);
     }
-  }, []);
+  }, [searchParams]);
 
   // Sync state changes back to URL parameters dynamically
   useEffect(() => {
@@ -131,9 +152,6 @@ export default function DashboardClient({ session, username: initialUsername, ro
   const handleTabChange = (tab: Tab) => {
     if (tab !== 'inbox') {
       setActiveChatUser(null);
-    }
-    if (tab === 'inbox') {
-      setHasUnreadInbox(false);
     }
     setActiveTab(tab);
   };
@@ -419,6 +437,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
               username={username || ''}
               activeChatUser={activeChatUser}
               onSelectChat={(chatUser) => setActiveChatUser(chatUser)}
+              unreadFrom={unreadFrom}
             />
           </div>
 
@@ -540,6 +559,8 @@ export default function DashboardClient({ session, username: initialUsername, ro
                 <InboxTab
                   username={username || ''}
                   onSelectChat={(chatUser: string) => setActiveChatUser(chatUser)}
+                  unreadFrom={unreadFrom}
+                  setUnreadFrom={setUnreadFrom}
                 />
               )}
 

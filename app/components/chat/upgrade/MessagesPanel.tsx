@@ -15,6 +15,7 @@ interface MessagesPanelProps {
   username: string;
   activeChatUser: string | null;
   onSelectChat: (username: string) => void;
+  unreadFrom?: Set<string>;
 }
 
 function formatMessageDate(timestamp: number | string | Date): string {
@@ -33,7 +34,7 @@ function formatMessageDate(timestamp: number | string | Date): string {
   }
 }
 
-export default function MessagesPanel({ username, activeChatUser, onSelectChat }: MessagesPanelProps) {
+export default function MessagesPanel({ username, activeChatUser, onSelectChat, unreadFrom }: MessagesPanelProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -89,6 +90,7 @@ export default function MessagesPanel({ username, activeChatUser, onSelectChat }
           <div className="px-2 pb-2">
             {filtered.map((conv, i) => {
               const isActive = activeChatUser === conv.with;
+              const isUnread = unreadFrom?.has(conv.with.toLowerCase());
               return (
                 <button
                   key={i}
@@ -100,12 +102,20 @@ export default function MessagesPanel({ username, activeChatUser, onSelectChat }
                   }`}
                 >
                   {/* Avatar */}
-                  <div className="w-11 h-11 rounded-full overflow-hidden bg-background border border-border flex items-center justify-center shrink-0">
-                    {conv.profileImage ? (
-                      <img src={conv.profileImage} alt={conv.with} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="font-semibold text-foreground text-sm uppercase">
-                        {conv.with.charAt(0)}
+                  <div className="relative shrink-0">
+                    <div className="w-11 h-11 rounded-full overflow-hidden bg-background border border-border flex items-center justify-center">
+                      {conv.profileImage ? (
+                        <img src={conv.profileImage} alt={conv.with} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="font-semibold text-foreground text-sm uppercase">
+                          {conv.with.charAt(0)}
+                        </span>
+                      )}
+                    </div>
+                    {isUnread && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neo-pink opacity-75" />
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-neo-pink border-2 border-background" />
                       </span>
                     )}
                   </div>

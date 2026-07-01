@@ -20,11 +20,20 @@ function formatMessageDate(timestamp: number | string | Date): string {
   }
 }
 
-export default function InboxTab({ username, onSelectChat }: { username: string; onSelectChat?: (chatUser: string) => void }) {
+export default function InboxTab({
+  username,
+  onSelectChat,
+  unreadFrom,
+  setUnreadFrom,
+}: {
+  username: string;
+  onSelectChat?: (chatUser: string) => void;
+  unreadFrom: Set<string>;
+  setUnreadFrom: React.Dispatch<React.SetStateAction<Set<string>>>;
+}) {
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [unreadFrom, setUnreadFrom] = useState<Set<string>>(new Set());
   const [modal, setModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -37,18 +46,6 @@ export default function InboxTab({ username, onSelectChat }: { username: string;
     type: 'info'
   });
   const router = useRouter();
-
-  // Listen for incoming chat notifications to mark conversations unread
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const from = (e as CustomEvent).detail?.from?.toLowerCase();
-      if (from) {
-        setUnreadFrom(prev => new Set(prev).add(from));
-      }
-    };
-    window.addEventListener('supertime:unread-chat', handler);
-    return () => window.removeEventListener('supertime:unread-chat', handler);
-  }, []);
 
   useEffect(() => {
     // Check if push is already permitted

@@ -45,15 +45,15 @@ export default function GlobalChatListener({ username }: { username: string }) {
         }
 
         // Show custom popup
-        const id = Math.random().toString(36);
-        setPopups(prev => [...prev, { id, ...data }]);
+        const popupId = data.id || Math.random().toString(36);
+        setPopups(prev => [...prev, { ...data, id: popupId }]);
 
         // Signal unread chat to sidebar
         window.dispatchEvent(new CustomEvent('supertime:unread-chat', { detail: { from: data.from } }));
         
         setTimeout(() => {
-          setPopups(prev => prev.filter(p => p.id !== id));
-        }, 5000);
+          setPopups(prev => prev.filter(p => p.id !== popupId));
+        }, 3000);
         
         // Play sound
         try {
@@ -107,15 +107,6 @@ export default function GlobalChatListener({ username }: { username: string }) {
                 {popup.text}
               </p>
             </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setPopups(prev => prev.filter(p => p.id !== popup.id));
-              }}
-              className="text-muted hover:text-foreground shrink-0 p-1 bg-background rounded-full"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </motion.div>
         ))}
       </AnimatePresence>
