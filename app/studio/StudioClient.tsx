@@ -43,6 +43,7 @@ import { checkAvailability, completeOnboarding } from '../actions';
 import { useClerk } from "@clerk/nextjs";
 import WalletManager from '../components/WalletManager';
 import GlobalStudioRecorder from '../dashboard/GlobalStudioRecorder';
+import StudioVoice from '../components/StudioVoice';
 
 export default function StudioClient({ username, session, initialSettings }: { username: string | null, session: any, initialSettings?: any }) {
   const router = useRouter();
@@ -89,6 +90,36 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
   const [isAcceptingCalls, setIsAcceptingCalls] = useState(initialSettings?.isAcceptingCalls ?? true);
   const [showDashboard, setShowDashboard] = useState(false);
+
+  // 3-state status: 'online' | 'chilling' | 'offline'
+  type StudioStatus = 'online' | 'chilling' | 'offline';
+  const [studioStatus, setStudioStatus] = useState<StudioStatus>(
+    initialSettings?.isAcceptingCalls ? 'online' : 'offline'
+  );
+
+  const STATUS_CONFIG: Record<StudioStatus, { label: string; dot: string; bg: string; text: string }> = {
+    online:   { label: 'on the line', dot: 'bg-green-400', bg: 'bg-green-500/10 border-green-500/30', text: 'text-green-400' },
+    chilling: { label: 'chilling',    dot: 'bg-amber-400', bg: 'bg-amber-500/10 border-amber-500/30', text: 'text-amber-400' },
+    offline:  { label: 'offline',     dot: 'bg-zinc-500',  bg: 'bg-zinc-500/10 border-zinc-500/20',   text: 'text-zinc-400' },
+  };
+  const STATUS_CYCLE: StudioStatus[] = ['online', 'chilling', 'offline'];
+
+  const handleCycleStatus = async () => {
+    const currentIdx = STATUS_CYCLE.indexOf(studioStatus);
+    const next = STATUS_CYCLE[(currentIdx + 1) % STATUS_CYCLE.length];
+    setStudioStatus(next);
+    const accepting = next === 'online';
+    setIsAcceptingCalls(accepting);
+    try {
+      await fetch('/api/studio/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isAcceptingCalls: accepting })
+      });
+    } catch (e) {
+      console.error('Failed to update status', e);
+    }
+  };
 
   // TalkTime state
   const [isTalkTimeCreating, setIsTalkTimeCreating] = useState(false);
@@ -303,10 +334,11 @@ export default function StudioClient({ username, session, initialSettings }: { u
     }
   };
 
+  // Calm timer — minutes only, no ticking seconds
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    if (mins === 0) return 'just now';
+    return `${mins} min`;
   };
 
   const handleCreateTalkTime = async () => {
@@ -688,22 +720,29 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
       {/* BOTTOM ACTION BAR */}
       <div className="fixed bottom-0 left-0 right-0 z-[90] bg-background/80 backdrop-blur-md border-t border-border p-4 flex justify-between items-center gap-3">
-        <div className="flex items-center gap-3 flex-1">
+        <div className="flex items-center gap-3 flex-1 flex-wrap">
+          {/* Go Live / End Stream */}
           <button
             onClick={() => {
               const next = !isLive;
               setIsLive(next);
               fetch('/api/studio/update', { method: 'POST', body: JSON.stringify({ isLive: next }) });
             }}
-            className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${isLive ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-green-600 text-white hover:bg-green-700'}`}
+            className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${
+              isLive ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-green-600 text-white hover:bg-green-700'
+            }`}
           >
             {isLive ? 'End Stream' : 'Go Live'}
           </button>
+
+          {/* 3-State Status Pill */}
           <button
-            onClick={handleToggleCalls}
-            className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border ${isAcceptingCalls ? 'bg-foreground text-background border-transparent' : 'bg-surface text-muted border-border hover:bg-background'}`}
+            onClick={handleCycleStatus}
+            className={`flex-1 md:flex-none flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border ${STATUS_CONFIG[studioStatus].bg} ${STATUS_CONFIG[studioStatus].text}`}
+            title="Tap to cycle status"
           >
-            {isAcceptingCalls ? 'Calls Ready' : 'Calls Off'}
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_CONFIG[studioStatus].dot} ${studioStatus === 'online' ? 'animate-pulse' : ''}`} />
+            <span className="whitespace-nowrap">{STATUS_CONFIG[studioStatus].label}</span>
           </button>
 
           {/* / TalkTime */}
@@ -717,12 +756,23 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </button>
         </div>
 
-        <button
-          onClick={() => setShowDashboard(true)}
-          className="px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border border-border bg-surface hover:bg-background text-foreground flex items-center gap-2 group"
-        >
-          <LayoutDashboard className="w-4 h-4 text-muted group-hover:text-foreground transition-colors" /> Command Center
-        </button>
+        <div className="flex items-center gap-3">
+          {/* The Voice Orb */}
+          {effectiveUsername && (
+            <StudioVoice
+              username={effectiveUsername}
+              isLive={isLive}
+              studioStatus={studioStatus}
+            />
+          )}
+
+          <button
+            onClick={() => setShowDashboard(true)}
+            className="hidden md:flex px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border border-border bg-surface hover:bg-background text-foreground items-center gap-2 group"
+          >
+            <LayoutDashboard className="w-4 h-4 text-muted group-hover:text-foreground transition-colors" /> Command Center
+          </button>
+        </div>
       </div>
 
       {/* TALKTIME INVITE MODAL */}
