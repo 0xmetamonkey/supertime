@@ -3,6 +3,7 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { kv } from '@vercel/kv';
 import { currentUser } from "@clerk/nextjs/server";
+import { paymentRatelimit } from '../../lib/ratelimit';
 import { sendEmail } from '@/app/lib/email';
 import { createBooking } from '@/app/api/call/book/route';
 
@@ -28,6 +29,11 @@ export async function POST(req: NextRequest) {
 
       if (expectedSignature !== razorpay_signature) {
         return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+      }
+
+      const claimed = await kv.set(`payment:processed:${razorpay_payment_id}`, '1', { nx: true, ex: 31536000 });
+      if (!claimed) {
+        return NextResponse.json({ error: 'Payment already processed' }, { status: 409 });
       }
 
       console.log('[Purchase API] ✅ Signature valid');
@@ -254,6 +260,12 @@ export async function POST(req: NextRequest) {
     // ─── CREATE ORDER ───
     if (!amount || amount < 1) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    }
+
+    const identifier = req.headers.get('x-forwarded-for') || 'anonymous';
+    const { success: allowed } = await paymentRatelimit.limit(identifier);
+    if (!allowed) {
+      return NextResponse.json({ error: 'Too many requests. Please slow down.' }, { status: 429 });
     }
 
     // ATOMIC DOUBLE-BOOKING LOCK (15 min expiry for checkout window)

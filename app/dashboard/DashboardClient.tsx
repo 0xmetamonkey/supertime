@@ -23,7 +23,7 @@ import { useClerk, UserButton } from "@clerk/nextjs";
 
 import OverviewTab from './OverviewTab';
 import WalletTab from './WalletTab';
-import ToolsTab from './ToolsTab';
+// import ToolsTab from './ToolsTab';
 import StorefrontTab from './StorefrontTab';
 import FeastTab from './FeastTab';
 import ProfileEditor from './ProfileEditor';
@@ -43,7 +43,7 @@ interface UIProps {
   initialSettings?: any;
 }
 
-type Tab = 'overview' | 'storefront' | 'wallet' | 'settings' | 'feast' | 'inbox' | 'fundraise' | 'tools';
+type Tab = 'overview' | 'storefront' | 'wallet' | 'settings' | 'feast' | 'inbox' | 'fundraise';
 
 export default function DashboardClient({ session, username: initialUsername, role: initialRole, initialBalance, initialWithdrawable, initialSettings }: UIProps) {
   const router = useRouter();
@@ -77,7 +77,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
     const tabParam = params.get('tab');
     const toParam = params.get('to');
     
-    if (tabParam && ['overview', 'storefront', 'wallet', 'settings', 'feast', 'inbox', 'fundraise', 'tools'].includes(tabParam)) {
+    if (tabParam && ['overview', 'storefront', 'wallet', 'settings', 'feast', 'inbox', 'fundraise'].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
     } else if (toParam) {
       setActiveTab('inbox');
@@ -355,15 +355,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
               <MessageSquare className="w-5 h-5" />
               <span className="text-[10px] font-medium tracking-wide text-center">Inbox</span>
             </button>
-            {isCreator && (
-              <button
-                onClick={() => handleTabChange('tools')}
-                className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'tools' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
-              >
-                <Bot className="w-5 h-5" />
-                <span className="text-[10px] font-medium tracking-wide text-center">Tools</span>
-              </button>
-            )}
+
             {isCreator && (
               <button
                 onClick={() => handleTabChange('fundraise')}

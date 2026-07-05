@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Mic, Image as ImageIcon, Video, StopCircle, Type, X, Play, Sparkles } from 'lucide-react';
+import { Camera, Mic, Image as ImageIcon, Video, StopCircle, Type, X, Play, Sparkles, Radio, Copy, Check, ArrowRight, Loader2 } from 'lucide-react';
 
 interface MediaBlock {
   id: string;
@@ -23,6 +23,11 @@ export default function OmniPad({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // TalkTime state
+  const [isTalkTimeCreating, setIsTalkTimeCreating] = useState(false);
+  const [talkTimeRoom, setTalkTimeRoom] = useState<{ roomId: string; inviteUrl: string; hostUrl: string } | null>(null);
+  const [talkTimeCopied, setTalkTimeCopied] = useState(false);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -74,6 +79,39 @@ export default function OmniPad({
     const url = URL.createObjectURL(file);
     const type = file.type.startsWith('video/') ? 'video' : 'image';
     setMediaBlocks(prev => [...prev, { id: Math.random().toString(36).substring(7), type, url }]);
+  };
+
+  const handleCreateTalkTime = async () => {
+    if (isTalkTimeCreating) return;
+    setIsTalkTimeCreating(true);
+    try {
+      const res = await fetch('/api/talktime/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: text.trim() || 'TalkTime' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTalkTimeRoom({ roomId: data.roomId, inviteUrl: data.inviteUrl, hostUrl: data.hostUrl });
+      } else {
+        alert('Could not start TalkTime. Try again.');
+      }
+    } catch {
+      alert('Network error. Try again.');
+    } finally {
+      setIsTalkTimeCreating(false);
+    }
+  };
+
+  const copyTalkTimeLink = async () => {
+    if (!talkTimeRoom) return;
+    try {
+      await navigator.clipboard.writeText(talkTimeRoom.inviteUrl);
+      setTalkTimeCopied(true);
+      setTimeout(() => setTalkTimeCopied(false), 2500);
+    } catch {
+      alert(talkTimeRoom.inviteUrl);
+    }
   };
 
   return (
@@ -181,7 +219,85 @@ export default function OmniPad({
             <input type="file" accept="image/*,video/*" className="hidden" onChange={handleFileUpload} />
           </label>
         </div>
+
+        {/* / TalkTime button */}
+        <button
+          onClick={handleCreateTalkTime}
+          disabled={isTalkTimeCreating}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-rose-500 text-white text-sm font-bold shadow-md hover:opacity-90 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isTalkTimeCreating ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Radio className="w-4 h-4" />
+          )}
+          / TalkTime
+        </button>
       </div>
+
+      {/* TalkTime invite modal */}
+      <AnimatePresence>
+        {talkTimeRoom && (
+          <motion.div
+            initial={{ opacity: 0, y: 30, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.96 }}
+            transition={{ type: 'spring', damping: 22, stiffness: 220 }}
+            className="absolute inset-4 z-50 bg-background/95 backdrop-blur-3xl border border-violet-500/20 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+          >
+            {/* Ambient glow */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <div className="absolute -top-1/3 -right-1/4 w-2/3 h-2/3 bg-violet-500/10 blur-[100px] rounded-full" />
+              <div className="absolute -bottom-1/3 -left-1/4 w-2/3 h-2/3 bg-rose-500/8 blur-[100px] rounded-full" />
+            </div>
+
+            <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-8 text-center space-y-7">
+              {/* Icon */}
+              <div className="relative">
+                <div className="w-20 h-20 bg-gradient-to-br from-violet-500/20 to-rose-500/20 border border-violet-500/30 rounded-3xl flex items-center justify-center shadow-xl">
+                  <Radio className="w-10 h-10 text-violet-400" />
+                </div>
+                <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow-md">
+                  <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <span className="px-3 py-1 bg-violet-500/10 border border-violet-500/20 rounded-full text-xs font-bold uppercase tracking-widest text-violet-400">TalkTime is ready</span>
+                <h3 className="text-2xl font-bold tracking-tight">Your room is live.</h3>
+                <p className="text-sm text-muted max-w-xs">Share this link with anyone — no account needed. They&apos;ll join instantly.</p>
+              </div>
+
+              {/* Invite URL */}
+              <div className="w-full max-w-sm bg-surface/60 border border-border rounded-2xl flex items-center gap-3 px-4 py-3 group">
+                <span className="flex-1 text-xs text-muted font-mono truncate text-left">{talkTimeRoom.inviteUrl}</span>
+                <button
+                  onClick={copyTalkTimeLink}
+                  className="flex-shrink-0 w-8 h-8 rounded-xl bg-background border border-border flex items-center justify-center hover:bg-surface transition-all text-muted hover:text-foreground"
+                >
+                  {talkTimeCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+                <button
+                  onClick={() => window.location.href = talkTimeRoom.hostUrl}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-violet-600 to-rose-500 text-white font-bold rounded-2xl text-sm shadow-lg hover:opacity-90 active:scale-[0.98] transition-all"
+                >
+                  <Sparkles className="w-4 h-4" /> Join as Host <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setTalkTimeRoom(null)}
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-surface border border-border text-muted rounded-2xl text-sm font-medium hover:bg-background hover:text-foreground transition-all"
+                >
+                  <X className="w-4 h-4" /> Close
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Camera Modal overlay */}
       <AnimatePresence>

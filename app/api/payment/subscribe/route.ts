@@ -30,6 +30,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
       }
 
+      const claimed = await kv.set(`payment:processed:${razorpay_payment_id}`, '1', { nx: true, ex: 31536000 });
+      if (!claimed) {
+        return NextResponse.json({ error: 'Payment already processed' }, { status: 409 });
+      }
+
       let buyerEmail = providedBuyerEmail || '';
       let buyerName = providedBuyerName || 'Guest';
       

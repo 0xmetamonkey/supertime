@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import { kv } from '@vercel/kv';
+import { tipRatelimit } from '../../lib/ratelimit';
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,6 +10,12 @@ export async function POST(req: NextRequest) {
 
     if (!creatorUsername || !amount || amount < 1) {
       return NextResponse.json({ success: false, error: 'INVALID_PAYLOAD' }, { status: 400 });
+    }
+
+    const identifier = req.headers.get('x-forwarded-for') || 'anonymous';
+    const { success: allowed } = await tipRatelimit.limit(identifier);
+    if (!allowed) {
+      return NextResponse.json({ success: false, error: 'Too many requests. Please slow down.' }, { status: 429 });
     }
 
     // Verify creator exists

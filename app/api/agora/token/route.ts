@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { RtcTokenBuilder, RtcRole } from 'agora-token';
 
 // Hash UID to ensure consistency with client-side hashing
@@ -14,6 +15,11 @@ const hashUID = (str: string): number => {
 };
 
 export async function GET(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const channelName = req.nextUrl.searchParams.get('channelName');
   const rawUid = req.nextUrl.searchParams.get('uid') || '0';
 

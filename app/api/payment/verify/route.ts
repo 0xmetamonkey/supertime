@@ -38,6 +38,11 @@ export async function POST(req: NextRequest) {
       .digest("hex");
 
     if (expectedSignature === razorpay_signature) {
+      const claimed = await kv.set(`payment:processed:${razorpay_payment_id}`, '1', { nx: true, ex: 31536000 });
+      if (!claimed) {
+        return NextResponse.json({ error: 'Payment already processed' }, { status: 409 });
+      }
+
       const instance = new Razorpay({
         key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
         key_secret: secret,

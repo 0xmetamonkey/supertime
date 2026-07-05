@@ -29,6 +29,12 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'Filename is required' }, { status: 400 });
   }
 
+  const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp3', '.webm', '.mp4'];
+  const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase();
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    return NextResponse.json({ error: 'File type not allowed' }, { status: 400 });
+  }
+
   // Generate a clean, unique filename to prevent collisions
   const cleanFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
   const uniqueFilename = `${Date.now()}-${cleanFilename}`;

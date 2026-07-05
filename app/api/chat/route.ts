@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { getBotResponse } from '../../lib/bot-logic';
+import { chatRatelimit } from '../../lib/ratelimit';
 
 // Team chat API — persistent messages in KV, realtime via Ably
 const TEAM_CHAT_KEY = 'team:chat:supertime';
@@ -13,6 +14,12 @@ export async function POST(req: NextRequest) {
 
     if ((!message && !type) || !from) {
       return NextResponse.json({ error: 'Missing message or from' }, { status: 400 });
+    }
+
+    const identifier = fromEmail || req.headers.get('x-forwarded-for') || 'anonymous';
+    const { success } = await chatRatelimit.limit(identifier);
+    if (!success) {
+      return NextResponse.json({ error: 'Too many messages. Please slow down.' }, { status: 429 });
     }
 
     const newMessage: Record<string, any> = {

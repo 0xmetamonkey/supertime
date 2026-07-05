@@ -140,6 +140,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'UPI ID and Amount required' }, { status: 400 });
     }
 
+    const UPI_REGEX = /^[\w.\-]{2,256}@[a-zA-Z]{2,64}$/;
+    if (!UPI_REGEX.test(upiId)) {
+      return NextResponse.json({ error: 'Invalid UPI ID format (e.g. name@bankcode)' }, { status: 400 });
+    }
+
     try {
       const request = await recordWithdrawalRequest(senderEmail, withdrawAmount, upiId);
       return NextResponse.json({ success: true, request });
