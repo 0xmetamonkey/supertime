@@ -98,9 +98,9 @@ export default function StudioClient({ username, session, initialSettings }: { u
   );
 
   const STATUS_CONFIG: Record<StudioStatus, { label: string; dot: string; bg: string; text: string }> = {
-    online:   { label: 'on the line', dot: 'bg-green-400', bg: 'bg-green-500/10 border-green-500/30', text: 'text-green-400' },
-    chilling: { label: 'chilling',    dot: 'bg-amber-400', bg: 'bg-amber-500/10 border-amber-500/30', text: 'text-amber-400' },
-    offline:  { label: 'offline',     dot: 'bg-zinc-500',  bg: 'bg-zinc-500/10 border-zinc-500/20',   text: 'text-zinc-400' },
+    online:   { label: 'on the line', dot: 'bg-foreground animate-pulse', bg: 'bg-foreground text-background border-transparent', text: '' },
+    chilling: { label: 'chilling',    dot: 'bg-muted',                    bg: 'bg-surface text-muted border-border',              text: '' },
+    offline:  { label: 'offline',     dot: 'bg-muted opacity-40',         bg: 'bg-surface text-muted border-border opacity-60',   text: '' },
   };
   const STATUS_CYCLE: StudioStatus[] = ['online', 'chilling', 'offline'];
 
@@ -738,10 +738,10 @@ export default function StudioClient({ username, session, initialSettings }: { u
           {/* 3-State Status Pill */}
           <button
             onClick={handleCycleStatus}
-            className={`flex-1 md:flex-none flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border ${STATUS_CONFIG[studioStatus].bg} ${STATUS_CONFIG[studioStatus].text}`}
+            className={`flex-1 md:flex-none flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border ${STATUS_CONFIG[studioStatus].bg}`}
             title="Tap to cycle status"
           >
-            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_CONFIG[studioStatus].dot} ${studioStatus === 'online' ? 'animate-pulse' : ''}`} />
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_CONFIG[studioStatus].dot}`} />
             <span className="whitespace-nowrap">{STATUS_CONFIG[studioStatus].label}</span>
           </button>
 
