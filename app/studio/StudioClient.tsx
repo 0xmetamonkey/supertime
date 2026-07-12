@@ -715,7 +715,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
                 <div className="bg-surface border border-border p-6 rounded-2xl shadow-sm text-foreground relative overflow-hidden group">
                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition-all" />
                   <h3 className="text-sm font-medium text-muted mb-4 flex items-center gap-2 relative z-10">
-                    <Clock className="w-4 h-4 text-blue-500" /> Session Log
+                    <Clock className="w-4 h-4 text-blue-500" /> Sesh Log
                   </h3>
                   <div className="space-y-3 relative z-10">
                     <div className="flex justify-between items-center text-sm border-b border-border pb-2">
@@ -778,7 +778,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
                       <Camera className="w-6 h-6 text-muted" />
                     </div>
                     <h4 className="text-lg font-medium text-foreground mb-1">No recordings yet</h4>
-                    <p className="text-sm text-muted font-medium max-w-sm mx-auto">Hit record during your next session to save your best moments directly to your vault.</p>
+                    <p className="text-sm text-muted font-medium max-w-sm mx-auto">Hit record during your next sesh to save your best moments directly to your vault.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">

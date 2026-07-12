@@ -28,18 +28,32 @@ export default function GlobalChatListener({ username }: { username: string }) {
       // If we are already on the chat page with this person, don't show toast
       const searchParams = new URLSearchParams(window.location.search);
       const to = searchParams.get('to');
-      if (pathname === '/chat' && to?.toLowerCase() === data.from.toLowerCase()) {
+      const tab = searchParams.get('tab');
+      const isViewingChat = (pathname === '/chat') || (pathname === '/dashboard' && tab === 'inbox');
+      if (isViewingChat && to?.toLowerCase() === data.from.toLowerCase()) {
         return;
       }
       
       if (data.type === 'dm' && data.from !== username) {
+        // Send delivered receipt back to sender
+        try {
+          const dmParticipants = [username.toLowerCase(), data.from.toLowerCase()].sort();
+          const dmChannel = client.channels.get(`dm:${dmParticipants.join(':')}`);
+          dmChannel.publish('delivered', { messageId: data.id }).catch(() => {});
+        } catch (err) {
+          console.error('[GlobalChatListener] Delivered receipt publish failed:', err);
+        }
+
         // Show custom popup
-        const id = Math.random().toString(36);
-        setPopups(prev => [...prev, { id, ...data }]);
+        const popupId = data.id || Math.random().toString(36);
+        setPopups(prev => [...prev, { ...data, id: popupId }]);
+
+        // Signal unread chat to sidebar
+        window.dispatchEvent(new CustomEvent('supertime:unread-chat', { detail: { from: data.from } }));
         
         setTimeout(() => {
-          setPopups(prev => prev.filter(p => p.id !== id));
-        }, 5000);
+          setPopups(prev => prev.filter(p => p.id !== popupId));
+        }, 3000);
         
         // Play sound
         try {
@@ -78,7 +92,7 @@ export default function GlobalChatListener({ username }: { username: string }) {
             exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
             onClick={() => {
               setPopups(prev => prev.filter(p => p.id !== popup.id));
-              router.push(`/chat?to=${popup.from}`);
+              router.push(`/dashboard?tab=inbox&to=${popup.from}`);
             }}
             className="bg-surface border border-border shadow-2xl rounded-2xl p-4 flex items-start gap-3 w-80 cursor-pointer hover:bg-background transition-colors ring-1 ring-black/5 pointer-events-auto"
           >
@@ -93,15 +107,6 @@ export default function GlobalChatListener({ username }: { username: string }) {
                 {popup.text}
               </p>
             </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setPopups(prev => prev.filter(p => p.id !== popup.id));
-              }}
-              className="text-muted hover:text-foreground shrink-0 p-1 bg-background rounded-full"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </motion.div>
         ))}
       </AnimatePresence>

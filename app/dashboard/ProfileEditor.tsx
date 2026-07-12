@@ -26,6 +26,7 @@ interface ProfileEditorProps {
   username: string;
   initialSettings: {
     profileImage?: string;
+    coverImage?: string;
     socials?: { instagram?: string; x?: string; youtube?: string; website?: string };
     faqs?: { id: string; question: string; answer: string }[];
     templates?: any[];
@@ -38,11 +39,13 @@ interface ProfileEditorProps {
 export default function ProfileEditor({ username, initialSettings }: ProfileEditorProps) {
   const router = useRouter();
   const [profileImage, setProfileImage] = useState(initialSettings.profileImage || '');
+  const [coverImage, setCoverImage] = useState(initialSettings.coverImage || '');
   const [displayName, setDisplayName] = useState(initialSettings.displayName || '');
   const [bio, setBio] = useState(initialSettings.bio || '');
   const [socials, setSocials] = useState(initialSettings.socials || { instagram: '', x: '', youtube: '', website: '' });
   const [faqs, setFaqs] = useState<{ id: string; question: string; answer: string }[]>(initialSettings.faqs || []);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
 
   const [editingFaqId, setEditingFaqId] = useState<string | null>(null);
   const [newFaqQuestion, setNewFaqQuestion] = useState('');
@@ -78,6 +81,24 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
     }
   };
 
+  const handleCoverUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) return;
+    setIsUploadingCover(true);
+    const file = event.target.files[0];
+    try {
+      const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
+      if (!response.ok) throw new Error("Upload failed");
+      const newBlob = await response.json();
+      if (!newBlob.url) throw new Error("Upload response is missing url");
+      setCoverImage(newBlob.url);
+    } catch (e) {
+      console.error("Cover photo upload failed:", e);
+      alert("Upload failed. Please try again.");
+    } finally {
+      setIsUploadingCover(false);
+    }
+  };
+
   const handleAddFaq = () => {
     if (!newFaqQuestion.trim() || !newFaqAnswer.trim()) return;
     setFaqs([...faqs, { id: Math.random().toString(36).slice(2, 9), question: newFaqQuestion.trim(), answer: newFaqAnswer.trim() }]);
@@ -101,7 +122,7 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
     try {
       await fetch('/api/studio/update', {
         method: 'POST',
-        body: JSON.stringify({ socials, profileImage, faqs, displayName, bio })
+        body: JSON.stringify({ socials, profileImage, coverImage, faqs, displayName, bio })
       });
       setSaveSuccess(true);
       router.refresh(); // Tells Next.js to re-fetch the server component state
@@ -124,6 +145,33 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
         {/* PROFILE IMAGE */}
         <div id="profile-photo-section" className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
           <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-foreground flex items-center gap-2 mb-3">
+              <Upload className="w-4 h-4 text-gray-400" /> Cover Photo
+            </h3>
+            <div className="relative w-full h-32 bg-gray-100 dark:bg-background border border-gray-200 dark:border-border rounded-xl overflow-hidden shadow-sm flex items-center justify-center">
+              {coverImage ? (
+                <img src={coverImage} className="w-full h-full object-cover" alt="Cover" />
+              ) : (
+                <span className="text-sm text-gray-400 font-medium">No cover photo</span>
+              )}
+              <div className="absolute bottom-3 right-3">
+                {isUploadingCover ? (
+                  <span className="bg-white/80 dark:bg-black/80 backdrop-blur-sm text-xs font-medium text-blue-500 px-3 py-1.5 rounded-lg animate-pulse">Uploading...</span>
+                ) : (
+                  <label className="bg-white/90 dark:bg-black/80 backdrop-blur-md text-gray-900 dark:text-white text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer shadow-sm hover:opacity-90 transition-opacity">
+                    Change Cover
+                    <input type="file" accept="image/*" onChange={handleCoverUpload} className="hidden" />
+                  </label>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Recommended: 1200x400. Max 5MB.</p>
+          </div>
+
+          <hr className="border-border my-6" />
+
+          {/* Profile Photo */}
+          <div className="mb-3">
             <h3 className="text-sm font-medium text-gray-900 dark:text-foreground flex items-center gap-2">
               <Upload className="w-4 h-4 text-gray-400" /> Profile Photo
             </h3>
@@ -340,10 +388,10 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
                 )}
               </div>
 
-              {/* ProfileView — the actual live preview */}
               <ProfileView
                 username={username}
                 profileImage={profileImage}
+                coverImage={coverImage}
                 socials={socials}
                 faqs={faqs}
                 templates={initialSettings.templates || []}

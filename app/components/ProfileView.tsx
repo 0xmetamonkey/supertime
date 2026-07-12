@@ -66,6 +66,7 @@ const productTypeConfig: Record<string, { icon: any; label: string }> = {
 export interface ProfileViewProps {
   username: string;
   profileImage?: string;
+  coverImage?: string;
   isVerified?: boolean;
   socials?: { instagram?: string; x?: string; youtube?: string; website?: string };
   faqs?: { id: string; question: string; answer: string }[];
@@ -81,6 +82,7 @@ export interface ProfileViewProps {
 export default function ProfileView({
   username,
   profileImage = '',
+  coverImage = '',
   isVerified = false,
   socials = {},
   faqs = [],
@@ -102,6 +104,11 @@ export default function ProfileView({
   return (
     <div className={`bg-[#F8F8F6] text-[#111111] font-sans ${isPreview ? '' : 'min-h-screen selection:bg-[#111111] selection:text-white pb-20'}`}>
       <main className={`mx-auto ${isPreview ? 'px-4 pt-4' : 'max-w-4xl px-6 pt-10 md:pt-16'} relative`}>
+        {coverImage && (
+          <div className={`w-full bg-zinc-200 overflow-hidden rounded-2xl border border-[#E8E8E8] shadow-sm mb-6 ${isPreview ? 'h-24' : 'h-40 md:h-48'}`}>
+            <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+          </div>
+        )}
         {/* HEADER BAR — social links + call buttons */}
         <div className="flex justify-between items-center mb-8 md:mb-12">
           <div className="flex items-center gap-2 md:gap-3">

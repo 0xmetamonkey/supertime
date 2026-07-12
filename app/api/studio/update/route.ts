@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
       if (videoRate !== undefined) await kv.set(`user:${email}:rate:video`, videoRate);
       if (audioRate !== undefined) await kv.set(`user:${email}:rate:audio`, audioRate);
       if (requestData.profileImage) await kv.set(`user:${email}:profileImage`, requestData.profileImage);
+      if (requestData.coverImage) await kv.set(`user:${email}:coverImage`, requestData.coverImage);
       if (isLive !== undefined) await kv.set(`user:${email}:isLive`, isLive);
       if (isAcceptingCalls !== undefined) await kv.set(`user:${email}:isAcceptingCalls`, isAcceptingCalls);
       if (roomType !== undefined) await kv.set(`user:${email}:roomType`, roomType);

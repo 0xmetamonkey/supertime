@@ -34,6 +34,19 @@ export async function checkAvailability(usernameRaw: string) {
   return !owner;
 }
 
+export async function getProfileImage(usernameRaw: string): Promise<string | null> {
+  if (!process.env.KV_URL) return null;
+  try {
+    const username = usernameRaw.toLowerCase().trim();
+    const email = await kv.get<string>(`owner:${username}`);
+    if (!email) return null;
+    return await kv.get<string>(`user:${email}:profileImage`);
+  } catch (err) {
+    console.error("Failed to get profile image:", err);
+    return null;
+  }
+}
+
 export async function completeOnboarding(usernameRaw: string, role: 'creator' | 'fan') {
   const user = await currentUser();
   if (!user?.emailAddresses?.[0]?.emailAddress) throw new Error("Not logged in");

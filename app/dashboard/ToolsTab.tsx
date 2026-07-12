@@ -239,7 +239,7 @@ export default function ToolsTab({ username }: ToolsTabProps) {
               </div>
               <div className="flex gap-4">
                 <button
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     if (e.altKey || !isConnected) {
                       if (e.altKey) {
                         const token = prompt('DEVELOPER MODE: Enter Page Access Token manually:');

@@ -135,7 +135,7 @@ export default function FundraiserClient({
   const presetAmounts = [199, 499, 999, 2999, 4999];
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans">
+    <div className="min-h-screen bg-background text-foreground font-sans">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
 
       {/* SUCCESS BANNER */}
@@ -145,32 +145,32 @@ export default function FundraiserClient({
             initial={{ y: -100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -100, opacity: 0 }}
-            className="fixed top-0 left-0 right-0 z-[100] bg-neo-green text-black py-4 text-center border-b-4 border-black"
+            className="fixed top-0 left-0 right-0 z-[100] bg-neo-green text-background py-4 text-center border-b border-border shadow-sm"
           >
-            <p className="font-black uppercase text-lg tracking-tight">Thank you for your support! 💛 Your generosity means the world.</p>
+            <p className="font-semibold text-sm">Thank you for your support! 💛 Your generosity means the world.</p>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* HEADER */}
-      <header className="border-b-4 border-black bg-white">
+      <header className="border-b border-border bg-surface">
         <div className="max-w-6xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2">
-            <Zap className="w-6 h-6 fill-black" />
-            <span className="text-sm font-black uppercase tracking-tight">Supertime</span>
+            <Zap className="w-6 h-6 text-neo-pink" />
+            <span className="text-sm font-bold tracking-tight">Supertime</span>
           </a>
           <div className="flex items-center gap-3">
             <button
               onClick={() => handleShare('copy')}
-              className="flex items-center gap-1.5 px-3 py-2 border-2 border-black font-black uppercase text-[9px] bg-white hover:bg-zinc-50 transition-colors shadow-[2px_2px_0px_0px_black] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-border rounded-lg font-medium text-xs bg-surface hover:bg-background transition-colors shadow-sm"
             >
-              {copiedLink ? <><CheckCircle className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Share</>}
+              {copiedLink ? <><CheckCircle className="w-3.5 h-3.5 text-neo-green" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Share</>}
             </button>
             <button
               onClick={() => setShowDonateModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 border-2 border-black font-black uppercase text-[9px] bg-neo-pink text-white hover:bg-neo-pink/90 transition-colors shadow-[2px_2px_0px_0px_black] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+              className="flex items-center gap-1.5 px-4 py-2 border border-border rounded-lg font-medium text-xs bg-neo-pink text-white hover:opacity-90 transition-opacity shadow-sm"
             >
-              <Heart className="w-3 h-3" /> Donate Now
+              <Heart className="w-3.5 h-3.5" /> Donate Now
             </button>
           </div>
         </div>
@@ -182,7 +182,7 @@ export default function FundraiserClient({
           <div className="lg:col-span-3 space-y-8">
             {/* Hero Image or Video */}
             {(fundraiser.videoUrl || fundraiser.imageUrl) && (
-              <div className="border-4 border-black shadow-[8px_8px_0px_0px_black] overflow-hidden bg-zinc-100">
+              <div className="border border-border shadow-sm rounded-2xl overflow-hidden bg-background">
                 {fundraiser.videoUrl ? (
                   <video
                     src={fundraiser.videoUrl}
@@ -198,7 +198,7 @@ export default function FundraiserClient({
 
             {/* Creator Info */}
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 border-4 border-black shadow-[4px_4px_0px_0px_black] overflow-hidden bg-white shrink-0">
+              <div className="w-14 h-14 border border-border shadow-sm rounded-full overflow-hidden bg-background shrink-0">
                 {profileImage ? (
                   <img src={profileImage} alt={username} className="w-full h-full object-cover" />
                 ) : (
@@ -206,26 +206,26 @@ export default function FundraiserClient({
                 )}
               </div>
               <div>
-                <a href={`/${username}`} className="font-black uppercase text-lg tracking-tighter hover:text-neo-pink transition-colors">
+                <a href={`/${username}`} className="font-bold text-lg tracking-tight hover:text-neo-pink transition-colors">
                   @{username}
                 </a>
-                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Organizer · {daysActive} day{daysActive > 1 ? 's' : ''} active</p>
+                <p className="text-[10px] font-medium text-muted uppercase tracking-widest mt-1">Organizer · {daysActive} day{daysActive > 1 ? 's' : ''} active</p>
               </div>
             </div>
 
             {/* Title */}
-            <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none">
+            <h1 className="text-3xl md:text-5xl font-bold tracking-tight leading-none text-foreground">
               {fundraiser.title}
             </h1>
 
             {/* Story */}
-            <div className="border-4 border-black p-6 md:p-10 bg-zinc-50 shadow-[8px_8px_0px_0px_black]">
-              <h3 className="text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2 pb-4 border-b-2 border-zinc-200">
-                <MessageCircle className="w-5 h-5" /> The Story
+            <div className="border border-border rounded-2xl p-6 md:p-8 bg-surface shadow-sm">
+              <h3 className="text-base font-semibold flex items-center gap-2 pb-4 border-b border-border text-foreground mb-6">
+                <MessageCircle className="w-5 h-5 text-muted" /> The Story
               </h3>
               <div className="prose-sm max-w-none">
                 {fundraiser.story.split('\n').map((paragraph, i) => (
-                  <p key={i} className="text-sm font-medium text-zinc-700 leading-relaxed mb-4 last:mb-0">
+                  <p key={i} className="text-sm font-medium text-foreground leading-relaxed mb-4 last:mb-0">
                     {paragraph}
                   </p>
                 ))}
@@ -233,16 +233,16 @@ export default function FundraiserClient({
             </div>
 
             {/* Share Strip */}
-            <div className="border-4 border-black p-6 bg-neo-yellow/10 shadow-[4px_4px_0px_0px_black]">
-              <p className="text-xs font-black uppercase tracking-widest mb-4">Share this fundraiser — every share helps 💛</p>
+            <div className="border border-border p-6 rounded-2xl bg-surface shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-widest mb-4 text-muted">Share this fundraiser — every share helps 💛</p>
               <div className="flex gap-3">
-                <button onClick={() => handleShare('whatsapp')} className="flex-1 py-3 bg-[#25D366] text-white border-2 border-black font-black uppercase text-[9px] shadow-[3px_3px_0px_0px_black] active:shadow-none active:translate-x-[1.5px] active:translate-y-[1.5px]">
+                <button onClick={() => handleShare('whatsapp')} className="flex-1 py-3 bg-[#25D366] text-white border border-transparent rounded-xl font-medium text-xs shadow-sm hover:opacity-90 transition-opacity">
                   WhatsApp
                 </button>
-                <button onClick={() => handleShare('x')} className="flex-1 py-3 bg-black text-white border-2 border-black font-black uppercase text-[9px] shadow-[3px_3px_0px_0px_black] active:shadow-none active:translate-x-[1.5px] active:translate-y-[1.5px]">
+                <button onClick={() => handleShare('x')} className="flex-1 py-3 bg-foreground text-background border border-transparent rounded-xl font-medium text-xs shadow-sm hover:opacity-90 transition-opacity">
                   Post on 𝕏
                 </button>
-                <button onClick={() => handleShare('copy')} className="flex-1 py-3 bg-white text-black border-2 border-black font-black uppercase text-[9px] shadow-[3px_3px_0px_0px_black] active:shadow-none active:translate-x-[1.5px] active:translate-y-[1.5px]">
+                <button onClick={() => handleShare('copy')} className="flex-1 py-3 bg-background text-foreground border border-border rounded-xl font-medium text-xs shadow-sm hover:bg-surface transition-colors">
                   {copiedLink ? '✓ Copied' : 'Copy Link'}
                 </button>
               </div>
@@ -250,23 +250,23 @@ export default function FundraiserClient({
 
             {/* Supporters */}
             {supporters.length > 0 && (
-              <div className="border-4 border-black p-6 md:p-10 shadow-[8px_8px_0px_0px_black]">
-                <h3 className="text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2 pb-4 border-b-2 border-zinc-200">
-                  <Users className="w-5 h-5" /> Supporters ({donorCount})
+              <div className="border border-border p-6 md:p-8 rounded-2xl bg-surface shadow-sm">
+                <h3 className="text-base font-semibold flex items-center gap-2 pb-4 border-b border-border text-foreground mb-6">
+                  <Users className="w-5 h-5 text-muted" /> Supporters ({donorCount})
                 </h3>
                 <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                   {supporters.map((s, i) => (
-                    <div key={i} className="flex items-center gap-4 p-4 bg-zinc-50 border-2 border-zinc-200">
-                      <div className="w-10 h-10 rounded-full bg-neo-pink/10 border-2 border-black flex items-center justify-center shrink-0">
+                    <div key={i} className="flex items-center gap-4 p-4 bg-background border border-border rounded-xl">
+                      <div className="w-10 h-10 rounded-full bg-neo-pink/10 border border-neo-pink/20 flex items-center justify-center shrink-0">
                         <Heart className="w-4 h-4 text-neo-pink" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-black text-sm uppercase truncate">{s.name}</p>
-                        <p className="text-[9px] font-bold text-zinc-400 uppercase">
+                        <p className="font-semibold text-sm truncate text-foreground">{s.name}</p>
+                        <p className="text-[10px] font-medium text-muted mt-0.5">
                           {new Date(s.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                         </p>
                       </div>
-                      <span className="font-black text-neo-green text-lg">₹{s.amount.toLocaleString()}</span>
+                      <span className="font-semibold text-neo-green text-lg">₹{s.amount.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
@@ -278,19 +278,19 @@ export default function FundraiserClient({
           <div className="lg:col-span-2">
             <div className="sticky top-8 space-y-6">
               {/* Progress Card */}
-              <div className="border-4 border-black bg-white p-6 md:p-8 shadow-[8px_8px_0px_0px_black]">
+              <div className="border border-border rounded-2xl bg-surface p-6 md:p-8 shadow-sm">
                 {/* Raised Amount */}
                 <div className="mb-1">
-                  <span className="text-4xl md:text-5xl font-black tabular-nums text-neo-green">
+                  <span className="text-4xl md:text-5xl font-bold tabular-nums text-neo-green">
                     ₹{raisedAmount.toLocaleString()}
                   </span>
                 </div>
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-6">
-                  raised of <span className="text-black font-black">₹{fundraiser.goalAmount.toLocaleString()}</span> goal
+                <p className="text-[10px] font-medium text-muted uppercase tracking-widest mb-6">
+                  raised of <span className="text-foreground font-semibold">₹{fundraiser.goalAmount.toLocaleString()}</span> goal
                 </p>
 
                 {/* Progress Bar */}
-                <div className="h-4 bg-zinc-100 border-2 border-black overflow-hidden mb-6">
+                <div className="h-4 bg-background border border-border rounded-full overflow-hidden mb-6">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${progressPercent}%` }}
@@ -301,13 +301,13 @@ export default function FundraiserClient({
 
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-4 mb-8">
-                  <div className="p-3 bg-zinc-50 border-2 border-black text-center">
-                    <span className="block text-2xl font-black">{donorCount}</span>
-                    <span className="text-[8px] font-black uppercase tracking-widest text-zinc-400">Supporters</span>
+                  <div className="p-4 bg-background border border-border rounded-xl text-center">
+                    <span className="block text-2xl font-bold text-foreground">{donorCount}</span>
+                    <span className="text-[10px] font-medium uppercase tracking-widest text-muted mt-1">Supporters</span>
                   </div>
-                  <div className="p-3 bg-zinc-50 border-2 border-black text-center">
-                    <span className="block text-2xl font-black">{progressPercent}%</span>
-                    <span className="text-[8px] font-black uppercase tracking-widest text-zinc-400">Funded</span>
+                  <div className="p-4 bg-background border border-border rounded-xl text-center">
+                    <span className="block text-2xl font-bold text-foreground">{progressPercent}%</span>
+                    <span className="text-[10px] font-medium uppercase tracking-widest text-muted mt-1">Funded</span>
                   </div>
                 </div>
 
@@ -317,7 +317,7 @@ export default function FundraiserClient({
                     <button
                       key={amt}
                       onClick={() => { setDonateAmount(String(amt)); setShowDonateModal(true); }}
-                      className="py-3 border-2 border-black font-black text-sm bg-white shadow-[3px_3px_0px_0px_black] hover:shadow-none hover:translate-x-[1.5px] hover:translate-y-[1.5px] transition-all"
+                      className="py-3 border border-border rounded-xl font-semibold text-sm bg-background shadow-sm hover:border-neo-pink transition-all text-foreground"
                     >
                       ₹{amt}
                     </button>
@@ -328,7 +328,7 @@ export default function FundraiserClient({
                     <button
                       key={amt}
                       onClick={() => { setDonateAmount(String(amt)); setShowDonateModal(true); }}
-                      className="py-3 border-2 border-black font-black text-sm bg-white shadow-[3px_3px_0px_0px_black] hover:shadow-none hover:translate-x-[1.5px] hover:translate-y-[1.5px] transition-all"
+                      className="py-3 border border-border rounded-xl font-semibold text-sm bg-background shadow-sm hover:border-neo-pink transition-all text-foreground"
                     >
                       ₹{amt.toLocaleString()}
                     </button>
@@ -338,28 +338,28 @@ export default function FundraiserClient({
                 {/* Main Donate Button */}
                 <button
                   onClick={() => setShowDonateModal(true)}
-                  className="w-full py-4 bg-neo-pink text-white border-4 border-black font-black uppercase text-sm shadow-[6px_6px_0px_0px_black] hover:shadow-[3px_3px_0px_0px_black] hover:translate-x-[1.5px] hover:translate-y-[1.5px] transition-all flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-neo-pink text-white border border-transparent rounded-xl font-semibold text-sm shadow-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
                 >
                   <Heart className="w-5 h-5" /> Donate Now
                 </button>
 
-                <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mt-4 text-center">
+                <p className="text-[10px] font-medium text-muted mt-4 text-center">
                   100% goes directly to {username} · Powered by Razorpay
                 </p>
               </div>
 
               {/* Share Card */}
-              <div className="border-4 border-black bg-neo-yellow/10 p-6 shadow-[4px_4px_0px_0px_black]">
-                <p className="text-xs font-black uppercase tracking-widest mb-3 flex items-center gap-2"><Share2 className="w-4 h-4" /> Spread the word</p>
+              <div className="border border-border rounded-2xl bg-surface p-6 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2 text-muted"><Share2 className="w-4 h-4" /> Spread the word</p>
                 <button
                   onClick={() => handleShare('whatsapp')}
-                  className="w-full py-3 bg-[#25D366] text-white border-2 border-black font-black uppercase text-[9px] shadow-[3px_3px_0px_0px_black] active:shadow-none active:translate-x-[1.5px] active:translate-y-[1.5px] mb-2"
+                  className="w-full py-3 bg-[#25D366] text-white border border-transparent rounded-xl font-medium text-xs shadow-sm hover:opacity-90 transition-opacity mb-2"
                 >
                   Share on WhatsApp
                 </button>
                 <button
                   onClick={() => handleShare('copy')}
-                  className="w-full py-3 bg-white text-black border-2 border-black font-black uppercase text-[9px] shadow-[3px_3px_0px_0px_black] active:shadow-none active:translate-x-[1.5px] active:translate-y-[1.5px]"
+                  className="w-full py-3 bg-background text-foreground border border-border rounded-xl font-medium text-xs shadow-sm hover:bg-surface transition-colors"
                 >
                   {copiedLink ? '✓ Link Copied' : 'Copy Fundraiser Link'}
                 </button>
@@ -384,40 +384,40 @@ export default function FundraiserClient({
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               onClick={e => e.stopPropagation()}
-              className="bg-white border-8 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] p-8 max-w-md w-full"
+              className="bg-surface border border-border rounded-2xl shadow-xl p-8 max-w-md w-full"
             >
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h2 className="text-3xl font-black uppercase tracking-tighter italic">Support {username}</h2>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Every rupee counts 💛</p>
+                  <h2 className="text-2xl font-bold tracking-tight text-foreground">Support {username}</h2>
+                  <p className="text-[10px] font-medium text-muted uppercase tracking-widest mt-1">Every rupee counts 💛</p>
                 </div>
-                <button onClick={() => setShowDonateModal(false)} className="w-8 h-8 border-2 border-black flex items-center justify-center font-black hover:bg-zinc-100">
+                <button onClick={() => setShowDonateModal(false)} className="w-8 h-8 rounded-lg flex items-center justify-center bg-background hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-muted">
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Name */}
               <div className="mb-4">
-                <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Your Name (optional)</label>
+                <label className="text-[10px] font-medium uppercase tracking-widest text-muted block mb-1.5">Your Name (optional)</label>
                 <input
                   type="text"
                   value={donorName}
                   onChange={e => setDonorName(e.target.value)}
                   placeholder="Anonymous"
-                  className="w-full border-4 border-black p-3 font-bold text-sm outline-none shadow-[4px_4px_0px_0px_black] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] transition-all"
+                  className="w-full border border-border rounded-xl bg-background p-3 font-medium text-sm outline-none focus:border-neo-pink transition-all text-foreground"
                 />
               </div>
 
               {/* Amount */}
               <div className="mb-4">
-                <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">Donation Amount (₹)</label>
+                <label className="text-[10px] font-medium uppercase tracking-widest text-muted block mb-1.5">Donation Amount (₹)</label>
                 <input
                   type="number"
                   value={donateAmount}
                   onChange={e => setDonateAmount(e.target.value)}
                   placeholder="Enter amount"
                   min="1"
-                  className="w-full border-4 border-black p-3 font-black text-xl outline-none shadow-[4px_4px_0px_0px_black] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] transition-all"
+                  className="w-full border border-border rounded-xl bg-background p-3 font-semibold text-xl outline-none focus:border-neo-pink transition-all text-foreground"
                 />
               </div>
 
@@ -427,9 +427,9 @@ export default function FundraiserClient({
                   <button
                     key={amt}
                     onClick={() => setDonateAmount(String(amt))}
-                    className={`py-2 border-2 border-black font-black text-[10px] transition-all ${donateAmount === String(amt)
-                      ? 'bg-black text-white shadow-none translate-x-[1px] translate-y-[1px]'
-                      : 'bg-white shadow-[2px_2px_0px_0px_black]'
+                    className={`py-2 border border-border rounded-lg font-medium text-[10px] transition-all ${donateAmount === String(amt)
+                      ? 'bg-neo-pink border-neo-pink text-white'
+                      : 'bg-background hover:border-neo-pink text-foreground'
                       }`}
                   >
                     ₹{amt >= 1000 ? `${amt / 1000}K` : amt}
@@ -441,12 +441,12 @@ export default function FundraiserClient({
               <button
                 onClick={handleDonate}
                 disabled={isDonating || !donateAmount || parseInt(donateAmount) < 1}
-                className="w-full py-4 bg-neo-pink text-white border-4 border-black font-black uppercase text-sm shadow-[6px_6px_0px_0px_black] hover:shadow-[3px_3px_0px_0px_black] hover:translate-x-[1.5px] hover:translate-y-[1.5px] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-4 bg-neo-pink text-white border border-transparent rounded-xl font-semibold text-sm shadow-sm hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isDonating ? 'Processing...' : <><Heart className="w-5 h-5" /> Donate ₹{donateAmount || '0'}</>}
               </button>
 
-              <p className="text-[7px] font-bold text-zinc-300 uppercase tracking-widest mt-4 text-center">
+              <p className="text-[10px] font-medium text-muted mt-4 text-center">
                 Secure payment via Razorpay · 100% goes to the creator
               </p>
             </motion.div>
@@ -455,13 +455,13 @@ export default function FundraiserClient({
       </AnimatePresence>
 
       {/* Footer */}
-      <footer className="border-t-4 border-black bg-zinc-50 py-10">
+      <footer className="border-t border-border bg-background py-10">
         <div className="max-w-6xl mx-auto px-8 text-center">
-          <div className="inline-flex items-center gap-2 mb-4 opacity-30">
-            <Zap className="w-5 h-5 fill-black" />
-            <span className="font-black uppercase text-xs">Supertime</span>
+          <div className="inline-flex items-center gap-2 mb-4 opacity-50">
+            <Zap className="w-5 h-5 text-neo-pink" />
+            <span className="font-bold text-xs tracking-tight text-foreground">Supertime</span>
           </div>
-          <p className="text-[9px] font-black text-zinc-300 uppercase tracking-[0.4em]">Empowering artists, one contribution at a time</p>
+          <p className="text-[10px] font-medium text-muted uppercase tracking-[0.2em]">Empowering artists, one contribution at a time</p>
         </div>
       </footer>
     </div>

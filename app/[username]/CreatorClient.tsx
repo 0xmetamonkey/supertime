@@ -51,6 +51,8 @@ interface CreatorClientProps {
   videoRate?: number;
   audioRate?: number;
   profileImage?: string;
+  coverImage?: string;
+  fundraiser?: any;
   isLive?: boolean;
   isAcceptingCalls?: boolean;
   templates?: any[];
@@ -117,6 +119,8 @@ export default function CreatorClient({
   videoRate = 100,
   audioRate = 50,
   profileImage = "",
+  coverImage = "",
+  fundraiser = null,
   isLive = true,
   isAcceptingCalls = true,
   templates = [],
@@ -1003,7 +1007,16 @@ export default function CreatorClient({
         </div>
       )}
 
-      <main className="max-w-2xl mx-auto px-5 pt-12 pb-24 relative">
+      {/* ── Cover Photo ── */}
+      <div className="w-full h-48 md:h-64 lg:h-80 relative bg-muted/20">
+        {coverImage ? (
+          <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-r from-neo-blue/20 to-neo-pink/20" />
+        )}
+      </div>
+
+      <main className="max-w-2xl mx-auto px-5 -mt-16 pb-24 relative z-10">
         {isOwner && (
           <div className="absolute top-0 left-5">
             <a href="/dashboard" className="flex items-center gap-2 text-xs font-semibold text-muted hover:text-foreground transition-colors bg-surface border border-border px-3 py-1.5 rounded-lg shadow-sm">
@@ -1014,7 +1027,7 @@ export default function CreatorClient({
 
         {/* ── Profile Header ── */}
         <div className="flex flex-col items-center text-center mb-10">
-          <div className="w-28 h-28 rounded-full overflow-hidden mb-5 shadow-sm">
+          <div className="w-28 h-28 rounded-full overflow-hidden mb-5 shadow-sm border-4 border-background bg-background relative">
             {profileImage ? (
               <img src={profileImage} alt={username} className="w-full h-full object-cover" />
             ) : (
@@ -1131,11 +1144,42 @@ export default function CreatorClient({
               showError("This is a preview! Fans will use this to DM you.");
               return;
             }
-            router.push(`/chat?to=${username}`);
+            router.push(`/dashboard?tab=inbox&to=${username}`);
           }} className="w-full bg-surface border border-border rounded-2xl py-3.5 flex items-center justify-center gap-2 hover:bg-background transition-colors font-medium text-sm text-foreground shadow-sm">
             <MessageSquare className="w-4 h-4" /> Message
           </button>
+
+          {/* Fundraiser Card */}
+          {fundraiser && fundraiser.isActive && (
+            <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm relative overflow-hidden mt-3">
+              <div className="absolute top-0 left-0 w-1 h-full bg-neo-pink" />
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="font-bold text-foreground text-lg tracking-tight mb-1">{fundraiser.title}</h3>
+                  <p className="text-xs text-muted max-w-[250px] line-clamp-2">{fundraiser.story}</p>
+                </div>
+                <div className="text-right shrink-0 ml-4">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-muted block mb-1">Goal</span>
+                  <span className="text-sm font-black text-foreground">₹{fundraiser.goalAmount.toLocaleString()}</span>
+                </div>
+              </div>
+              <div className="h-2 bg-background border border-border rounded-full overflow-hidden mb-3">
+                <div className="h-full bg-neo-green transition-all" style={{ width: `${Math.min(100, (fundraiser.raisedAmount / fundraiser.goalAmount) * 100)}%` }} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-neo-green">₹{fundraiser.raisedAmount.toLocaleString()} raised</span>
+                <button 
+                  onClick={() => router.push(`/fundraise/${username}`)}
+                  className="bg-foreground text-background text-xs font-bold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5"
+                >
+                  <Heart className="w-3.5 h-3.5" /> Support
+                </button>
+              </div>
+            </div>
+          )}
         </div>
+
+        <hr className="border-border w-full my-8" />
 
         {/* ── Tab Navigation ── */}
         <div className="border-b border-border mb-8 sticky top-0 bg-background/80 backdrop-blur-md z-40">
@@ -1150,7 +1194,7 @@ export default function CreatorClient({
                     : 'border-transparent text-muted hover:text-foreground'
                 }`}
               >
-                {tab === 'products' ? 'Art & Products' : tab}
+                {tab === 'products' ? 'Art & Products' : tab === 'sessions' ? 'Seshes' : tab}
               </button>
             ))}
           </div>
@@ -1164,7 +1208,7 @@ export default function CreatorClient({
           {profileTab === 'sessions' && (
             <div className="space-y-6">
               <div className="mb-2">
-                <h2 className="text-xl font-semibold text-foreground">Sessions</h2>
+                <h2 className="text-xl font-semibold text-foreground">Seshes</h2>
                 <p className="text-sm text-muted">Book a one-on-one session with me.</p>
               </div>
 
@@ -1363,6 +1407,7 @@ export default function CreatorClient({
                           <div className="mb-6">
                             <audio 
                               controls 
+                              controlsList="nodownload"
                               src={post.audioUrl} 
                               className="w-full h-10 rounded-lg outline-none"
                               onTimeUpdate={(e) => {
@@ -1393,16 +1438,23 @@ export default function CreatorClient({
                           )}
                           
                           <div className={`prose prose-sm dark:prose-invert max-w-none text-muted whitespace-pre-wrap ${isLockedAndNotSubscribed ? 'opacity-30 blur-[2px] select-none pointer-events-none min-h-[150px] overflow-hidden' : ''}`}>
-                            {post.audioUrl ? (
-                              <div className="bg-surface border border-border/50 rounded-xl p-5 shadow-sm relative">
-                                <div className="absolute top-0 left-6 -mt-3 bg-background border border-border px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase text-muted shadow-sm">
-                                  Transcript
+                            {(() => {
+                              const htmlContent = post.content
+                                .replace(/\n/g, '<br/>')
+                                .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="w-full h-auto rounded-xl border border-border my-4" />')
+                                .replace(/<video([^>]*)>/g, (m: string, p1: string) => p1.includes('controlsList') ? m : `<video${p1} controlsList="nodownload">`);
+                              
+                              return post.audioUrl ? (
+                                <div className="bg-surface border border-border/50 rounded-xl p-5 shadow-sm relative">
+                                  <div className="absolute top-0 left-6 -mt-3 bg-background border border-border px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase text-muted shadow-sm">
+                                    Transcript
+                                  </div>
+                                  <p className="leading-relaxed text-foreground/90 mt-1" dangerouslySetInnerHTML={{ __html: htmlContent }} />
                                 </div>
-                                <p className="leading-relaxed text-foreground/90 mt-1">{post.content}</p>
-                              </div>
-                            ) : (
-                              post.content
-                            )}
+                              ) : (
+                                <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>

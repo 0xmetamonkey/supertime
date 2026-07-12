@@ -16,8 +16,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: "Supertime — Sell your time",
-  description: "A marketplace where anyone can sell their time for money.",
+  title: "Supertime — Monetize your existence, and make art.",
+  description: "A marketplace where anyone can monetize their existence, and make art.",
   icons: {
     icon: '/favicon.ico',
     apple: '/icon.png',

@@ -75,12 +75,11 @@ export default async function CreatorPage({ params }: Props) {
     isOwner = true;
   }
 
-  // FUNDRAISER TAKEOVER: If creator has an active fundraiser, show it instead of profile
-  if (ownerEmail && !isOwner && process.env.KV_URL) {
-    const fundraiser: any = await kv.get(`fundraise:${username}`);
-    if (fundraiser && fundraiser.isActive) {
-      const { redirect } = await import('next/navigation');
-      redirect(`/fundraise/${username}`);
+  let fundraiser: any = null;
+  if (ownerEmail && process.env.KV_URL) {
+    const f: any = await kv.get(`fundraise:${username}`);
+    if (f && f.isActive) {
+      fundraiser = f;
     }
   }
 
@@ -112,6 +111,7 @@ export default async function CreatorPage({ params }: Props) {
   let videoRate = 100;
   let audioRate = 50;
   let profileImage = "";
+  let coverImage = "";
   let isLive = false;
   let isAcceptingCalls = true;
   let templates: any[] = [];
@@ -129,6 +129,7 @@ export default async function CreatorPage({ params }: Props) {
     const vRate = await kv.get(`user:${ownerEmail}:rate:video`);
     const aRate = await kv.get(`user:${ownerEmail}:rate:audio`);
     const pImage = await kv.get(`user:${ownerEmail}:profileImage`);
+    const cImage = await kv.get(`user:${ownerEmail}:coverImage`);
     const liveStatus = await kv.get(`user:${ownerEmail}:isLive`);
     const acceptingCalls = await kv.get(`user:${ownerEmail}:isAcceptingCalls`);
     console.log('[CreatorPage] Debug:', { username, ownerEmail, acceptingCalls });
@@ -145,6 +146,7 @@ export default async function CreatorPage({ params }: Props) {
     if (vRate !== null) videoRate = Number(vRate);
     if (aRate !== null) audioRate = Number(aRate);
     if (pImage) profileImage = String(pImage);
+    if (cImage) coverImage = String(cImage);
     if (liveStatus === null) isLive = true; // Default to LIVE
     else isLive = !!liveStatus;
     if (acceptingCalls === null) isAcceptingCalls = true; // Default to true
@@ -177,6 +179,8 @@ export default async function CreatorPage({ params }: Props) {
       videoRate={videoRate}
       audioRate={audioRate}
       profileImage={profileImage}
+      coverImage={coverImage}
+      fundraiser={fundraiser}
       isLive={isLive}
       isAcceptingCalls={isAcceptingCalls}
       templates={templates}

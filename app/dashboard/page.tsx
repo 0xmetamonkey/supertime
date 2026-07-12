@@ -47,8 +47,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     audioRate: 50,
     socials: { instagram: '', x: '', youtube: '', website: '' },
     profileImage: '',
+    coverImage: '',
     templates: [],
     faqs: [],
+    products: [],
     roomType: 'audio',
     isRoomFree: true,
     videoProvider: 'supercalls',
@@ -64,6 +66,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     const aRate = await kv.get(`user:${email}:rate:audio`);
     const socials = await kv.get(`user:${email}:socials`) as any;
     const profileImage = await kv.get(`user:${email}:profileImage`);
+    const coverImage = await kv.get(`user:${email}:coverImage`);
     const roomType = await kv.get(`user:${email}:roomType`);
     const isRoomFree = await kv.get(`user:${email}:isRoomFree`);
     const templates = await kv.get(`user:${email}:templates`) as any[];
@@ -75,6 +78,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
     const bio = await kv.get(`user:${email}:bio`) as string;
     const subscriptionPrice = await kv.get(`user:${email}:subscriptionPrice`);
     const subscriptionBenefits = await kv.get(`user:${email}:subscriptionBenefits`) as string[];
+    const products = username ? await kv.get(`user_products:${username}`) as any[] : null;
 
     if (vRate !== null) initialSettings.videoRate = Number(vRate);
     if (aRate !== null) initialSettings.audioRate = Number(aRate);
@@ -89,10 +93,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
       initialSettings.socials = { ...initialSettings.socials, ...socials };
     }
     if (profileImage) initialSettings.profileImage = String(profileImage);
+    if (coverImage) initialSettings.coverImage = String(coverImage);
     if (roomType) initialSettings.roomType = roomType;
     if (isRoomFree !== null) initialSettings.isRoomFree = !!isRoomFree;
     if (templates) initialSettings.templates = templates;
     if (faqs) initialSettings.faqs = faqs;
+    if (products) initialSettings.products = products;
     if (displayName) initialSettings.displayName = displayName;
     if (bio) initialSettings.bio = bio;
     if (subscriptionPrice !== null) initialSettings.subscriptionPrice = Number(subscriptionPrice);
