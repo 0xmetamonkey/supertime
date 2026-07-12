@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Wallet,
   Settings,
@@ -47,6 +47,7 @@ type Tab = 'overview' | 'storefront' | 'wallet' | 'settings' | 'feast' | 'inbox'
 
 export default function DashboardClient({ session, username: initialUsername, role: initialRole, initialBalance, initialWithdrawable, initialSettings }: UIProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signOut } = useClerk();
 
   // Platform Identity State
@@ -65,17 +66,49 @@ export default function DashboardClient({ session, username: initialUsername, ro
   const [withdrawable, setWithdrawable] = useState(initialWithdrawable);
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeChatUser, setActiveChatUser] = useState<string | null>(null);
+  const [unreadFrom, setUnreadFrom] = useState<Set<string>>(new Set());
+
+  const hasUnreadInbox = unreadFrom.size > 0;
+
+  // Listen for unread chat events from GlobalChatListener
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const from = (e as CustomEvent).detail?.from?.toLowerCase();
+      if (from) {
+        setUnreadFrom(prev => {
+          const next = new Set(prev);
+          next.add(from);
+          return next;
+        });
+      }
+    };
+    window.addEventListener('supertime:unread-chat', handler);
+    return () => window.removeEventListener('supertime:unread-chat', handler);
+  }, []);
+
+  // Automatically mark the current active chat user as read
+  useEffect(() => {
+    if (activeTab === 'inbox' && activeChatUser) {
+      const recipientLower = activeChatUser.toLowerCase();
+      if (unreadFrom.has(recipientLower)) {
+        setUnreadFrom(prev => {
+          const next = new Set(prev);
+          next.delete(recipientLower);
+          return next;
+        });
+      }
+    }
+  }, [activeTab, activeChatUser, unreadFrom]);
 
   // Derived state: sidebar is collapsed when a chat is open
   const isSidebarCollapsed = activeTab === 'inbox' && !!activeChatUser;
   // Chat view mode: split-screen when a chat is active
   const isChatSplitView = activeTab === 'inbox' && !!activeChatUser;
 
-  // Sync tab and active chat user from URL on mount
+  // Sync tab and active chat user from URL parameters
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get('tab');
-    const toParam = params.get('to');
+    const tabParam = searchParams.get('tab');
+    const toParam = searchParams.get('to');
     
     if (tabParam && ['overview', 'storefront', 'wallet', 'settings', 'feast', 'inbox', 'fundraise'].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
@@ -86,7 +119,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
     if (toParam) {
       setActiveChatUser(toParam);
     }
-  }, []);
+  }, [searchParams]);
 
   // Sync state changes back to URL parameters dynamically
   useEffect(() => {
@@ -300,6 +333,12 @@ export default function DashboardClient({ session, username: initialUsername, ro
               <item.icon className="w-4 h-4 shrink-0" />
               {!isSidebarCollapsed && <span className="sidebar-label">{item.label}</span>}
               {isSidebarCollapsed && <span className="sidebar-tooltip">{item.label}</span>}
+              {item.id === 'inbox' && hasUnreadInbox && (
+                <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neo-pink opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-neo-pink" />
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -350,10 +389,16 @@ export default function DashboardClient({ session, username: initialUsername, ro
             )}
             <button
               onClick={() => handleTabChange('inbox')}
-              className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'inbox' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
+              className={`relative flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'inbox' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
             >
               <MessageSquare className="w-5 h-5" />
               <span className="text-[10px] font-medium tracking-wide text-center">Inbox</span>
+              {hasUnreadInbox && (
+                <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neo-pink opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-neo-pink" />
+                </span>
+              )}
             </button>
 
             {isCreator && (
@@ -395,6 +440,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
               username={username || ''}
               activeChatUser={activeChatUser}
               onSelectChat={(chatUser) => setActiveChatUser(chatUser)}
+              unreadFrom={unreadFrom}
             />
           </div>
 
@@ -516,6 +562,8 @@ export default function DashboardClient({ session, username: initialUsername, ro
                 <InboxTab
                   username={username || ''}
                   onSelectChat={(chatUser: string) => setActiveChatUser(chatUser)}
+                  unreadFrom={unreadFrom}
+                  setUnreadFrom={setUnreadFrom}
                 />
               )}
 

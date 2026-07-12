@@ -14,6 +14,8 @@ export interface ChatMessage {
   type?: 'text' | 'audio' | 'card' | 'gallery' | 'image';
   /** Optional metadata for rich messages */
   meta?: Record<string, any>;
+  /** Optional delivery/read status */
+  status?: 'sent' | 'delivered' | 'opened';
 }
 
 export interface ChatUser {
@@ -57,6 +59,7 @@ export function useChatConnection(user: ChatUser, recipient?: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [connected, setConnected] = useState(false);
+  const [recipientOnline, setRecipientOnline] = useState(false);
   const [loading, setLoading] = useState(true);
   const [typingUsers, setTypingUsers] = useState<Map<string, number>>(new Map());
   const [mentions, setMentions] = useState<{ show: boolean, query: string, index: number }>({ show: false, query: '', index: 0 });
@@ -115,17 +118,67 @@ export function useChatConnection(user: ChatUser, recipient?: string) {
       authMethod: 'GET',
     });
 
-    client.connection.on('connected', () => setConnected(true));
+    const channel = client.channels.get(channelName);
+
+    const updatePresenceStatus = () => {
+      if (!recipient) return;
+      channel.presence.get()
+        .then((members) => {
+          const isOnline = members.some(m => m.clientId?.toLowerCase() === recipient.toLowerCase());
+          setRecipientOnline(isOnline);
+        })
+        .catch((err) => console.error('[Chat] Failed to get presence:', err));
+    };
+
+    const handleConnected = () => {
+      setConnected(true);
+      channel.presence.enter({ username: user.username }).then(() => {
+        updatePresenceStatus();
+        // Send a read receipt to let the sender know we are present
+        channel.publish('read', { reader: user.username }).catch(() => {});
+      }).catch(() => {});
+    };
+
+    if (client.connection.state === 'connected') {
+      handleConnected();
+    } else {
+      client.connection.on('connected', handleConnected);
+    }
+
     client.connection.on('disconnected', () => setConnected(false));
     client.connection.on('failed', () => setConnected(false));
 
-    const channel = client.channels.get(channelName);
     channel.subscribe('message', (message) => {
       const msg = message.data as ChatMessage;
       addMessage(msg);
       // Only play sound for messages from others (not own, not history)
       if (historyLoadedRef.current && msg.from !== user.username) {
         playSound('receive');
+        // Let the sender know we read this message in real-time
+        channel.publish('read', { reader: user.username, messageId: msg.id }).catch(() => {});
+      }
+    });
+
+    // Listen for delivered events
+    channel.subscribe('delivered', (message) => {
+      const { messageId } = message.data;
+      setMessages(prev => prev.map(m => {
+        if (m.id === messageId && m.status === 'sent') {
+          return { ...m, status: 'delivered' };
+        }
+        return m;
+      }));
+    });
+
+    // Listen for read events
+    channel.subscribe('read', (message) => {
+      if (message.data?.reader?.toLowerCase() === recipient?.toLowerCase()) {
+        setMessages(prev => prev.map(m => {
+          if (m.from === user.username && m.status !== 'opened') {
+            return { ...m, status: 'opened' };
+          }
+          return m;
+        }));
       }
     });
 
@@ -140,9 +193,15 @@ export function useChatConnection(user: ChatUser, recipient?: string) {
       });
     });
 
+    // Subscribe to all presence events (enter, leave, update, present) to keep status in sync
+    channel.presence.subscribe(() => {
+      updatePresenceStatus();
+    });
+
     ablyRef.current = client;
 
     return () => {
+      channel.presence.leave().catch(() => {});
       channel.unsubscribe();
       client.close();
     };
@@ -181,12 +240,14 @@ export function useChatConnection(user: ChatUser, recipient?: string) {
     if (!text) return;
 
     const messageId = Math.random().toString(36).slice(2);
+    const initialStatus = recipientOnline ? 'opened' : 'sent';
     const msg: ChatMessage = {
       id: messageId,
       from: user.username,
       fromEmail: user.email,
       text,
       timestamp: Date.now(),
+      status: initialStatus,
     };
 
     // Optimistic update
@@ -204,13 +265,14 @@ export function useChatConnection(user: ChatUser, recipient?: string) {
           message: text,
           from: user.username,
           fromEmail: user.email,
-          to: recipient // Optional recipient for DMs
+          to: recipient, // Optional recipient for DMs
+          status: initialStatus
         }),
       });
     } catch (e) {
       console.error('[Chat] Failed to send:', e);
     }
-  }, [input, user, recipient, addMessage]);
+  }, [input, user, recipient, recipientOnline, addMessage]);
 
   const sendMediaMessage = useCallback(async (file: File) => {
     // 1. Upload file to /api/upload
@@ -226,6 +288,7 @@ export function useChatConnection(user: ChatUser, recipient?: string) {
       const messageId = Math.random().toString(36).slice(2);
       const isImage = file.type.startsWith('image/');
       const isVideo = file.type.startsWith('video/');
+      const initialStatus = recipientOnline ? 'opened' : 'sent';
 
       const msg: ChatMessage = {
         id: messageId,
@@ -234,6 +297,7 @@ export function useChatConnection(user: ChatUser, recipient?: string) {
         text: isImage ? '' : file.name,
         timestamp: Date.now(),
         type: 'image',
+        status: initialStatus,
         meta: {
           url: fileUrl,
           fileName: file.name,
@@ -259,12 +323,13 @@ export function useChatConnection(user: ChatUser, recipient?: string) {
           to: recipient,
           type: 'image',
           meta: msg.meta,
+          status: initialStatus
         }),
       });
     } catch (e) {
       console.error('[Chat] Failed to send media:', e);
     }
-  }, [user, recipient, addMessage]);
+  }, [user, recipient, recipientOnline, addMessage]);
 
   const formatTime = useCallback((ts: number) => {
     const d = new Date(ts);
@@ -327,6 +392,7 @@ export function useChatConnection(user: ChatUser, recipient?: string) {
     input,
     setInput,
     connected,
+    recipientOnline,
     loading,
     typingUsers,
     mentions,

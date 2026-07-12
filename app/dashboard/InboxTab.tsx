@@ -20,7 +20,17 @@ function formatMessageDate(timestamp: number | string | Date): string {
   }
 }
 
-export default function InboxTab({ username, onSelectChat }: { username: string; onSelectChat?: (chatUser: string) => void }) {
+export default function InboxTab({
+  username,
+  onSelectChat,
+  unreadFrom,
+  setUnreadFrom,
+}: {
+  username: string;
+  onSelectChat?: (chatUser: string) => void;
+  unreadFrom: Set<string>;
+  setUnreadFrom: React.Dispatch<React.SetStateAction<Set<string>>>;
+}) {
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -120,26 +130,16 @@ export default function InboxTab({ username, onSelectChat }: { username: string;
 
   return (
     <div className="bg-surface border border-border p-6 rounded-2xl shadow-sm">
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-neo-pink/10 rounded-xl flex items-center justify-center">
-            <MessageSquare className="w-5 h-5 text-neo-pink" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">Inbox</h2>
-            <p className="text-sm text-muted">Manage your direct messages with fans</p>
-          </div>
-        </div>
-        
-        {!pushEnabled && (
+      {!pushEnabled && (
+        <div className="mb-6 flex justify-end">
           <button 
             onClick={enablePushNotifications}
             className="text-sm px-4 py-2 bg-foreground text-background font-medium rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2"
           >
             Enable Push Notifications
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {conversations.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-border rounded-xl">
@@ -152,27 +152,47 @@ export default function InboxTab({ username, onSelectChat }: { username: string;
           {conversations.map((conv, i) => (
             <div 
               key={i} 
-              onClick={() => onSelectChat ? onSelectChat(conv.with) : router.push(`/dashboard?tab=inbox&to=${conv.with}`)}
-              className="group flex items-center justify-between p-4 bg-background border border-border rounded-xl hover:border-foreground/20 cursor-pointer transition-colors"
+              onClick={() => {
+                // Clear unread state for this conversation
+                setUnreadFrom(prev => {
+                  const next = new Set(prev);
+                  next.delete(conv.with.toLowerCase());
+                  return next;
+                });
+                onSelectChat ? onSelectChat(conv.with) : router.push(`/dashboard?tab=inbox&to=${conv.with}`);
+              }}
+              className={`group flex items-center justify-between p-4 bg-background border rounded-xl hover:border-foreground/20 cursor-pointer transition-all ${
+                unreadFrom.has(conv.with.toLowerCase())
+                  ? 'border-neo-pink/30 bg-neo-pink/[0.03]'
+                  : 'border-border'
+              }`}
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-surface border border-border rounded-full overflow-hidden flex items-center justify-center shrink-0">
-                  {conv.profileImage ? (
-                    <img src={conv.profileImage} alt={conv.with} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="font-semibold text-foreground uppercase">{conv.with.charAt(0)}</span>
+                <div className="relative">
+                  <div className="w-12 h-12 bg-surface border border-border rounded-full overflow-hidden flex items-center justify-center shrink-0">
+                    {conv.profileImage ? (
+                      <img src={conv.profileImage} alt={conv.with} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="font-semibold text-foreground uppercase">{conv.with.charAt(0)}</span>
+                    )}
+                  </div>
+                  {unreadFrom.has(conv.with.toLowerCase()) && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neo-pink opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-neo-pink border-2 border-background" />
+                    </span>
                   )}
                 </div>
                 <div>
-                  <h4 className="font-medium text-foreground">@{conv.with}</h4>
-                  <p className="text-sm text-muted line-clamp-1 max-w-md mt-0.5">
+                  <h4 className={`text-foreground ${unreadFrom.has(conv.with.toLowerCase()) ? 'font-semibold' : 'font-medium'}`}>@{conv.with}</h4>
+                  <p className={`text-sm line-clamp-1 max-w-md mt-0.5 ${unreadFrom.has(conv.with.toLowerCase()) ? 'text-foreground/70 font-medium' : 'text-muted'}`}>
                     <span className="font-medium text-foreground/80">{conv.from === conv.with ? '' : 'You: '}</span>
                     {conv.lastMessage}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-xs text-muted">
+                <span className={`text-xs ${unreadFrom.has(conv.with.toLowerCase()) ? 'text-neo-pink font-semibold' : 'text-muted'}`}>
                   {formatMessageDate(conv.timestamp)}
                 </span>
                 <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center group-hover:bg-foreground group-hover:text-background transition-colors text-muted">

@@ -35,13 +35,25 @@ export default function GlobalChatListener({ username }: { username: string }) {
       }
       
       if (data.type === 'dm' && data.from !== username) {
+        // Send delivered receipt back to sender
+        try {
+          const dmParticipants = [username.toLowerCase(), data.from.toLowerCase()].sort();
+          const dmChannel = client.channels.get(`dm:${dmParticipants.join(':')}`);
+          dmChannel.publish('delivered', { messageId: data.id }).catch(() => {});
+        } catch (err) {
+          console.error('[GlobalChatListener] Delivered receipt publish failed:', err);
+        }
+
         // Show custom popup
-        const id = Math.random().toString(36);
-        setPopups(prev => [...prev, { id, ...data }]);
+        const popupId = data.id || Math.random().toString(36);
+        setPopups(prev => [...prev, { ...data, id: popupId }]);
+
+        // Signal unread chat to sidebar
+        window.dispatchEvent(new CustomEvent('supertime:unread-chat', { detail: { from: data.from } }));
         
         setTimeout(() => {
-          setPopups(prev => prev.filter(p => p.id !== id));
-        }, 5000);
+          setPopups(prev => prev.filter(p => p.id !== popupId));
+        }, 3000);
         
         // Play sound
         try {
@@ -95,15 +107,6 @@ export default function GlobalChatListener({ username }: { username: string }) {
                 {popup.text}
               </p>
             </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setPopups(prev => prev.filter(p => p.id !== popup.id));
-              }}
-              className="text-muted hover:text-foreground shrink-0 p-1 bg-background rounded-full"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </motion.div>
         ))}
       </AnimatePresence>

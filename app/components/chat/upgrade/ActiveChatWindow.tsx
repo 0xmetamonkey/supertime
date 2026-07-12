@@ -7,6 +7,7 @@ import ChatHeader from './ChatHeader';
 import MessageBubble from './MessageBubble';
 import ChatInput from './ChatInput';
 import { useChatConnection, type ChatUser } from './useChatConnection';
+import { getProfileImage } from '../../../actions';
 
 interface ActiveChatWindowProps {
   user: ChatUser;
@@ -28,6 +29,30 @@ export default function ActiveChatWindow({ user, recipient, balance = 0, onBack 
   const [showLowBalanceModal, setShowLowBalanceModal] = useState(false);
   const [requiredRate, setRequiredRate] = useState(0);
   const SuperCallRef = useRef<any>(null);
+
+  const [recipientImage, setRecipientImage] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!recipient) return;
+    setRecipientImage(undefined);
+    fetch(`/api/chat/inbox?username=${encodeURIComponent(user.username)}`)
+      .then(res => res.json())
+      .then(data => {
+        const conv = data.conversations?.find((c: any) => c.with.toLowerCase() === recipient.toLowerCase());
+        if (conv?.profileImage) {
+          setRecipientImage(conv.profileImage);
+        } else {
+          getProfileImage(recipient).then(img => {
+            if (img) setRecipientImage(img);
+          });
+        }
+      })
+      .catch(() => {
+        getProfileImage(recipient).then(img => {
+          if (img) setRecipientImage(img);
+        });
+      });
+  }, [recipient, user.username]);
 
   // Lazy-load SuperCall component
   useEffect(() => {
@@ -143,7 +168,8 @@ export default function ActiveChatWindow({ user, recipient, balance = 0, onBack 
         {/* Header */}
         <ChatHeader
           recipientName={recipient}
-          isOnline={chat.connected}
+          recipientImage={recipientImage}
+          isOnline={chat.recipientOnline}
           onBack={onBack}
           onAudioCall={() => handleStartCall('audio')}
           onVideoCall={() => handleStartCall('video')}
