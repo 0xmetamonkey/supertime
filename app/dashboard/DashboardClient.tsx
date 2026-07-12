@@ -70,6 +70,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeChatUser, setActiveChatUser] = useState<string | null>(null);
   const [unreadFrom, setUnreadFrom] = useState<Set<string>>(new Set());
+  const [chatListRefreshKey, setChatListRefreshKey] = useState(0);
 
   const hasUnreadInbox = unreadFrom.size > 0;
 
@@ -436,6 +437,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
           {/* Left: Messages Panel (conversation list) */}
           <div className={`${activeChatUser ? 'hidden lg:flex' : 'flex'} flex-col`}>
             <MessagesPanel
+              key={chatListRefreshKey}
               username={username || ''}
               activeChatUser={activeChatUser}
               onSelectChat={(chatUser) => setActiveChatUser(chatUser)}
@@ -455,6 +457,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
                 recipient={activeChatUser}
                 balance={balance}
                 onBack={() => setActiveChatUser(null)}
+                onDeleteChat={() => setChatListRefreshKey(k => k + 1)}
               />
             </div>
           )}

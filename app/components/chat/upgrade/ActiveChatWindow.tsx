@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Zap, MessageSquare, PhoneOff } from 'lucide-react';
+import { Zap, MessageSquare, PhoneOff, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatHeader from './ChatHeader';
 import MessageBubble from './MessageBubble';
@@ -14,9 +14,10 @@ interface ActiveChatWindowProps {
   recipient: string;
   balance?: number;
   onBack?: () => void;
+  onDeleteChat?: () => void;
 }
 
-export default function ActiveChatWindow({ user, recipient, balance = 0, onBack }: ActiveChatWindowProps) {
+export default function ActiveChatWindow({ user, recipient, balance = 0, onBack, onDeleteChat }: ActiveChatWindowProps) {
   const chat = useChatConnection(user, recipient);
 
   // ── Call State ──
@@ -28,6 +29,8 @@ export default function ActiveChatWindow({ user, recipient, balance = 0, onBack 
   const [callDuration, setCallDuration] = useState(0);
   const [showLowBalanceModal, setShowLowBalanceModal] = useState(false);
   const [requiredRate, setRequiredRate] = useState(0);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const SuperCallRef = useRef<any>(null);
 
   const [recipientImage, setRecipientImage] = useState<string | undefined>(undefined);
@@ -155,6 +158,26 @@ export default function ActiveChatWindow({ user, recipient, balance = 0, onBack 
     }
   }, [user.username, recipient]);
 
+  const handleDeleteChat = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      const res = await fetch('/api/chat/inbox', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username, recipient }),
+      });
+      if (res.ok) {
+        setShowDeleteConfirm(false);
+        onDeleteChat?.();
+        onBack?.();
+      }
+    } catch (e) {
+      console.error('[Chat] Failed to delete chat:', e);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [user.username, recipient, onDeleteChat, onBack]);
+
   // Auto-scroll on new messages
   useEffect(() => {
     chat.bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -173,6 +196,7 @@ export default function ActiveChatWindow({ user, recipient, balance = 0, onBack 
           onBack={onBack}
           onAudioCall={() => handleStartCall('audio')}
           onVideoCall={() => handleStartCall('video')}
+          onDeleteChat={() => setShowDeleteConfirm(true)}
           isCallActive={isCalling}
         />
 
@@ -311,6 +335,51 @@ export default function ActiveChatWindow({ user, recipient, balance = 0, onBack 
           )}
         </div>
       )}
+
+      {/* ── Delete Chat Confirmation Modal ── */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-[600] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-surface border border-border rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl relative p-6 text-center"
+            >
+              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="text-xl font-bold mb-2 text-foreground">Delete Chat</h3>
+              <p className="text-sm text-muted mb-6">
+                Are you sure you want to delete your conversation with <strong className="text-foreground">@{recipient}</strong>? This chat will be removed from your inbox.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm border border-border bg-background hover:bg-surface transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteChat}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
+                >
+                  {isDeleting ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── Low Balance Modal ── */}
       <AnimatePresence>
