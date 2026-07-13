@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @next/next/no-img-element */
 import React, { useEffect, useState } from 'react';
 import { MessageSquare, ArrowRight, CheckCircle, AlertCircle, Bell, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -161,7 +162,11 @@ export default function InboxTab({
                   next.delete(conv.with.toLowerCase());
                   return next;
                 });
-                onSelectChat ? onSelectChat(conv.with) : router.push(`/dashboard?tab=inbox&to=${conv.with}`);
+                if (onSelectChat) {
+                  onSelectChat(conv.with);
+                } else {
+                  router.push(`/dashboard?tab=inbox&to=${conv.with}`);
+                }
               }}
               className={`group flex items-center justify-between p-4 bg-background border rounded-xl hover:border-foreground/20 cursor-pointer transition-all ${unreadFrom.has(conv.with.toLowerCase())
                   ? 'border-neo-pink/30 bg-neo-pink/[0.03]'

@@ -1,10 +1,7 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
 if (!apiKey) {
   console.error("❌ GOOGLE_GENERATIVE_AI_API_KEY is missing!");
 }
-const genAI = new GoogleGenerativeAI(apiKey || "");
 
 export async function askGemini(prompt: string, systemInstruction: string = "") {
   if (!apiKey) {
@@ -40,8 +37,9 @@ export async function askGemini(prompt: string, systemInstruction: string = "") 
 
     const data = await res.json();
     return data.candidates?.[0]?.content?.parts?.[0]?.text || "I processed the request but didn't get a text response.";
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Gemini AI Error:", error);
-    return `🤖 Oh no! I hit a snag: ${error?.message || "Internal error"}. Please check my logs!`;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return `🤖 Oh no! I hit a snag: ${errorMessage}. Please check my logs!`;
   }
 }

@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, @next/next/no-img-element, jsx-a11y/alt-text */
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Square, Loader2, Camera, Image as ImageIcon, X, Send, ChevronDown, Sparkles, Pause, Play } from 'lucide-react';
+import { Mic, Square, Loader2, Camera, Image as ImageIcon, X, Send, ChevronDown, Sparkles, Pause, Play, Music, PenTool, Command } from 'lucide-react';
 
 interface MediaBlock {
   id: string;
@@ -11,6 +12,15 @@ interface MediaBlock {
 }
 import { useAlertDialog } from '../components/AlertDialog';
 
+const SLASH_COMMANDS = [
+  { id: 'flow', icon: PenTool, desc: 'Focus on writing', hotkey: 'f' },
+  { id: 'record', icon: Mic, desc: 'Capture voice note', hotkey: 'r' },
+  { id: 'cinema', icon: Camera, desc: 'Record a video', hotkey: 'c' },
+  { id: 'imagine', icon: ImageIcon, desc: 'Take a photo', hotkey: 'i' },
+  { id: 'music', icon: Music, desc: 'Live code a beat', hotkey: 'm' },
+  { id: 'media', icon: ImageIcon, desc: 'Upload media file', hotkey: 'u' },
+];
+
 export default function GlobalStudioRecorder({ username }: { username: string }) {
   // Pad States
   const [isExpanded, setIsExpanded] = useState(false);
@@ -18,7 +28,14 @@ export default function GlobalStudioRecorder({ username }: { username: string })
   const [draftText, setDraftText] = useState('');
   const [mediaBlocks, setMediaBlocks] = useState<MediaBlock[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-
+  
+  // Music Mode State
+  const [isMusicMode, setIsMusicMode] = useState(false);
+  const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+  
+  // Slash Command States
+  const [activeCommandQuery, setActiveCommandQuery] = useState<string | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   // Audio Recording States
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -51,6 +68,7 @@ export default function GlobalStudioRecorder({ username }: { username: string })
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -124,7 +142,7 @@ export default function GlobalStudioRecorder({ username }: { username: string })
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isExpanded]);
+  }, [isExpanded, activeCommandQuery]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -349,6 +367,46 @@ export default function GlobalStudioRecorder({ username }: { username: string })
   };
 
   // -- Publish --
+  const executeSlashCommand = (cmdId: string) => {
+    console.log("Executing Slash Command:", cmdId);
+    
+    // 1. Remove the command text from the draft
+    setDraftText(prev => prev.replace(/(?:^|\s)\/[a-zA-Z]*$/, ''));
+    setActiveCommandQuery(null);
+    setSelectedIndex(0);
+
+    // 2. Add a tiny delay to allow state and focus to settle before triggering native APIs
+    setTimeout(() => {
+      try {
+        if (cmdId === 'flow') {
+          setIsMusicMode(false);
+          if (typeof window !== 'undefined') (window as any).hush?.();
+          textareaRef.current?.focus();
+        } else if (cmdId === 'record') {
+          if (!isRecording) startRecording();
+        } else if (cmdId === 'cinema' || cmdId === 'imagine') {
+          openCamera();
+        } else if (cmdId === 'media') {
+          fileInputRef.current?.click();
+        } else if (cmdId === 'music') {
+          setIsMusicMode(true);
+          // Inject Strudel engine dynamically if not present
+          if (typeof document !== 'undefined' && !document.getElementById('strudel-script')) {
+            const script = document.createElement('script');
+            script.id = 'strudel-script';
+            script.src = 'https://unpkg.com/@strudel/web@latest';
+            document.body.appendChild(script);
+          }
+          if (!draftText) {
+            setDraftText('s("bd sn").fast(2).play()');
+          }
+        }
+      } catch (err) {
+        console.error(`Error executing command ${cmdId}:`, err);
+      }
+    }, 50);
+  };
+
   const handlePublish = async () => {
     if (!draftText && mediaBlocks.length === 0 && (!isRecording && audioChunksRef.current.length === 0)) {
       setIsExpanded(false);
@@ -469,7 +527,9 @@ export default function GlobalStudioRecorder({ username }: { username: string })
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4, ease: "easeInOut" }}
-            className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-3xl flex flex-col justify-between overflow-hidden"
+            className={`fixed inset-0 z-[200] backdrop-blur-3xl flex flex-col justify-between overflow-hidden transition-colors duration-700 ${
+              isMusicMode ? 'bg-indigo-950/95' : 'bg-black/95'
+            }`}
             onTouchStart={(e) => {
               (window as any).touchStartY = e.touches[0].clientY;
             }}
@@ -496,10 +556,56 @@ export default function GlobalStudioRecorder({ username }: { username: string })
                 <textarea
                   ref={textareaRef}
                   value={draftText}
-                  onChange={(e) => setDraftText(e.target.value)}
-                  placeholder="Flow..."
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setDraftText(val);
+
+                    // Slash Command Detector
+                    const match = val.match(/(?:^|\s)\/([a-zA-Z]*)$/);
+                    if (match) {
+                      setActiveCommandQuery(match[1]);
+                      setSelectedIndex(0);
+                    } else {
+                      setActiveCommandQuery(null);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (activeCommandQuery !== null) {
+                      const filteredCommands = SLASH_COMMANDS.filter(c => c.id.includes(activeCommandQuery.toLowerCase()));
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setSelectedIndex(prev => (prev + 1) % filteredCommands.length);
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setSelectedIndex(prev => (prev - 1 + filteredCommands.length) % filteredCommands.length);
+                      } else if (e.key === 'Enter' || e.key === 'Tab') {
+                        e.preventDefault();
+                        if (filteredCommands[selectedIndex]) {
+                          e.preventDefault();
+                          executeSlashCommand(filteredCommands[selectedIndex].id);
+                        }
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        setActiveCommandQuery(null);
+                      } else if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                        const matchedCmd = SLASH_COMMANDS.find(c => c.hotkey === e.key.toLowerCase());
+                        if (matchedCmd && activeCommandQuery === '') {
+                          e.preventDefault();
+                          executeSlashCommand(matchedCmd.id);
+                          return;
+                        }
+                      }
+                    } else if (e.key === 'Escape') {
+                       e.preventDefault();
+                       setIsExpanded(false);
+                    } else if (e.key === 'Enter' && !e.shiftKey && draftText.trim() === '') {
+                       e.preventDefault();
+                       setActiveCommandQuery('');
+                    }
+                  }}
+                  placeholder={isMusicMode ? "Write your Strudel pattern here..." : "Type '/' or just write..."}
                   autoFocus
-                  className="w-full bg-transparent border-none outline-none resize-none text-white/90 placeholder:text-white/20 text-3xl md:text-5xl lg:text-6xl font-medium leading-tight tracking-tight focus:ring-0"
+                  className="w-full bg-transparent border-none outline-none resize-none text-white/90 placeholder:text-white/20 text-3xl md:text-5xl lg:text-6xl font-medium leading-tight tracking-tight focus:ring-0 font-mono"
                   style={{ minHeight: '60px' }}
                 />
                 {interimTranscript && (
@@ -539,6 +645,67 @@ export default function GlobalStudioRecorder({ username }: { username: string })
               )}
             </div>
 
+            {/* Slash Command Palette */}
+            <AnimatePresence>
+              {activeCommandQuery !== null && (
+                <motion.div
+                  initial={{ y: 20, opacity: 0, scale: 0.95, x: '-50%' }}
+                  animate={{ y: 0, opacity: 1, scale: 1, x: '-50%' }}
+                  exit={{ y: 20, opacity: 0, scale: 0.95, x: '-50%' }}
+                  className="absolute bottom-24 left-1/2 z-30 w-64 bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col p-2"
+                >
+                  {SLASH_COMMANDS.filter(c => c.id.includes(activeCommandQuery.toLowerCase())).map((cmd, i) => {
+                    const Icon = cmd.icon;
+                    return (
+                      <button
+                        key={cmd.id}
+                        onMouseEnter={() => setSelectedIndex(i)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          executeSlashCommand(cmd.id);
+                        }}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
+                          i === selectedIndex ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white/90 hover:bg-white/5'
+                        }`}
+                      >
+                        <div className="p-1.5 rounded-lg bg-white/10 text-white/60 group-hover:bg-rose-500 group-hover:text-white transition-colors">
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col flex-1 text-left">
+                          <span className="text-sm font-semibold capitalize">{cmd.id}</span>
+                          <span className="text-[10px] opacity-60">{cmd.desc}</span>
+                        </div>
+                        <div className="text-[10px] font-bold px-2 py-0.5 rounded bg-white/10 text-white/40 uppercase">
+                          {cmd.hotkey}
+                        </div>
+                      </button>
+                    )
+                  })}
+                  {SLASH_COMMANDS.filter(c => c.id.includes(activeCommandQuery.toLowerCase())).length === 0 && (
+                    <div className="px-4 py-3 text-xs text-white/40 text-center">No commands found</div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Tap-to-stop overlay */}
+            {isRecording && (
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 z-[15] cursor-pointer flex items-center justify-center pointer-events-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  stopRecording();
+                }}
+              >
+                {/* Subtle visual hint */}
+                <div className="flex flex-col items-center pointer-events-none">
+                  <div className="text-rose-500 font-bold text-2xl tracking-widest uppercase animate-pulse mb-2">Recording</div>
+                  <div className="opacity-40 text-white font-medium tracking-widest text-sm uppercase">Tap anywhere to stop</div>
+                </div>
+              </motion.div>
+            )}
+
             {/* Sleek Minimalistic Dock */}
             <motion.div
               initial={{ y: 50, opacity: 0, x: '-50%' }}
@@ -553,8 +720,47 @@ export default function GlobalStudioRecorder({ username }: { username: string })
               </button>
               <label className="w-10 h-10 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
                 <ImageIcon className="w-5 h-5" />
-                <input type="file" accept="image/*,video/*" className="hidden" onChange={handleFileUpload} />
+                <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*" className="hidden" onChange={handleFileUpload} />
               </label>
+
+              <div className="w-px h-6 bg-white/10 mx-2" />
+
+              {/* Strudel Music Controls */}
+              {isMusicMode && (
+                <>
+                  <button 
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        const win = window as any;
+                        if (win.initStrudel && win.evaluate) {
+                          win.initStrudel();
+                          win.evaluate(draftText || 's("bd sn").play()');
+                          setIsPlayingMusic(true);
+                        } else {
+                          alert("Strudel engine is still loading. Try again in a second!");
+                        }
+                      }
+                    }}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                      isPlayingMusic ? 'bg-green-500/20 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'text-white/60 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <Play className="w-5 h-5 fill-current" />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        (window as any).hush?.();
+                        setIsPlayingMusic(false);
+                      }
+                    }}
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                  >
+                    <Square className="w-4 h-4 fill-current" />
+                  </button>
+                  <div className="w-px h-6 bg-white/10 mx-2" />
+                </>
+              )}
 
               {/* Background Audio Flow (Mic) */}
               {isRecording && (
@@ -586,6 +792,15 @@ export default function GlobalStudioRecorder({ username }: { username: string })
               <div className="w-px h-6 bg-white/10 mx-2" />
 
               {/* Actions */}
+              <button 
+                onClick={() => setActiveCommandQuery(activeCommandQuery !== null ? null : '')} 
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  activeCommandQuery !== null ? 'bg-white/20 text-white shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+                title="Open Commands"
+              >
+                <Command className="w-5 h-5" />
+              </button>
               <button onClick={() => setIsExpanded(false)} className="w-10 h-10 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors">
                 <ChevronDown className="w-5 h-5" />
               </button>

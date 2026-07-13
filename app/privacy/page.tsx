@@ -23,7 +23,7 @@ export default function PrivacyPolicy() {
 
       <section className="mb-8">
         <h2 className="text-2xl font-semibold text-white mb-4">3. How We Use Data</h2>
-        <p>We use the data strictly to provide the "Instabot" automation features. This include:</p>
+        <p>We use the data strictly to provide the &quot;Instabot&quot; automation features. This include:</p>
         <ul className="list-disc pl-6 space-y-2">
           <li>Replying to comments based on your custom keywords.</li>
           <li>Sending automated Direct Messages as part of your marketing flows.</li>
@@ -38,8 +38,8 @@ export default function PrivacyPolicy() {
         <ol className="list-decimal pl-6 space-y-2">
           <li>Login to your Supertime Dashboard.</li>
           <li>Go to Settings {'>'} Connections.</li>
-          <li>Click 'Disconnect Instagram'. This will immediately revoke our access.</li>
-          <li>To request a full removal of all historical logs from our servers, please email <a href="mailto:support@supertime.wtf" className="text-blue-400 underline">support@supertime.wtf</a> with the subject "Data Deletion Request". We will process this within 48 hours.</li>
+          <li>Click &apos;Disconnect Instagram&apos;. This will immediately revoke our access.</li>
+          <li>To request a full removal of all historical logs from our servers, please email <a href="mailto:support@supertime.wtf" className="text-blue-400 underline">support@supertime.wtf</a> with the subject &quot;Data Deletion Request&quot;. We will process this within 48 hours.</li>
         </ol>
       </section>
 

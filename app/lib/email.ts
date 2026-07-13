@@ -57,8 +57,9 @@ export async function sendEmail({
 
     console.log('[Resend API] Successfully sent email to:', to);
     return { success: true, data };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Resend API] Fatal network error:', error);
-    return { success: false, error: error.message };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errorMessage };
   }
 }

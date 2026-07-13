@@ -50,13 +50,15 @@ export async function createBooking({
     // If it was already locked by Razorpay, the verify route just overwrites it.
     // If we get here directly, try to lock it permanently.
     const lockKey = `booking_lock:${creatorUsername.toLowerCase()}:${date}:${time}`;
-    const lockAcquired = await kv.set(lockKey, 'booked_direct', { nx: true });
+    // ex: 900 = 15 min TTL — if payment fails/is abandoned, the slot unlocks automatically
+    const lockAcquired = await kv.set(lockKey, 'pending', { nx: true, ex: 900 });
     
     // Exception: If paymentId exists, we know Razorpay already locked it during create-order, 
     // so we can bypass the strict lock failure because we are just finalizing it.
     if (!lockAcquired && !paymentId) {
       throw new Error('This timeslot has already been booked.');
     }
+
 
     const bookingId = Math.random().toString(36).slice(2, 10);
     const grossPrice = price || 0;
@@ -218,6 +220,7 @@ export async function createBooking({
     await kv.set(`meeting:${meetingRoomId}`, {
       type: 'scheduled',
       creator: creatorUsername,
+      creatorEmail: String(creatorEmail),
       buyer: visitorEmail,
       date,
       time,
@@ -227,6 +230,10 @@ export async function createBooking({
       meetingMethodUsed,
       createdAt: Date.now()
     });
+
+    // Upgrade the booking lock from pending (TTL) to permanently confirmed (no TTL)
+    // This prevents the slot from unlocking after 15 minutes now that payment is complete
+    await kv.set(lockKey, 'confirmed');
 
     // Send email notifications
     try {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, @next/next/no-img-element, jsx-a11y/alt-text */
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -19,12 +20,13 @@ import {
   Sun,
   Moon,
   Heart,
+  Zap,
 } from 'lucide-react';
 import { useClerk, UserButton } from "@clerk/nextjs";
 
 import OverviewTab from './OverviewTab';
 import WalletTab from './WalletTab';
-import ToolsTab from './ToolsTab';
+// import ToolsTab from './ToolsTab';
 import StorefrontTab from './StorefrontTab';
 import FeastTab from './FeastTab';
 import ProfileEditor from './ProfileEditor';
@@ -45,7 +47,7 @@ interface UIProps {
   initialSettings?: any;
 }
 
-type Tab = 'overview' | 'storefront' | 'wallet' | 'settings' | 'feast' | 'inbox' | 'fundraise' | 'tools';
+type Tab = 'overview' | 'storefront' | 'wallet' | 'settings' | 'feast' | 'inbox' | 'fundraise';
 
 export default function DashboardClient({ session, username: initialUsername, role: initialRole, initialBalance, initialWithdrawable, initialSettings }: UIProps) {
   const router = useRouter();
@@ -113,7 +115,6 @@ export default function DashboardClient({ session, username: initialUsername, ro
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     const toParam = searchParams.get('to');
-
     if (tabParam && ['overview', 'storefront', 'wallet', 'settings', 'feast', 'inbox', 'fundraise', 'tools'].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
     } else if (toParam) {
@@ -346,7 +347,17 @@ export default function DashboardClient({ session, username: initialUsername, ro
           ))}
         </nav>
 
-        <div className={`${isSidebarCollapsed ? 'p-2' : 'p-4'}`}>
+        <div className={`${isSidebarCollapsed ? 'p-2' : 'p-4'} space-y-2`}>
+          <button
+            onClick={() => window.location.href = "/pricing"}
+            className={`sidebar-nav-item relative w-full flex items-center gap-2 text-sm font-bold bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-md transition-all ${
+              isSidebarCollapsed ? 'justify-center px-0 py-3' : 'justify-center px-4 py-2.5'
+            }`}
+          >
+            <Zap className="w-4 h-4 shrink-0" />
+            {!isSidebarCollapsed && <span>Upgrade to Pro</span>}
+            {isSidebarCollapsed && <span className="sidebar-tooltip">Upgrade</span>}
+          </button>
           <button
             onClick={() => signOut(() => { window.location.href = "/"; })}
             className={`sidebar-nav-item relative w-full flex items-center gap-3 text-sm font-medium text-muted hover:bg-background hover:text-foreground rounded-md transition-all ${isSidebarCollapsed ? 'justify-center px-0 py-3' : 'px-4 py-2.5'
@@ -392,15 +403,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
                 </span>
               )}
             </button>
-            {isCreator && (
-              <button
-                onClick={() => handleTabChange('tools')}
-                className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'tools' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
-              >
-                <Bot className="w-5 h-5" />
-                <span className="text-[10px] font-medium tracking-wide text-center">Tools</span>
-              </button>
-            )}
+
             {isCreator && (
               <button
                 onClick={() => handleTabChange('fundraise')}

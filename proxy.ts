@@ -1,10 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/api/webhooks/instagram',
-  '/(.*)', // Generic public for now or customize as needed
-]);
 
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',

@@ -27,7 +27,7 @@ export async function createGoogleMeetMeeting({
   description,
   startTime,
   endTime,
-  attendees,
+  attendees: _attendees,
 }: {
   summary: string;
   description: string;
@@ -72,11 +72,12 @@ export async function createGoogleMeetMeeting({
       hangoutLink: response.data.hangoutLink,
       htmlLink: response.data.htmlLink,
     };
-  } catch (error: any) {
-    console.error('[Google Calendar API] Error creating meeting:', error.message || error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[Google Calendar API] Error creating meeting:', errorMessage);
     return {
       success: false,
-      error: error.message || 'Failed to create meeting',
+      error: errorMessage,
     };
   }
 }

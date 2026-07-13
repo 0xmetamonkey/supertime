@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { getBotResponse } from '../../lib/bot-logic';
+import { chatRatelimit } from '../../lib/ratelimit';
 
 // Team chat API — persistent messages in KV, realtime via Ably
 const TEAM_CHAT_KEY = 'team:chat:supertime';
@@ -13,6 +14,12 @@ export async function POST(req: NextRequest) {
 
     if ((!message && !type) || !from) {
       return NextResponse.json({ error: 'Missing message or from' }, { status: 400 });
+    }
+
+    const identifier = fromEmail || req.headers.get('x-forwarded-for') || 'anonymous';
+    const { success } = await chatRatelimit.limit(identifier);
+    if (!success) {
+      return NextResponse.json({ error: 'Too many messages. Please slow down.' }, { status: 429 });
     }
 
     const newMessage: Record<string, any> = {
@@ -63,22 +70,9 @@ export async function POST(req: NextRequest) {
           try {
             const pushToken = await kv.get(`fcm_token:${to.toLowerCase()}`);
             if (pushToken) {
-              const projectId = process.env.FIREBASE_PROJECT_ID;
-              const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-              const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-              
-              if (projectId && clientEmail && privateKey) {
-                const admin = await import('firebase-admin');
-                if (!admin.apps.length) {
-                  admin.initializeApp({
-                    credential: admin.credential.cert({
-                      project_id: projectId,
-                      client_email: clientEmail,
-                      private_key: privateKey.replace(/\\n/g, '\n'),
-                    } as any),
-                  });
-                }
-                await admin.messaging().send({
+              const { messaging } = await import('../../lib/firebase-admin');
+              if (messaging) {
+                await messaging.send({
                   token: pushToken as string,
                   notification: {
                     title: `New message from @${from}`,
@@ -91,7 +85,7 @@ export async function POST(req: NextRequest) {
                 });
                 console.log(`[Chat API] Successfully pushed FCM to ${to}`);
               } else {
-                console.warn('[Chat API] FCM push skipped: Firebase environment variables are not fully configured.');
+                console.warn('[Chat API] FCM push skipped: Firebase Admin is not initialized.');
               }
             }
           } catch (fcmErr) {

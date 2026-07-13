@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -30,16 +31,21 @@ import {
   Play,
   Menu,
   X,
-  Activity
+  Activity,
+  Radio,
+  Copy,
+  Check,
+  Loader2,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
 const BroadcastHost = dynamic(() => import('../components/Broadcast/BroadcastHost'), { ssr: false });
-import { checkAvailability, completeOnboarding } from '../actions';
+import { checkAvailability, completeOnboarding, getAllCreators } from '../actions';
 import { useClerk } from "@clerk/nextjs";
 import WalletManager from '../components/WalletManager';
 import { useConfirmDialog } from '../components/ConfirmDialog';
 import { useAlertDialog } from '../components/AlertDialog';
+import GlobalStudioRecorder from '../dashboard/GlobalStudioRecorder';
 
 export default function StudioClient({ username, session, initialSettings }: { username: string | null, session: any, initialSettings?: any }) {
   const router = useRouter();
@@ -89,6 +95,29 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
   const { confirm, ConfirmDialog: ConfirmDialogEl } = useConfirmDialog();
   const { alert: customAlert, AlertDialog } = useAlertDialog();
+
+  // TalkTime state
+  const [isTalkTimeCreating, setIsTalkTimeCreating] = useState(false);
+  const [talkTimeRoom, setTalkTimeRoom] = useState<{ roomId: string; inviteUrl: string; hostUrl: string } | null>(null);
+  const [talkTimeCopied, setTalkTimeCopied] = useState(false);
+  const [inviteUsername, setInviteUsername] = useState('');
+  const [inviteStatus, setInviteStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [inviteError, setInviteError] = useState('');
+  const [allCreators, setAllCreators] = useState<any[]>([]);
+
+  useEffect(() => {
+    getAllCreators().then(list => {
+      setAllCreators(list || []);
+    }).catch(e => console.error("Failed to load creators for autocomplete:", e));
+  }, []);
+
+  const filteredCreators = inviteUsername.trim()
+    ? allCreators.filter(c =>
+        (c.username.toLowerCase().includes(inviteUsername.toLowerCase()) ||
+        c.name.toLowerCase().includes(inviteUsername.toLowerCase())) &&
+        c.username.toLowerCase() !== inviteUsername.toLowerCase()
+      )
+    : [];
 
   useEffect(() => {
     if (ablySignaling?.activeCall) {
@@ -325,6 +354,71 @@ export default function StudioClient({ username, session, initialSettings }: { u
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const handleCreateTalkTime = async () => {
+    if (isTalkTimeCreating) return;
+    setIsTalkTimeCreating(true);
+    try {
+      const res = await fetch('/api/talktime/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'TalkTime' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTalkTimeRoom({ roomId: data.roomId, inviteUrl: data.inviteUrl, hostUrl: data.hostUrl });
+      } else {
+        alert('Could not start TalkTime. Try again.');
+      }
+    } catch {
+      alert('Network error. Try again.');
+    } finally {
+      setIsTalkTimeCreating(false);
+    }
+  };
+
+  const copyTalkTimeLink = async () => {
+    if (!talkTimeRoom) return;
+    try {
+      await navigator.clipboard.writeText(talkTimeRoom.inviteUrl);
+      setTalkTimeCopied(true);
+      setTimeout(() => setTalkTimeCopied(false), 2500);
+    } catch {
+      alert(talkTimeRoom.inviteUrl);
+    }
+  };
+
+  const handleSendInvite = async () => {
+    if (!talkTimeRoom || !inviteUsername.trim()) return;
+    const clean = inviteUsername.replace(/^@/, '').trim();
+    if (!clean) return;
+
+    setInviteStatus('sending');
+    setInviteError('');
+    try {
+      const res = await fetch('/api/talktime/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: clean,
+          roomId: talkTimeRoom.roomId,
+          roomTitle: 'TalkTime',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setInviteStatus('sent');
+        setInviteUsername('');
+        setTimeout(() => setInviteStatus('idle'), 4000);
+      } else {
+        setInviteStatus('error');
+        setInviteError(data.error || 'Could not find that user.');
+      }
+    } catch {
+      setInviteStatus('error');
+      setInviteError('Network error. Try again.');
+    }
+  };
+
   if (!effectiveUsername) {
     return (
       <main className="min-h-screen bg-background text-foreground font-sans selection:bg-rose-500 selection:text-white p-6 md:p-12">
@@ -336,8 +430,13 @@ export default function StudioClient({ username, session, initialSettings }: { u
             <h1 className="text-xl font-medium tracking-tight">Studio</h1>
           </div>
           <div className="flex items-center gap-6">
-            <WalletManager onBalanceChange={setBalance} />
-            <button onClick={() => signOut(() => { window.location.href = "/"; })} className="text-xs text-muted hover:text-red-500 transition-colors">Logout</button>
+            <Link
+              href="/dashboard"
+              className="px-4 py-2 bg-surface text-foreground border border-border rounded-xl flex items-center justify-center hover:bg-background transition-all font-medium text-sm gap-2"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              Dashboard
+            </Link>
           </div>
         </nav>
 
@@ -346,7 +445,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
             <div>
               <h2 className="text-2xl font-semibold text-foreground tracking-tight">Step 1 of your 10-year Empire</h2>
               <p className="text-sm text-muted mt-2 leading-relaxed">
-                Supertime isn't just about calls. It's the infrastructure for your independence. Claim your unique link, exchange your energy for credits, and start building towards a billion-dollar outcome.
+                Supertime isn&apos;t just about calls. It&apos;s the infrastructure for your independence. Claim your unique link, exchange your energy for credits, and start building towards a billion-dollar outcome.
               </p>
             </div>
             <form onSubmit={handleClaim} className="space-y-6 pt-4">
@@ -387,6 +486,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
             </div>
           </div>
         </div>
+        {effectiveUsername && <GlobalStudioRecorder username={effectiveUsername} />}
       </main>
     );
   }
@@ -465,14 +565,13 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </div>
 
           <div className="flex items-center gap-6">
-            {!isCalling && <WalletManager onBalanceChange={setBalance} />}
-
-            <button
-              onClick={() => signOut(() => { window.location.href = "/"; })}
-              className="hidden md:flex w-10 h-10 bg-surface text-foreground border border-border rounded-xl items-center justify-center hover:bg-background transition-all"
+            <Link
+              href="/dashboard"
+              className="hidden md:flex px-4 py-2 bg-surface text-foreground border border-border rounded-xl items-center justify-center hover:bg-background transition-all font-medium text-sm gap-2"
             >
-              <LogOut className="w-5 h-5" />
-            </button>
+              <LayoutDashboard className="w-4 h-4" />
+              Dashboard
+            </Link>
 
             <button
               onClick={() => setShowMobileMenu(true)}
@@ -633,8 +732,8 @@ export default function StudioClient({ username, session, initialSettings }: { u
       </main>
 
       {/* BOTTOM ACTION BAR */}
-      <div className="fixed bottom-0 left-0 right-0 z-[90] bg-background/80 backdrop-blur-md border-t border-border p-4 flex justify-between items-center gap-4">
-        <div className="flex items-center gap-4 flex-1">
+      <div className="fixed bottom-0 left-0 right-0 z-[90] bg-background/80 backdrop-blur-md border-t border-border p-4 flex justify-between items-center gap-3">
+        <div className="flex items-center gap-3 flex-1">
           <button
             onClick={() => {
               const next = !isLive;
@@ -651,6 +750,16 @@ export default function StudioClient({ username, session, initialSettings }: { u
           >
             {isAcceptingCalls ? 'Calls Ready' : 'Calls Off'}
           </button>
+
+          {/* / TalkTime */}
+          <button
+            onClick={handleCreateTalkTime}
+            disabled={isTalkTimeCreating}
+            className="hidden md:flex flex-1 md:flex-none items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-violet-600 to-rose-500 text-white shadow-md hover:opacity-90 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isTalkTimeCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Radio className="w-4 h-4" />}
+            / TalkTime
+          </button>
         </div>
 
         <button
@@ -660,6 +769,132 @@ export default function StudioClient({ username, session, initialSettings }: { u
           <LayoutDashboard className="w-4 h-4 text-muted group-hover:text-foreground transition-colors" /> Command Center
         </button>
       </div>
+
+      {/* TALKTIME INVITE MODAL */}
+      <AnimatePresence>
+        {talkTimeRoom && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97, filter: 'blur(8px)' }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 0.97, filter: 'blur(8px)' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-background/60 backdrop-blur-xl"
+            onClick={(e) => { if (e.target === e.currentTarget) { setTalkTimeRoom(null); setInviteUsername(''); setInviteStatus('idle'); } }}
+          >
+            <motion.div
+              initial={{ y: 30, scale: 0.96 }}
+              animate={{ y: 0, scale: 1 }}
+              exit={{ y: 30, scale: 0.96 }}
+              className="relative w-full max-w-md bg-background/95 backdrop-blur-3xl border border-border rounded-3xl shadow-2xl overflow-hidden"
+            >
+              <div className="relative z-10 flex flex-col items-center p-8 text-center space-y-6">
+                <div className="relative">
+                  <div className="w-20 h-20 bg-surface border border-border rounded-3xl flex items-center justify-center shadow-xl">
+                    <Radio className="w-10 h-10 text-foreground" />
+                  </div>
+                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-foreground border border-background rounded-full flex items-center justify-center shadow-md">
+                    <div className="w-2.5 h-2.5 bg-background rounded-full animate-pulse" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="px-3 py-1 bg-surface border border-border rounded-full text-xs font-bold uppercase tracking-widest text-foreground">TalkTime is live</span>
+                  <h3 className="text-2xl font-bold tracking-tight">Your room is ready.</h3>
+                  <p className="text-sm text-muted">Share this link — no account needed. They&apos;ll join in seconds.</p>
+                </div>
+
+                {/* Invite URL */}
+                <div className="w-full bg-surface/60 border border-border rounded-2xl flex items-center gap-3 px-4 py-3">
+                  <span className="flex-1 text-xs text-muted font-mono truncate text-left">{talkTimeRoom.inviteUrl}</span>
+                  <button
+                    onClick={copyTalkTimeLink}
+                    className="flex-shrink-0 w-8 h-8 rounded-xl bg-background border border-border flex items-center justify-center hover:bg-surface transition-all text-muted hover:text-foreground"
+                  >
+                    {talkTimeCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                {/* ── Invite a Supertime User ── */}
+                <div className="w-full space-y-2 relative">
+                  <p className="text-xs font-semibold text-muted uppercase tracking-wider text-left">Or invite by username</p>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <div className="flex items-center bg-background border border-border rounded-xl px-3 py-2.5 focus-within:border-border/60 focus-within:ring-2 focus-within:ring-border/10 transition-all">
+                        <span className="text-muted font-bold text-sm mr-1">@</span>
+                        <input
+                          type="text"
+                          value={inviteUsername}
+                          onChange={e => { setInviteUsername(e.target.value.replace(/^@/, '').toLowerCase()); setInviteStatus('idle'); setInviteError(''); }}
+                          onKeyDown={e => e.key === 'Enter' && handleSendInvite()}
+                          placeholder="username"
+                          className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-medium placeholder:text-muted/50"
+                          maxLength={32}
+                        />
+                      </div>
+                      
+                      {/* Autocomplete suggestions */}
+                      {filteredCreators.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-surface border border-border rounded-xl shadow-xl z-[2100] max-h-40 overflow-y-auto divide-y divide-border/50 text-left">
+                          {filteredCreators.map(creator => (
+                            <button
+                              key={creator.username}
+                              type="button"
+                              onClick={() => {
+                                setInviteUsername(creator.username);
+                                setInviteStatus('idle');
+                                setInviteError('');
+                              }}
+                              className="w-full px-4 py-2 hover:bg-background text-sm text-foreground flex items-center justify-between transition-colors"
+                            >
+                              <span className="font-semibold">@{creator.username}</span>
+                              <span className="text-xs text-muted">{creator.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleSendInvite}
+                      disabled={!inviteUsername.trim() || inviteStatus === 'sending'}
+                      className="px-4 py-2.5 bg-foreground text-background font-bold text-sm rounded-xl hover:bg-foreground/90 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      {inviteStatus === 'sending' ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : inviteStatus === 'sent' ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <ArrowRight className="w-4 h-4" />
+                      )}
+                      {inviteStatus === 'sent' ? 'Sent!' : 'Send'}
+                    </button>
+                  </div>
+                  {inviteStatus === 'sent' && (
+                    <p className="text-xs text-green-500 font-medium text-left">✓ Invite sent — they&apos;ll get an email, push notification, and in-app ping.</p>
+                  )}
+                  {inviteStatus === 'error' && (
+                    <p className="text-xs text-red-400 font-medium text-left">✗ {inviteError}</p>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-3 w-full">
+                  <button
+                    onClick={() => window.location.href = talkTimeRoom.hostUrl}
+                    className="flex items-center justify-center gap-2 py-3.5 bg-foreground text-background hover:bg-foreground/90 font-bold rounded-2xl text-sm shadow-lg active:scale-[0.98] transition-all"
+                  >
+                    <Sparkles className="w-4 h-4" /> Join as Host <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => { setTalkTimeRoom(null); setInviteUsername(''); setInviteStatus('idle'); }}
+                    className="flex items-center justify-center gap-2 py-2.5 bg-surface border border-border text-muted rounded-2xl text-sm font-medium hover:bg-background hover:text-foreground transition-all"
+                  >
+                    <X className="w-4 h-4" /> Close
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* IMMERSIVE COMMAND CENTER MODAL */}
       <AnimatePresence>
@@ -823,6 +1058,9 @@ export default function StudioClient({ username, session, initialSettings }: { u
       </AnimatePresence>
       {ConfirmDialogEl}
       {AlertDialog}
+
+      {/* Floating Studio Recorder */}
+      {effectiveUsername && <GlobalStudioRecorder username={effectiveUsername} />}
     </div>
   );
 }

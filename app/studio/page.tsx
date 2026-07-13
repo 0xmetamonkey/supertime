@@ -11,54 +11,71 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   const isSimulated = params.sim === 'true';
 
   const { userId, sessionClaims } = await auth();
-  let email = (sessionClaims as any)?.email?.toLowerCase(); // Normalize email
+  const email = (sessionClaims as { email?: string } | undefined)?.email?.toLowerCase(); // Normalize email
 
   // Fallback in case Clerk claim is lagging
-  if (userId && !email) {
+  let resolvedEmail = email;
+  if (userId && !resolvedEmail) {
     try {
       const user = await currentUser();
-      email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase();
+      resolvedEmail = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase();
     } catch (e) {
       console.error("[Studio Page] Clerk currentUser fallback failed:", e);
     }
   }
 
-  if (!email && !isSimulated) return redirect("/");
+  if (!resolvedEmail && !isSimulated) return redirect("/");
 
-  const username = email ? await resolveUsername(email) : null;
+  const username = resolvedEmail ? await resolveUsername(resolvedEmail) : null;
 
   // if (!username) return redirect("/"); // Allow callers to enter Studio
 
+  interface StudioSettings {
+    videoRate: number;
+    audioRate: number;
+    socials: { instagram: string; x: string; youtube: string; website: string; twitter?: string };
+    profileImage: string;
+    isLive: boolean;
+    templates: Array<Record<string, unknown>>;
+    availability: Record<string, unknown>;
+    artifacts: Array<Record<string, unknown>>;
+    upiId?: string;
+    isAcceptingCalls?: boolean;
+    roomType?: string;
+    isRoomFree?: boolean;
+    mode?: string;
+  }
+
   // Fetch Settings (if creator)
-  let settings = {
+  const settings: StudioSettings = {
     videoRate: 100,
     audioRate: 50,
     socials: { instagram: '', x: '', youtube: '', website: '' },
     profileImage: '',
     isLive: false,
-    templates: [] as any[],
-    availability: {} as any,
-    artifacts: [] as any[],
+    templates: [],
+    availability: {},
+    artifacts: [],
   };
 
-  if (email && process.env.KV_URL) {
-    const vRate = await kv.get(`user:${email}:rate:video`);
-    const aRate = await kv.get(`user:${email}:rate:audio`);
-    const socials = await kv.get(`user:${email}:socials`) as any;
-    const profileImage = await kv.get(`user:${email}:profileImage`);
-    const isLive = await kv.get(`user:${email}:isLive`);
-    const roomType = await kv.get(`user:${email}:roomType`);
-    const isRoomFree = await kv.get(`user:${email}:isRoomFree`);
-    const templates = await kv.get(`user:${email}:templates`) as any[];
-    const availability = await kv.get(`user:${email}:availability`);
-    const artifacts = await kv.get(`user:${email}:artifacts`) as any[] || [];
-    const mode = await kv.get(`user:${email}:mode`) || 'solitude';
-    const isAcceptingCalls = await kv.get(`user:${email}:isAcceptingCalls`);
-    const upiId = await kv.get(`user:${email}:upiId`);
+  if (resolvedEmail && process.env.KV_URL) {
+    const vRate = await kv.get(`user:${resolvedEmail}:rate:video`);
+    const aRate = await kv.get(`user:${resolvedEmail}:rate:audio`);
+    const socials = await kv.get(`user:${resolvedEmail}:socials`) as Record<string, string> | null;
+    const profileImage = await kv.get(`user:${resolvedEmail}:profileImage`) as string | null;
+    const isLive = await kv.get(`user:${resolvedEmail}:isLive`);
+    const roomType = await kv.get(`user:${resolvedEmail}:roomType`) as string | null;
+    const isRoomFree = await kv.get(`user:${resolvedEmail}:isRoomFree`);
+    const templates = await kv.get(`user:${resolvedEmail}:templates`) as Array<Record<string, unknown>> | null;
+    const availability = await kv.get(`user:${resolvedEmail}:availability`) as Record<string, unknown> | null;
+    const artifacts = await kv.get(`user:${resolvedEmail}:artifacts`) as Array<Record<string, unknown>> | null || [];
+    const mode = await kv.get(`user:${resolvedEmail}:mode`) as string | null || 'solitude';
+    const isAcceptingCalls = await kv.get(`user:${resolvedEmail}:isAcceptingCalls`);
+    const upiId = await kv.get(`user:${resolvedEmail}:upiId`) as string | null;
 
     if (vRate !== null) settings.videoRate = Number(vRate);
     if (aRate !== null) settings.audioRate = Number(aRate);
-    if (upiId) (settings as any).upiId = upiId as string;
+    if (upiId) settings.upiId = upiId;
     if (socials) {
       // Normalize twitter to x
       if (socials.twitter && !socials.x) {
@@ -67,22 +84,22 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
       }
       settings.socials = { ...settings.socials, ...socials };
     }
-    if (profileImage) (settings as any).profileImage = profileImage;
+    if (profileImage) settings.profileImage = profileImage;
     // We ALWAYS want to start as "not live" (not broadcasting) on refresh
     settings.isLive = false;
     if (isLive !== null) {
       // Still persist it for future use but start current session as offline
       // Or just ignore it for the initial state
     }
-    if (isAcceptingCalls === null) (settings as any).isAcceptingCalls = true;
-    else (settings as any).isAcceptingCalls = !!isAcceptingCalls;
+    if (isAcceptingCalls === null) settings.isAcceptingCalls = true;
+    else settings.isAcceptingCalls = !!isAcceptingCalls;
 
-    if (roomType) (settings as any).roomType = roomType;
-    if (isRoomFree !== null) (settings as any).isRoomFree = !!isRoomFree;
+    if (roomType) settings.roomType = roomType;
+    if (isRoomFree !== null) settings.isRoomFree = !!isRoomFree;
     if (templates) settings.templates = templates;
     if (availability) settings.availability = availability;
     if (artifacts) settings.artifacts = artifacts;
-    (settings as any).mode = mode;
+    settings.mode = mode;
   }
 
   return (

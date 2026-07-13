@@ -3,8 +3,26 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { kv } from '@vercel/kv';
 import { currentUser } from "@clerk/nextjs/server";
+import { paymentRatelimit } from '@/app/lib/ratelimit';
 import { sendEmail } from '@/app/lib/email';
 import { createBooking } from '@/app/api/call/book/route';
+
+interface Product {
+  id: string;
+  name: string;
+  content?: string;
+  type?: string;
+}
+
+interface Sale {
+  id: string;
+  productId: string;
+  amount: number;
+  netAmount: number;
+  commission: number;
+  type: string;
+  timestamp: number;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,6 +48,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
       }
 
+      const claimed = await kv.set(`payment:processed:${razorpay_payment_id}`, '1', { nx: true, ex: 31536000 });
+      if (!claimed) {
+        return NextResponse.json({ error: 'Payment already processed' }, { status: 409 });
+      }
+
       console.log('[Purchase API] ✅ Signature valid');
 
       // Get buyer info (use provided if guest, otherwise check Clerk)
@@ -51,19 +74,16 @@ export async function POST(req: NextRequest) {
 
       // Resolve product name and type
       let productName = 'Tip';
-      let productContent = '';
       let productType = '';
       if (productId && creatorUsername) {
-        const products = (await kv.get<any[]>(`user_products:${creatorUsername.toLowerCase()}`)) || [];
-        const product = products.find((p: any) => p.id === productId);
+        const products = (await kv.get<Product[]>(`user_products:${creatorUsername.toLowerCase()}`)) || [];
+        const product = products.find((p: Product) => p.id === productId);
         if (product) {
           productName = product.name;
-          productContent = product.content || '';
           productType = product.type || '';
         }
       }
 
-      let meetingRoomId = '';
       let meetingUrl = '';
       if (productType === 'booking' && creatorUsername && bookingDetails) {
         try {
@@ -118,7 +138,7 @@ export async function POST(req: NextRequest) {
           await kv.set('platform:commission:total', totalCommission + commission);
 
           // Record sale with commission breakdown
-          const sales = (await kv.get<any[]>(`sales:${creatorEmail}`)) || [];
+          const sales = (await kv.get<Sale[]>(`sales:${creatorEmail}`)) || [];
           sales.unshift({
             id: razorpay_payment_id,
             productId: productId || 'tip',
@@ -233,8 +253,8 @@ export async function POST(req: NextRequest) {
 
       // Return deliverable if it's a product purchase
       if (productId && creatorUsername) {
-        const products = (await kv.get<any[]>(`user_products:${creatorUsername.toLowerCase()}`)) || [];
-        const product = products.find((p: any) => p.id === productId);
+        const products = (await kv.get<Product[]>(`user_products:${creatorUsername.toLowerCase()}`)) || [];
+        const product = products.find((p: Product) => p.id === productId);
         if (product) {
           return NextResponse.json({
             success: true,
@@ -254,6 +274,12 @@ export async function POST(req: NextRequest) {
     // ─── CREATE ORDER ───
     if (!amount || amount < 1) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    }
+
+    const identifier = req.headers.get('x-forwarded-for') || 'anonymous';
+    const { success: allowed } = await paymentRatelimit.limit(identifier);
+    if (!allowed) {
+      return NextResponse.json({ error: 'Too many requests. Please slow down.' }, { status: 429 });
     }
 
     // ATOMIC DOUBLE-BOOKING LOCK (15 min expiry for checkout window)
@@ -287,10 +313,11 @@ export async function POST(req: NextRequest) {
       currency: order.currency,
       keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Purchase Error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json({
-      error: `Failed: ${error.message || JSON.stringify(error)}`
+      error: `Failed: ${errorMessage}`
     }, { status: 500 });
   }
 }

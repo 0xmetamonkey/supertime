@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { AblyProvider } from '@/app/lib/ably';
@@ -17,6 +17,8 @@ export default function CallRoomClient({ roomId }: { roomId: string }) {
   const isViewer = searchParams.get('viewer') === 'true';
   const username = searchParams.get('u') || 'host';
 
+  const [randomId] = useState(() => Math.floor(Math.random() * 10000));
+
   const handleDisconnect = () => {
     router.push('/dashboard');
     router.refresh();
@@ -28,7 +30,7 @@ export default function CallRoomClient({ roomId }: { roomId: string }) {
       <AblyProvider clientId={`broadcast-host-${username}`}>
         <BroadcastHost
           channelName={roomId}
-          uid={`host_${Math.floor(Math.random() * 10000)}`}
+          uid={`host_${randomId}`}
           username={username}
           onEnd={handleDisconnect}
         />
@@ -38,10 +40,10 @@ export default function CallRoomClient({ roomId }: { roomId: string }) {
 
   if (isViewer) {
     return (
-      <AblyProvider clientId={`broadcast-viewer-${Math.floor(Math.random() * 10000)}`}>
+      <AblyProvider clientId={`broadcast-viewer-${randomId}`}>
         <BroadcastViewer
           channelName={roomId}
-          uid={`viewer_${Math.floor(Math.random() * 10000)}`}
+          uid={`viewer_${randomId}`}
           creatorUsername={username}
           onLeave={handleDisconnect}
           onRequestCall={() => {}}
@@ -56,7 +58,7 @@ export default function CallRoomClient({ roomId }: { roomId: string }) {
   return (
     <CallStage
       channelName={roomId}
-      uid={'guest_' + Math.floor(Math.random() * 10000)}
+      uid={'guest_' + randomId}
       type="video"
       onDisconnect={handleDisconnect}
     />

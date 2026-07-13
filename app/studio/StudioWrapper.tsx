@@ -1,18 +1,35 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AblyProvider, useCallSignaling } from '@/app/lib/ably';
+import { AblyProvider, useCallSignaling, useAbly } from '@/app/lib/ably';
 import StudioClient from './StudioClient';
 import { IncomingCallRing } from '@/app/components/IncomingCallRing';
+import { IncomingTalkTimeInvite } from '@/app/components/IncomingTalkTimeInvite';
 
 interface StudioWrapperProps {
   username: string | null;
-  session: any;
-  initialSettings: any;
+  session: { user: { id: string; email: string } } | null;
+  initialSettings: Record<string, unknown>;
 }
 
 function StudioWithSignaling({ username, session, initialSettings }: StudioWrapperProps) {
   const signaling = useCallSignaling(username || 'anonymous');
+  const { subscribe, isConnected } = useAbly();
+  const [talkTimeInvite, setTalkTimeInvite] = useState<Record<string, unknown> | null>(null);
+
+  // Listen for incoming TalkTime invites on user's Ably channel
+  useEffect(() => {
+    if (!isConnected || !username) return;
+    const email = session?.user?.email?.toLowerCase();
+    if (!email) return;
+
+    const unsubscribe = subscribe(`user:${email}`, (message: { name: string; data: Record<string, unknown> }) => {
+      if (message.name === 'talktime:invite') {
+        setTalkTimeInvite(message.data);
+      }
+    });
+    return unsubscribe;
+  }, [isConnected, username, session?.user?.email, subscribe]);
 
   // Log incoming calls and signaling status
   useEffect(() => {
@@ -46,6 +63,10 @@ function StudioWithSignaling({ username, session, initialSettings }: StudioWrapp
           await signaling.rejectCall();
         }}
       />
+      <IncomingTalkTimeInvite
+        invite={talkTimeInvite}
+        onDismiss={() => setTalkTimeInvite(null)}
+      />
       <StudioClient
         username={username}
         session={session}
@@ -63,6 +84,7 @@ export default function StudioWrapper(props: StudioWrapperProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 

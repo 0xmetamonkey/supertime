@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import LandingPageClient from '../LandingPageClient';
-import { Zap, Sparkles, Heart, Globe, CircleDollarSign, Palette, ArrowRight, ShieldCheck } from 'lucide-react';
+
 
 // Mocked Version 1 (Minimalist)
 const Version1 = () => (
