@@ -43,24 +43,28 @@ export async function POST(req: NextRequest) {
 
           if (fcmToken && typeof fcmToken === 'string') {
             const { messaging } = await import('@/app/lib/firebase-admin');
-            const message = {
-              token: fcmToken,
-              notification: {
-                title: `Incoming ${type} Call`,
-                body: `${fromName || 'Someone'} is calling you...`,
-              },
-              data: {
-                channelName,
-                from,
-                fromName: fromName || '',
-                to: to, // Added target username
-                type,
-                action: 'incoming-call'
-              }
-            };
+            if (messaging) {
+              const message = {
+                token: fcmToken,
+                notification: {
+                  title: `Incoming ${type} Call`,
+                  body: `${fromName || 'Someone'} is calling you...`,
+                },
+                data: {
+                  channelName,
+                  from,
+                  fromName: fromName || '',
+                  to: to, // Added target username
+                  type,
+                  action: 'incoming-call'
+                }
+              };
 
-            const response = await messaging.send(message);
-            console.log(`[Signal API] ✅ FCM push sent successfully to ${to}. ID:`, response);
+              const response = await messaging.send(message);
+              console.log(`[Signal API] ✅ FCM push sent successfully to ${to}. ID:`, response);
+            } else {
+              console.warn(`[Signal API] ⚠️ Firebase Admin not initialized. Push skipped.`);
+            }
           } else {
             console.warn(`[Signal API] ⚠️ No FCM token found for user ${to}. Push skipped.`);
           }
@@ -103,13 +107,17 @@ export async function POST(req: NextRequest) {
           const fcmToken = await kv.get(`user:${target.toLowerCase()}:fcm_token`);
           if (fcmToken && typeof fcmToken === 'string') {
             const { messaging } = await import('@/app/lib/firebase-admin');
-            await messaging.send({
-              token: fcmToken,
-              data: {
-                action: 'cancel-call'
-              },
-              android: { priority: 'high' }
-            });
+            if (messaging) {
+              await messaging.send({
+                token: fcmToken,
+                data: {
+                  action: 'cancel-call'
+                },
+                android: { priority: 'high' }
+              });
+            } else {
+              console.warn('[Signal API] ⚠️ Firebase Admin not initialized. Cancel push skipped.');
+            }
           }
         } catch (e) { }
       } else {
