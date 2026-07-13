@@ -592,10 +592,6 @@ export default function DashboardClient({ session, username: initialUsername, ro
                   <SettingsClient username={username || ''} initialSettings={{
                     videoRate: initialSettings?.videoRate ?? 100,
                     audioRate: initialSettings?.audioRate ?? 50,
-                    socials: initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' },
-                    profileImage: initialSettings?.profileImage || '',
-                    templates: initialSettings?.templates || [],
-                    faqs: initialSettings?.faqs || [],
                     roomType: initialSettings?.roomType || 'audio',
                     isRoomFree: initialSettings?.isRoomFree ?? true,
                     videoProvider: initialSettings?.videoProvider || 'supercalls',
