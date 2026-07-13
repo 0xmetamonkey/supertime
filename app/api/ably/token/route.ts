@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
         // User can join room/broadcast channels
         ['room:*']: ['subscribe', 'publish', 'presence'],
         ['broadcast:*']: ['subscribe', 'publish', 'presence'],
+        // TalkTime pad channels
+        ['talktime-pad:*']: ['subscribe', 'publish', 'presence'],
         // Team chat channels
         ['team:*']: ['subscribe', 'publish', 'presence'],
         // Direct messaging channels

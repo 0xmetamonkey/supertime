@@ -48,7 +48,7 @@ export default function PricingClient({ countryCode }: { countryCode: string }) 
           transition={{ delay: 0.1 }}
           className="text-muted text-lg max-w-2xl mx-auto mb-12"
         >
-          Whether you're taking your first call or running a million-dollar business, we have a plan for you.
+          Whether you&apos;re taking your first call or running a million-dollar business, we have a plan for you.
           {multiplier < 1 && (
             <span className="block mt-2 text-green-500 font-medium text-sm bg-green-500/10 px-3 py-1 rounded-full inline-block">
               🎉 Regional Pricing applied for {countryCode}. You get a {Math.round((1 - multiplier) * 100)}% discount!

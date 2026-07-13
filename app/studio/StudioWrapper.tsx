@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { AblyProvider, useCallSignaling, useAbly } from '@/app/lib/ably';
 import StudioClient from './StudioClient';
 import { IncomingCallRing } from '@/app/components/IncomingCallRing';
@@ -8,14 +8,14 @@ import { IncomingTalkTimeInvite } from '@/app/components/IncomingTalkTimeInvite'
 
 interface StudioWrapperProps {
   username: string | null;
-  session: any;
-  initialSettings: any;
+  session: { user: { id: string; email: string } } | null;
+  initialSettings: Record<string, unknown>;
 }
 
 function StudioWithSignaling({ username, session, initialSettings }: StudioWrapperProps) {
   const signaling = useCallSignaling(username || 'anonymous');
   const { subscribe, isConnected } = useAbly();
-  const [talkTimeInvite, setTalkTimeInvite] = useState<any>(null);
+  const [talkTimeInvite, setTalkTimeInvite] = useState<Record<string, unknown> | null>(null);
 
   // Listen for incoming TalkTime invites on user's Ably channel
   useEffect(() => {
@@ -23,7 +23,7 @@ function StudioWithSignaling({ username, session, initialSettings }: StudioWrapp
     const email = session?.user?.email?.toLowerCase();
     if (!email) return;
 
-    const unsubscribe = subscribe(`user:${email}`, (message: any) => {
+    const unsubscribe = subscribe(`user:${email}`, (message: { name: string; data: Record<string, unknown> }) => {
       if (message.name === 'talktime:invite') {
         setTalkTimeInvite(message.data);
       }
@@ -84,6 +84,7 @@ export default function StudioWrapper(props: StudioWrapperProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 

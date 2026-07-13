@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const title = body.title || 'TalkTime';
+    const initialText = body.text || '';
 
     // Unique room ID
     const roomId = `talktime-${Math.random().toString(36).slice(2, 10)}`;
@@ -26,13 +27,18 @@ export async function POST(req: NextRequest) {
       creator: email.toLowerCase(),
       creatorUsername,
       title,
+      text: initialText,
       createdAt: Date.now(),
     };
 
     // Persist with 24h TTL
     await kv.set(`meeting:${roomId}`, sessionData, { ex: 86400 });
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://supertime.wtf';
+    const hostHeader = req.headers.get('host') || 'supertime.wtf';
+    const protocol = req.headers.get('x-forwarded-proto') || 'https';
+    const appUrl = hostHeader.includes('localhost')
+      ? `http://${hostHeader}`
+      : `${protocol}://${hostHeader}`;
     const inviteUrl = `${appUrl}/talktime/${roomId}`;
     const hostUrl = `${appUrl}/talktime/${roomId}?host=true&u=${encodeURIComponent(creatorUsername)}`;
 

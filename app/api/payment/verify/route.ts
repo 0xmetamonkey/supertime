@@ -38,8 +38,13 @@ export async function POST(req: NextRequest) {
       .digest("hex");
 
     if (expectedSignature === razorpay_signature) {
-      const claimed = await kv.set(`payment:processed:${razorpay_payment_id}`, '1', { nx: true, ex: 31536000 });
-      if (!claimed) {
+      // --- IDEMPOTENCY: Prevent replay attacks ---
+      // Atomically claim this payment ID. nx = only set if key does not exist.
+      // TTL of 90 days is enough to cover any legitimate retry window.
+      const idempotencyKey = `payment:processed:${razorpay_payment_id}`;
+      const claimed = await kv.set(idempotencyKey, normalizedEmail, { nx: true, ex: 60 * 60 * 24 * 90 });
+      if (claimed === null) {
+        // Key already existed — this payment was already processed
         return NextResponse.json({ error: 'Payment already processed' }, { status: 409 });
       }
 

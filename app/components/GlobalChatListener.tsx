@@ -12,6 +12,20 @@ export default function GlobalChatListener({ username }: { username: string }) {
   const ablyRef = useRef<Ably.Realtime | null>(null);
   const [popups, setPopups] = useState<any[]>([]);
 
+  // 1. Explicit Service Worker Registration for Phone/Background Notifications
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then((reg) => {
+          console.log('[Service Worker] Scope:', reg.scope);
+        })
+        .catch((err) => {
+          console.error('[Service Worker] Registration failed:', err);
+        });
+    }
+  }, []);
+
+  // 2. Ably Real-time Message Listener & Native Notifications
   useEffect(() => {
     if (!username) return;
 
@@ -50,6 +64,22 @@ export default function GlobalChatListener({ username }: { username: string }) {
 
         // Signal unread chat to sidebar
         window.dispatchEvent(new CustomEvent('supertime:unread-chat', { detail: { from: data.from } }));
+
+        // Trigger native desktop system notification
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+          if (Notification.permission === 'granted') {
+            const systemNotif = new Notification(`New message from @${data.from}`, {
+              body: data.text,
+              icon: '/icon.png',
+              tag: `chat-dm:${data.from}`,
+            });
+            systemNotif.onclick = () => {
+              window.focus();
+              router.push(`/dashboard?tab=inbox&to=${data.from}`);
+              systemNotif.close();
+            };
+          }
+        }
         
         setTimeout(() => {
           setPopups(prev => prev.filter(p => p.id !== popupId));
@@ -59,14 +89,14 @@ export default function GlobalChatListener({ username }: { username: string }) {
         try {
           const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
           const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
+          const fontGain = ctx.createGain();
+          osc.connect(fontGain);
+          fontGain.connect(ctx.destination);
           osc.type = 'sine';
           osc.frequency.setValueAtTime(600, ctx.currentTime);
           osc.frequency.setValueAtTime(900, ctx.currentTime + 0.08);
-          gain.gain.setValueAtTime(0.15, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+          fontGain.gain.setValueAtTime(0.15, ctx.currentTime);
+          fontGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
           osc.start(ctx.currentTime);
           osc.stop(ctx.currentTime + 0.2);
         } catch {}
@@ -79,7 +109,7 @@ export default function GlobalChatListener({ username }: { username: string }) {
       channel.unsubscribe();
       client.close();
     };
-  }, [username, pathname]);
+  }, [username, pathname, router]);
 
   return (
     <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">

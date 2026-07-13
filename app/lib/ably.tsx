@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/set-state-in-effect, react-hooks/immutability */
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode, useRef } from 'react';

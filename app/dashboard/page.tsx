@@ -5,11 +5,12 @@ import { resolveUsername } from "../actions";
 import { getDetailedWallet } from "../lib/economics";
 import DashboardClient from "./DashboardClient";
 
-export default async function DashboardPage({ searchParams }: { searchParams: any }) {
+export default async function DashboardPage() {
   const { userId, sessionClaims } = await auth();
-  let email = (sessionClaims as any)?.email?.toLowerCase();
+  const claimEmail = (sessionClaims as { email?: string } | undefined)?.email?.toLowerCase();
 
   // Fallback in case Clerk claim is lagging
+  let email = claimEmail;
   if (userId && !email) {
     try {
       const user = await currentUser();
@@ -24,7 +25,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
   }
 
   // 1. Resolve Username & Role
-  let username = await resolveUsername(email);
+  const username = await resolveUsername(email);
   let role = null;
   
   if (process.env.KV_URL) {
@@ -41,8 +42,28 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
   // 2. Fetch Wallet Stats
   const { balance, withdrawable } = await getDetailedWallet(email);
 
+  interface DashboardSettings {
+    videoRate: number;
+    audioRate: number;
+    socials: { instagram: string; x: string; youtube: string; website: string; twitter?: string };
+    profileImage: string;
+    coverImage: string;
+    templates: Array<Record<string, unknown>>;
+    faqs: Array<Record<string, unknown>>;
+    products: Array<Record<string, unknown>>;
+    roomType: 'audio' | 'video';
+    isRoomFree: boolean;
+    videoProvider: string;
+    isGoogleConnected: boolean;
+    isZoomConnected: boolean;
+    bio: string;
+    subscriptionPrice: number;
+    subscriptionBenefits: string[];
+    displayName?: string;
+  }
+
   // 3. Fetch Settings for embedded Settings tab
-  let initialSettings: any = {
+  const initialSettings: DashboardSettings = {
     videoRate: 100,
     audioRate: 50,
     socials: { instagram: '', x: '', youtube: '', website: '' },
@@ -64,21 +85,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: an
   if (process.env.KV_URL) {
     const vRate = await kv.get(`user:${email}:rate:video`);
     const aRate = await kv.get(`user:${email}:rate:audio`);
-    const socials = await kv.get(`user:${email}:socials`) as any;
+    const socials = await kv.get(`user:${email}:socials`) as Record<string, string> | null;
     const profileImage = await kv.get(`user:${email}:profileImage`);
     const coverImage = await kv.get(`user:${email}:coverImage`);
     const roomType = await kv.get(`user:${email}:roomType`);
     const isRoomFree = await kv.get(`user:${email}:isRoomFree`);
-    const templates = await kv.get(`user:${email}:templates`) as any[];
-    const faqs = await kv.get(`user:${email}:faqs`) as any[];
-    const displayName = await kv.get(`user:${email}:displayName`) as string;
-    const videoProvider = await kv.get(`user:${email}:videoProvider`) as string;
+    const templates = await kv.get(`user:${email}:templates`) as Array<Record<string, unknown>> | null;
+    const faqs = await kv.get(`user:${email}:faqs`) as Array<Record<string, unknown>> | null;
+    const displayName = await kv.get(`user:${email}:displayName`) as string | null;
+    const videoProvider = await kv.get(`user:${email}:videoProvider`) as string | null;
     const googleTokens = await kv.get(`user:${email}:google_tokens`);
     const zoomTokens = await kv.get(`user:${email}:zoom_tokens`);
-    const bio = await kv.get(`user:${email}:bio`) as string;
+    const bio = await kv.get(`user:${email}:bio`) as string | null;
     const subscriptionPrice = await kv.get(`user:${email}:subscriptionPrice`);
-    const subscriptionBenefits = await kv.get(`user:${email}:subscriptionBenefits`) as string[];
-    const products = username ? await kv.get(`user_products:${username}`) as any[] : null;
+    const subscriptionBenefits = await kv.get(`user:${email}:subscriptionBenefits`) as string[] | null;
+    const products = username ? await kv.get(`user_products:${username}`) as Array<Record<string, unknown>> | null : null;
 
     if (vRate !== null) initialSettings.videoRate = Number(vRate);
     if (aRate !== null) initialSettings.audioRate = Number(aRate);

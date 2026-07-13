@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function LandingPage() {
   const { userId, sessionClaims } = await auth();
-  let email = (sessionClaims as any)?.email;
+  let email = (sessionClaims as { email?: string } | undefined)?.email;
 
   // Fallback in case Clerk claim is lagging
   if (userId && !email) {

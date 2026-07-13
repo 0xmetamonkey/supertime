@@ -1,13 +1,11 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
 import { Clock, Zap, CheckCircle2 } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
 export default function RoadmapPage() {
-  const router = useRouter();
 
   const roadmapItems = [
     {

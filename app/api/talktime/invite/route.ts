@@ -9,14 +9,18 @@ async function sendPushToUsername(username: string, title: string, body: string,
     if (!token) return;
 
     const { messaging } = await import('@/app/lib/firebase-admin');
-    await messaging.send({
-      token: token as string,
-      notification: { title, body },
-      webpush: {
-        notification: { icon: '/icon.png', badge: '/icon.png' },
-        fcmOptions: { link: url },
-      },
-    });
+    if (messaging) {
+      await messaging.send({
+        token: token as string,
+        notification: { title, body },
+        webpush: {
+          notification: { icon: '/icon.png', badge: '/icon.png' },
+          fcmOptions: { link: url },
+        },
+      });
+    } else {
+      console.warn('[TalkTime Invite] Push skipped: Firebase Admin is not initialized.');
+    }
   } catch (e) {
     console.error('[TalkTime Invite] Push send failed:', e);
   }
@@ -70,7 +74,11 @@ export async function POST(req: NextRequest) {
     // Get sender's username for display
     const senderUsername = await kv.get(`user:${senderEmail}:username`) as string || senderEmail.split('@')[0];
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://supertime.wtf';
+    const hostHeader = req.headers.get('host') || 'supertime.wtf';
+    const protocol = req.headers.get('x-forwarded-proto') || 'https';
+    const appUrl = hostHeader.includes('localhost')
+      ? `http://${hostHeader}`
+      : `${protocol}://${hostHeader}`;
     const joinUrl = `${appUrl}/talktime/${roomId}?invited=true&u=${encodeURIComponent(cleanUsername)}`;
     const title = roomTitle || 'TalkTime';
 

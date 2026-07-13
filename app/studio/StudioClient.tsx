@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -39,7 +40,7 @@ import {
 import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
 const BroadcastHost = dynamic(() => import('../components/Broadcast/BroadcastHost'), { ssr: false });
-import { checkAvailability, completeOnboarding } from '../actions';
+import { checkAvailability, completeOnboarding, getAllCreators } from '../actions';
 import { useClerk } from "@clerk/nextjs";
 import WalletManager from '../components/WalletManager';
 import GlobalStudioRecorder from '../dashboard/GlobalStudioRecorder';
@@ -97,6 +98,21 @@ export default function StudioClient({ username, session, initialSettings }: { u
   const [inviteUsername, setInviteUsername] = useState('');
   const [inviteStatus, setInviteStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [inviteError, setInviteError] = useState('');
+  const [allCreators, setAllCreators] = useState<any[]>([]);
+
+  useEffect(() => {
+    getAllCreators().then(list => {
+      setAllCreators(list || []);
+    }).catch(e => console.error("Failed to load creators for autocomplete:", e));
+  }, []);
+
+  const filteredCreators = inviteUsername.trim()
+    ? allCreators.filter(c =>
+        (c.username.toLowerCase().includes(inviteUsername.toLowerCase()) ||
+        c.name.toLowerCase().includes(inviteUsername.toLowerCase())) &&
+        c.username.toLowerCase() !== inviteUsername.toLowerCase()
+      )
+    : [];
 
   useEffect(() => {
     if (ablySignaling?.activeCall) {
@@ -400,7 +416,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
             <div>
               <h2 className="text-2xl font-semibold text-foreground tracking-tight">Step 1 of your 10-year Empire</h2>
               <p className="text-sm text-muted mt-2 leading-relaxed">
-                Supertime isn't just about calls. It's the infrastructure for your independence. Claim your unique link, exchange your energy for credits, and start building towards a billion-dollar outcome.
+                Supertime isn&apos;t just about calls. It&apos;s the infrastructure for your independence. Claim your unique link, exchange your energy for credits, and start building towards a billion-dollar outcome.
               </p>
             </div>
             <form onSubmit={handleClaim} className="space-y-6 pt-4">
@@ -734,32 +750,26 @@ export default function StudioClient({ username, session, initialSettings }: { u
             exit={{ opacity: 0, scale: 0.97, filter: 'blur(8px)' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-background/60 backdrop-blur-xl"
-            onClick={(e) => { if (e.target === e.currentTarget) setTalkTimeRoom(null); }}
+            onClick={(e) => { if (e.target === e.currentTarget) { setTalkTimeRoom(null); setInviteUsername(''); setInviteStatus('idle'); } }}
           >
             <motion.div
               initial={{ y: 30, scale: 0.96 }}
               animate={{ y: 0, scale: 1 }}
               exit={{ y: 30, scale: 0.96 }}
-              className="relative w-full max-w-md bg-background/95 backdrop-blur-3xl border border-violet-500/20 rounded-3xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md bg-background/95 backdrop-blur-3xl border border-border rounded-3xl shadow-2xl overflow-hidden"
             >
-              {/* Ambient */}
-              <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute -top-1/3 -right-1/4 w-2/3 h-2/3 bg-violet-500/10 blur-[100px] rounded-full" />
-                <div className="absolute -bottom-1/3 -left-1/4 w-2/3 h-2/3 bg-rose-500/8 blur-[100px] rounded-full" />
-              </div>
-
               <div className="relative z-10 flex flex-col items-center p-8 text-center space-y-6">
                 <div className="relative">
-                  <div className="w-20 h-20 bg-gradient-to-br from-violet-500/20 to-rose-500/20 border border-violet-500/30 rounded-3xl flex items-center justify-center shadow-xl">
-                    <Radio className="w-10 h-10 text-violet-400" />
+                  <div className="w-20 h-20 bg-surface border border-border rounded-3xl flex items-center justify-center shadow-xl">
+                    <Radio className="w-10 h-10 text-foreground" />
                   </div>
-                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow-md">
-                    <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
+                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-foreground border border-background rounded-full flex items-center justify-center shadow-md">
+                    <div className="w-2.5 h-2.5 bg-background rounded-full animate-pulse" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <span className="px-3 py-1 bg-violet-500/10 border border-violet-500/20 rounded-full text-xs font-bold uppercase tracking-widest text-violet-400">TalkTime is live</span>
+                  <span className="px-3 py-1 bg-surface border border-border rounded-full text-xs font-bold uppercase tracking-widest text-foreground">TalkTime is live</span>
                   <h3 className="text-2xl font-bold tracking-tight">Your room is ready.</h3>
                   <p className="text-sm text-muted">Share this link — no account needed. They&apos;ll join in seconds.</p>
                 </div>
@@ -776,25 +786,48 @@ export default function StudioClient({ username, session, initialSettings }: { u
                 </div>
 
                 {/* ── Invite a Supertime User ── */}
-                <div className="w-full space-y-2">
+                <div className="w-full space-y-2 relative">
                   <p className="text-xs font-semibold text-muted uppercase tracking-wider text-left">Or invite by username</p>
                   <div className="flex gap-2">
-                    <div className="flex-1 flex items-center bg-background border border-border rounded-xl px-3 py-2.5 focus-within:border-violet-500/60 focus-within:ring-2 focus-within:ring-violet-500/10 transition-all">
-                      <span className="text-violet-400 font-bold text-sm mr-1">@</span>
-                      <input
-                        type="text"
-                        value={inviteUsername}
-                        onChange={e => { setInviteUsername(e.target.value.replace(/^@/, '').toLowerCase()); setInviteStatus('idle'); setInviteError(''); }}
-                        onKeyDown={e => e.key === 'Enter' && handleSendInvite()}
-                        placeholder="username"
-                        className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-medium placeholder:text-muted/50"
-                        maxLength={32}
-                      />
+                    <div className="relative flex-1">
+                      <div className="flex items-center bg-background border border-border rounded-xl px-3 py-2.5 focus-within:border-border/60 focus-within:ring-2 focus-within:ring-border/10 transition-all">
+                        <span className="text-muted font-bold text-sm mr-1">@</span>
+                        <input
+                          type="text"
+                          value={inviteUsername}
+                          onChange={e => { setInviteUsername(e.target.value.replace(/^@/, '').toLowerCase()); setInviteStatus('idle'); setInviteError(''); }}
+                          onKeyDown={e => e.key === 'Enter' && handleSendInvite()}
+                          placeholder="username"
+                          className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-medium placeholder:text-muted/50"
+                          maxLength={32}
+                        />
+                      </div>
+                      
+                      {/* Autocomplete suggestions */}
+                      {filteredCreators.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-surface border border-border rounded-xl shadow-xl z-[2100] max-h-40 overflow-y-auto divide-y divide-border/50 text-left">
+                          {filteredCreators.map(creator => (
+                            <button
+                              key={creator.username}
+                              type="button"
+                              onClick={() => {
+                                setInviteUsername(creator.username);
+                                setInviteStatus('idle');
+                                setInviteError('');
+                              }}
+                              className="w-full px-4 py-2 hover:bg-background text-sm text-foreground flex items-center justify-between transition-colors"
+                            >
+                              <span className="font-semibold">@{creator.username}</span>
+                              <span className="text-xs text-muted">{creator.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={handleSendInvite}
                       disabled={!inviteUsername.trim() || inviteStatus === 'sending'}
-                      className="px-4 py-2.5 bg-violet-600 text-white font-bold text-sm rounded-xl hover:bg-violet-500 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                      className="px-4 py-2.5 bg-foreground text-background font-bold text-sm rounded-xl hover:bg-foreground/90 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
                     >
                       {inviteStatus === 'sending' ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -807,7 +840,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
                     </button>
                   </div>
                   {inviteStatus === 'sent' && (
-                    <p className="text-xs text-green-500 font-medium text-left">✓ Invite sent — they'll get an email, push notification, and in-app ping.</p>
+                    <p className="text-xs text-green-500 font-medium text-left">✓ Invite sent — they&apos;ll get an email, push notification, and in-app ping.</p>
                   )}
                   {inviteStatus === 'error' && (
                     <p className="text-xs text-red-400 font-medium text-left">✗ {inviteError}</p>
@@ -817,7 +850,7 @@ export default function StudioClient({ username, session, initialSettings }: { u
                 <div className="flex flex-col gap-3 w-full">
                   <button
                     onClick={() => window.location.href = talkTimeRoom.hostUrl}
-                    className="flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-violet-600 to-rose-500 text-white font-bold rounded-2xl text-sm shadow-lg hover:opacity-90 active:scale-[0.98] transition-all"
+                    className="flex items-center justify-center gap-2 py-3.5 bg-foreground text-background hover:bg-foreground/90 font-bold rounded-2xl text-sm shadow-lg active:scale-[0.98] transition-all"
                   >
                     <Sparkles className="w-4 h-4" /> Join as Host <ArrowRight className="w-4 h-4" />
                   </button>

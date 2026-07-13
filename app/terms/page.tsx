@@ -14,14 +14,14 @@ export default function TermsOfUse() {
 
       <section className="mb-8">
         <h2 className="text-2xl font-semibold text-white mb-4">2. Description of Service</h2>
-        <p>Supertime provides automation tools for Instagram, including automated comment replies and direct messaging flows ("Instabot"). Our services are designed to help you engage with your audience more effectively.</p>
+        <p>Supertime provides automation tools for Instagram, including automated comment replies and direct messaging flows (&quot;Instabot&quot;).</p>
       </section>
 
       <section className="mb-8">
         <h2 className="text-2xl font-semibold text-white mb-4">3. User Responsibilities</h2>
         <p className="mb-2">You are responsible for:</p>
         <ul className="list-disc pl-6 space-y-2">
-          <li>Compliance with Instagram/Meta's official Terms of Service.</li>
+          <li>Compliance with Instagram/Meta&apos;s official Terms of Service.</li>
           <li>Ensuring your automated content does not violate spam, harassment, or community guidelines.</li>
           <li>Maintaining the security of your account and connection tokens.</li>
         </ul>
@@ -29,7 +29,7 @@ export default function TermsOfUse() {
 
       <section className="mb-8">
         <h2 className="text-2xl font-semibold text-white mb-4">4. Limitations of Liability</h2>
-        <p>Supertime is provided "as is". In no event shall Supertime be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use our services, even if we have been notified of the possibility of such damage.</p>
+        <p>Supertime is provided &quot;as is&quot;. In no event shall Supertime be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use our services, even if we have been notified of the possibility of such damage.</p>
       </section>
 
       <section className="mb-8 border-t border-zinc-800 pt-8 text-center text-zinc-500 text-sm">

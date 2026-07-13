@@ -2,7 +2,7 @@ import { kv } from "@vercel/kv";
 
 export type AnalyticsEvent = "view" | "call_start" | "call_end" | "earning";
 
-export async function trackEvent(username: string, event: AnalyticsEvent, metadata: any = {}) {
+export async function trackEvent(username: string, event: AnalyticsEvent, metadata: Record<string, unknown> = {}) {
   const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
   const key = `stats:${username}:${date}`;
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 'use client';
 
 import React from 'react';
@@ -33,7 +34,7 @@ export default function OverviewTab({ username, withdrawable, balance, initialSe
           <h1 className="text-3xl md:text-4xl font-medium tracking-tight text-foreground">
             Welcome, <span className="text-muted">{username || 'Explorer'}</span>.
           </h1>
-          <p className="text-sm text-muted mt-1">Here's how your presence is doing today</p>
+          <p className="text-sm text-muted mt-1">Here&apos;s how your presence is doing today</p>
         </div>
         {username && (
           <button

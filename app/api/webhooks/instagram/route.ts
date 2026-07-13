@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
+import crypto from 'crypto';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -130,9 +131,39 @@ async function processAutoReply(pageId: string, senderId: string, text: string, 
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    console.log('\n--- INCOMING INSTAGRAM WEBHOOK PUSH ---');
-    console.log(JSON.stringify(body, null, 2));
+    // --- SIGNATURE VERIFICATION ---
+    // Instagram sends X-Hub-Signature-256: sha256=<hex> on every POST.
+    // Reject anything that doesn't match our INSTAGRAM_APP_SECRET.
+    const rawBody = await req.arrayBuffer();
+    const rawBodyBuffer = Buffer.from(rawBody);
+
+    const appSecret = process.env.INSTAGRAM_APP_SECRET;
+    if (!appSecret) {
+      console.error('[Instagram Webhook] INSTAGRAM_APP_SECRET not configured');
+      return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
+    }
+
+    const signature = req.headers.get('x-hub-signature-256');
+    if (!signature) {
+      console.error('[Instagram Webhook] Missing X-Hub-Signature-256 header');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const expectedSig = 'sha256=' + crypto
+      .createHmac('sha256', appSecret)
+      .update(rawBodyBuffer)
+      .digest('hex');
+
+    const sigBuffer = Buffer.from(signature);
+    const expectedBuffer = Buffer.from(expectedSig);
+
+    if (sigBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
+      console.error('[Instagram Webhook] Signature mismatch — rejecting request');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const body = JSON.parse(rawBodyBuffer.toString('utf8'));
+    console.log('\n--- INCOMING INSTAGRAM WEBHOOK PUSH (verified) ---');
 
     // The new 2024 Native API might send object: 'instagram' or something else entirely.
     if (body.object === 'instagram' || body.object === 'page' || body.entry) {

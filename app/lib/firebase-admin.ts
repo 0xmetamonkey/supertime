@@ -3,7 +3,12 @@ import * as admin from 'firebase-admin';
 if (!admin.apps.length) {
   try {
     const privateKey = process.env.FIREBASE_PRIVATE_KEY
-      ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n').replace(/^"|"$/g, '')
+      ? process.env.FIREBASE_PRIVATE_KEY
+          .replace(/\\n/g, '\n')
+          .replace(/^"|"$/g, '')
+          .trim()
+          .replace(/\\+$/, '')
+          .trim()
       : undefined;
 
     if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && privateKey) {
@@ -12,7 +17,7 @@ if (!admin.apps.length) {
           project_id: process.env.FIREBASE_PROJECT_ID,
           client_email: process.env.FIREBASE_CLIENT_EMAIL,
           private_key: privateKey,
-        } as any),
+        } as admin.ServiceAccount),
       });
     } else {
       console.warn('Firebase Admin credentials missing, skipping initialization');
@@ -22,4 +27,4 @@ if (!admin.apps.length) {
   }
 }
 
-export const messaging = admin.messaging();
+export const messaging = admin.apps.length ? admin.messaging() : null;

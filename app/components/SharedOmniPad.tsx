@@ -20,6 +20,7 @@ interface SharedOmniPadProps {
   // Ably publish/subscribe injected from parent
   publish: (channelName: string, eventName: string, data: any) => Promise<void>;
   subscribe: (channelName: string, callback: (msg: any) => void) => () => void;
+  initialText?: string;
 }
 
 const PAD_CHANNEL = (roomId: string) => `talktime-pad:${roomId}`;
@@ -30,9 +31,10 @@ export default function SharedOmniPad({
   isHost,
   publish,
   subscribe,
+  initialText,
 }: SharedOmniPadProps) {
-  const [text, setText] = useState('');
-  const [remoteText, setRemoteText] = useState('');
+  const [text, setText] = useState(isHost ? (initialText || '') : '');
+  const [remoteText, setRemoteText] = useState(!isHost ? (initialText || '') : '');
   const [mediaBlocks, setMediaBlocks] = useState<MediaBlock[]>([]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [peerTyping, setPeerTyping] = useState(false);

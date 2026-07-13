@@ -88,7 +88,10 @@ export default function OmniPad({
       const res = await fetch('/api/talktime/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: text.trim() || 'TalkTime' }),
+        body: JSON.stringify({ 
+          title: 'TalkTime Session',
+          text: text.trim() 
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -243,27 +246,21 @@ export default function OmniPad({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.96 }}
             transition={{ type: 'spring', damping: 22, stiffness: 220 }}
-            className="absolute inset-4 z-50 bg-background/95 backdrop-blur-3xl border border-violet-500/20 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+            className="absolute inset-4 z-50 bg-background/95 backdrop-blur-3xl border border-border rounded-3xl overflow-hidden shadow-2xl flex flex-col"
           >
-            {/* Ambient glow */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              <div className="absolute -top-1/3 -right-1/4 w-2/3 h-2/3 bg-violet-500/10 blur-[100px] rounded-full" />
-              <div className="absolute -bottom-1/3 -left-1/4 w-2/3 h-2/3 bg-rose-500/8 blur-[100px] rounded-full" />
-            </div>
-
             <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-8 text-center space-y-7">
               {/* Icon */}
               <div className="relative">
-                <div className="w-20 h-20 bg-gradient-to-br from-violet-500/20 to-rose-500/20 border border-violet-500/30 rounded-3xl flex items-center justify-center shadow-xl">
-                  <Radio className="w-10 h-10 text-violet-400" />
+                <div className="w-20 h-20 bg-surface border border-border rounded-3xl flex items-center justify-center shadow-xl">
+                  <Radio className="w-10 h-10 text-foreground" />
                 </div>
-                <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow-md">
-                  <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
+                <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-foreground border border-background rounded-full flex items-center justify-center shadow-md">
+                  <div className="w-2.5 h-2.5 bg-background rounded-full animate-pulse" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <span className="px-3 py-1 bg-violet-500/10 border border-violet-500/20 rounded-full text-xs font-bold uppercase tracking-widest text-violet-400">TalkTime is ready</span>
+                <span className="px-3 py-1 bg-surface border border-border rounded-full text-xs font-bold uppercase tracking-widest text-foreground">TalkTime is ready</span>
                 <h3 className="text-2xl font-bold tracking-tight">Your room is live.</h3>
                 <p className="text-sm text-muted max-w-xs">Share this link with anyone — no account needed. They&apos;ll join instantly.</p>
               </div>
@@ -283,7 +280,7 @@ export default function OmniPad({
               <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
                 <button
                   onClick={() => window.location.href = talkTimeRoom.hostUrl}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-violet-600 to-rose-500 text-white font-bold rounded-2xl text-sm shadow-lg hover:opacity-90 active:scale-[0.98] transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-foreground text-background hover:bg-foreground/90 font-bold rounded-2xl text-sm shadow-lg active:scale-[0.98] transition-all"
                 >
                   <Sparkles className="w-4 h-4" /> Join as Host <ArrowRight className="w-4 h-4" />
                 </button>

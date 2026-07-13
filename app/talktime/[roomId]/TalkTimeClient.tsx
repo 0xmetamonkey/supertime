@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import {
-  Zap, Users, Copy, Check, LogOut, Mic, Video, Radio, X,
-  Sparkles, Link2, ArrowRight
+  Zap, Check, LogOut, Radio, Sparkles, Link2, ArrowRight
 } from 'lucide-react';
 import { AblyProvider, useAbly } from '@/app/lib/ably';
 import SharedOmniPad from '@/app/components/SharedOmniPad';
@@ -18,18 +17,21 @@ interface TalkTimeClientProps {
   hostUsername: string;
   sessionTitle: string;
   creatorUsername: string;
+  initialText?: string;
 }
 
 // Inner component — needs Ably context
 function TalkTimeRoom({
-  roomId, isHost, sessionTitle, creatorUsername, participantName
+  roomId, isHost, sessionTitle, creatorUsername, participantName, initialText
 }: TalkTimeClientProps & { participantName: string }) {
   const { publish, subscribe } = useAbly();
-  const [peerCount, setPeerCount] = useState(isHost ? 1 : 1);
   const [elapsed, setElapsed] = useState(0);
   const [copied, setCopied] = useState(false);
   const [isEnded, setIsEnded] = useState(false);
   const [callType] = useState<'audio' | 'video'>('video');
+  const [uid] = useState(() =>
+    isHost ? `host-${creatorUsername}` : `guest-${participantName}-${Date.now()}`
+  );
 
   const inviteUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/talktime/${roomId}`
@@ -143,12 +145,10 @@ function TalkTimeRoom({
           </div>
           <CallStage
             channelName={roomId}
-            uid={isHost ? `host-${creatorUsername}` : `guest-${participantName}-${Date.now()}`}
+            uid={uid}
             type={callType}
             isCreator={isHost}
             onDisconnect={handleLeave}
-            onPeerJoined={() => setPeerCount(2)}
-            onPeerLeft={() => setPeerCount(1)}
           />
         </div>
 
@@ -164,6 +164,7 @@ function TalkTimeRoom({
               isHost={isHost}
               publish={publish}
               subscribe={subscribe}
+              initialText={initialText}
             />
           </div>
         </div>
@@ -266,6 +267,7 @@ export default function TalkTimeClient({
   hostUsername,
   sessionTitle,
   creatorUsername,
+  initialText,
 }: TalkTimeClientProps) {
   const [participantName, setParticipantName] = useState<string | null>(
     isHost ? hostUsername : null
@@ -292,6 +294,7 @@ export default function TalkTimeClient({
         sessionTitle={sessionTitle}
         creatorUsername={creatorUsername}
         participantName={participantName}
+        initialText={initialText}
       />
     </AblyProvider>
   );

@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import Link from 'next/link';
 import TalkTimeClient from './TalkTimeClient';
 
 interface Props {
@@ -7,18 +8,25 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { roomId } = await params;
+  await params;
   return {
     title: `TalkTime Session — Supertime`,
     description: `Join a live TalkTime session on Supertime — shared podcast with a real-time writing pad.`,
   };
 }
 
-async function getSession(roomId: string) {
+interface TalkTimeSession {
+  type: string;
+  creatorUsername: string;
+  title: string;
+  text?: string;
+}
+
+async function getSession(roomId: string): Promise<TalkTimeSession | null> {
   try {
     const { kv } = await import('@vercel/kv');
     const session = await kv.get(`meeting:${roomId}`);
-    return session as any;
+    return session as TalkTimeSession | null;
   } catch {
     // KV unavailable (local dev without env) — render client anyway
     return null;
@@ -40,9 +48,9 @@ export default async function TalkTimePage({ params, searchParams }: Props) {
           <p className="text-5xl">⏳</p>
           <h1 className="text-2xl font-bold tracking-tight">This TalkTime has ended</h1>
           <p className="text-muted text-sm">The session either expired or the link is invalid.</p>
-          <a href="/" className="inline-block mt-4 px-6 py-2.5 bg-foreground text-background rounded-xl text-sm font-medium hover:opacity-90 transition-opacity">
+          <Link href="/" className="inline-block mt-4 px-6 py-2.5 bg-foreground text-background rounded-xl text-sm font-medium hover:opacity-90 transition-opacity">
             Back to Supertime
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -50,6 +58,7 @@ export default async function TalkTimePage({ params, searchParams }: Props) {
 
   const creatorUsername = session?.creatorUsername || u || 'host';
   const sessionTitle = session?.title || 'TalkTime';
+  const initialText = session?.text || '';
 
   return (
     <TalkTimeClient
@@ -58,6 +67,7 @@ export default async function TalkTimePage({ params, searchParams }: Props) {
       hostUsername={u || creatorUsername}
       sessionTitle={sessionTitle}
       creatorUsername={creatorUsername}
+      initialText={initialText}
     />
   );
 }

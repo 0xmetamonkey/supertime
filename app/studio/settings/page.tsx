@@ -15,8 +15,22 @@ export default async function SettingsPage() {
   const username = email ? await resolveUsername(email) : null;
   if (!username) return redirect("/studio");
 
+  interface SettingsData {
+    videoRate: number;
+    audioRate: number;
+    socials: { instagram: string; x: string; youtube: string; website: string; twitter?: string };
+    profileImage: string;
+    templates: Array<Record<string, unknown>>;
+    faqs: Array<Record<string, unknown>>;
+    roomType: 'audio' | 'video';
+    isRoomFree: boolean;
+    videoProvider: string;
+    isGoogleConnected: boolean;
+    isZoomConnected: boolean;
+  }
+
   // Fetch all settings from KV
-  let settings: any = {
+  const settings: SettingsData = {
     videoRate: 100,
     audioRate: 50,
     socials: { instagram: '', x: '', youtube: '', website: '' },
@@ -33,13 +47,13 @@ export default async function SettingsPage() {
   if (process.env.KV_URL) {
     const vRate = await kv.get(`user:${email}:rate:video`);
     const aRate = await kv.get(`user:${email}:rate:audio`);
-    const socials = await kv.get(`user:${email}:socials`) as any;
+    const socials = await kv.get(`user:${email}:socials`) as Record<string, string> | null;
     const profileImage = await kv.get(`user:${email}:profileImage`);
     const roomType = await kv.get(`user:${email}:roomType`);
     const isRoomFree = await kv.get(`user:${email}:isRoomFree`);
-    const templates = await kv.get(`user:${email}:templates`) as any[];
-    const faqs = await kv.get(`user:${email}:faqs`) as any[];
-    const videoProvider = await kv.get(`user:${email}:videoProvider`) as string;
+    const templates = await kv.get(`user:${email}:templates`) as Array<Record<string, unknown>> | null;
+    const faqs = await kv.get(`user:${email}:faqs`) as Array<Record<string, unknown>> | null;
+    const videoProvider = await kv.get(`user:${email}:videoProvider`) as string | null;
     const googleTokens = await kv.get(`user:${email}:google_tokens`);
     const zoomTokens = await kv.get(`user:${email}:zoom_tokens`);
 
@@ -56,7 +70,7 @@ export default async function SettingsPage() {
       settings.socials = { ...settings.socials, ...socials };
     }
     if (profileImage) settings.profileImage = String(profileImage);
-    if (roomType) settings.roomType = roomType;
+    if (roomType === 'audio' || roomType === 'video') settings.roomType = roomType;
     if (isRoomFree !== null) settings.isRoomFree = !!isRoomFree;
     if (templates) settings.templates = templates;
     if (faqs) settings.faqs = faqs;

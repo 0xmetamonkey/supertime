@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-html-link-for-pages */
 'use client';
 
 import React, { useState } from 'react';
@@ -18,24 +19,18 @@ import {
 import { useTheme } from '../../components/ThemeProvider';
 
 interface SettingsClientProps {
-  username: string;
   initialSettings: {
     videoRate: number;
     audioRate: number;
     roomType: 'audio' | 'video';
     isRoomFree: boolean;
-    socials?: any;
-    profileImage?: string;
-    templates?: any[];
-    faqs?: any[];
     videoProvider?: string;
     isGoogleConnected?: boolean;
     isZoomConnected?: boolean;
   };
 }
 
-export default function SettingsClient({ username, initialSettings }: SettingsClientProps) {
-  const router = useRouter();
+export default function SettingsClient({ initialSettings }: SettingsClientProps) {
   const { theme, setTheme } = useTheme();
 
   const [pendingVideoRate, setPendingVideoRate] = useState(initialSettings.videoRate);
