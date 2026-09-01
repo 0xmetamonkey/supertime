@@ -1,0 +1,17 @@
+# robots.txt configuration for Supertime
+
+User-agent: *
+Disallow: /api/
+Disallow: /studio/
+Disallow: /dashboard/
+Disallow: /chat/
+Disallow: /live/
+Disallow: /talktime/
+Disallow: /setup/
+
+# Allow indexing of home, explore, about, and public creator profiles
+Allow: /
+Allow: /about
+Allow: /explore
+Allow: /terms
+Allow: /privacy

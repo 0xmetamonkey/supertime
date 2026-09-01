@@ -7,10 +7,14 @@ interface FundraiserData {
   story: string;
   videoUrl?: string;
   imageUrl?: string;
-  goal: number;
-  raised: number;
+  goalAmount: number;
+  raisedAmount: number;
+  donorCount: number;
+  createdAt: string;
   isActive: boolean;
 }
+
+type Supporter = { name: string; amount: number; date: string };
 
 type Props = {
   params: Promise<{ username: string }>;
@@ -38,12 +42,12 @@ export default async function FundraisePage({ params }: Props) {
   const lowerUsername = username.toLowerCase();
 
   let fundraiser: FundraiserData | null = null;
-  let supporters: Array<Record<string, unknown>> = [];
+  let supporters: Supporter[] = [];
   let profileImage = '';
 
   if (process.env.KV_URL) {
     fundraiser = await kv.get(`fundraise:${lowerUsername}`) as FundraiserData | null;
-    supporters = (await kv.get(`fundraise:${lowerUsername}:supporters`)) as Array<Record<string, unknown>> || [];
+    supporters = (await kv.get(`fundraise:${lowerUsername}:supporters`)) as Supporter[] || [];
     const ownerEmail: string | null = await kv.get(`owner:${lowerUsername}`);
     if (ownerEmail) {
       profileImage = (await kv.get(`user:${ownerEmail}:profileImage`)) as string || '';

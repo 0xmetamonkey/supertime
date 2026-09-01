@@ -20,6 +20,7 @@ import { useTheme } from '../../components/ThemeProvider';
 import { useAlertDialog } from '../../components/AlertDialog';
 
 interface SettingsClientProps {
+  username?: string;
   initialSettings: {
     videoRate: number;
     audioRate: number;

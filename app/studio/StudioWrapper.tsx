@@ -12,10 +12,18 @@ interface StudioWrapperProps {
   initialSettings: Record<string, unknown>;
 }
 
+interface TalkTimeInvite {
+  from: string;
+  fromEmail: string;
+  roomId: string;
+  roomTitle: string;
+  joinUrl: string;
+}
+
 function StudioWithSignaling({ username, session, initialSettings }: StudioWrapperProps) {
   const signaling = useCallSignaling(username || 'anonymous');
   const { subscribe, isConnected } = useAbly();
-  const [talkTimeInvite, setTalkTimeInvite] = useState<Record<string, unknown> | null>(null);
+  const [talkTimeInvite, setTalkTimeInvite] = useState<TalkTimeInvite | null>(null);
 
   // Listen for incoming TalkTime invites on user's Ably channel
   useEffect(() => {
@@ -23,9 +31,9 @@ function StudioWithSignaling({ username, session, initialSettings }: StudioWrapp
     const email = session?.user?.email?.toLowerCase();
     if (!email) return;
 
-    const unsubscribe = subscribe(`user:${email}`, (message: { name: string; data: Record<string, unknown> }) => {
-      if (message.name === 'talktime:invite') {
-        setTalkTimeInvite(message.data);
+    const unsubscribe = subscribe(`user:${email}`, (message: any) => {
+      if (message?.name === 'talktime:invite') {
+        setTalkTimeInvite(message.data as TalkTimeInvite);
       }
     });
     return unsubscribe;

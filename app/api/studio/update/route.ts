@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { currentUser } from "@clerk/nextjs/server";
+import { revalidateTag } from 'next/cache';
 
 export async function POST(req: NextRequest) {
   const user = await currentUser();
@@ -46,6 +47,11 @@ export async function POST(req: NextRequest) {
         };
         await kv.set(`user:${email}:artifacts`, [newArtifact, ...existingArtifacts]);
       }
+
+      // Revalidate cache to reflect fresh settings instantly on profile/landing/explore pages
+      revalidateTag(`creator-profile-${email}`, "max");
+      revalidateTag('featured-creators', "max");
+      revalidateTag('all-creators', "max");
     }
 
     return NextResponse.json({ success: true });

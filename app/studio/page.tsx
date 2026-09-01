@@ -31,6 +31,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   // if (!username) return redirect("/"); // Allow callers to enter Studio
 
   interface StudioSettings {
+    [key: string]: unknown;
     videoRate: number;
     audioRate: number;
     socials: { instagram: string; x: string; youtube: string; website: string; twitter?: string };
@@ -105,7 +106,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   return (
     <StudioWrapper
       username={username || null}
-      session={userId ? { user: { id: userId, email: email } } : null}
+      session={userId && email ? { user: { id: userId, email } } : null}
       initialSettings={settings}
     />
   );

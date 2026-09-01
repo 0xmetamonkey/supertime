@@ -88,7 +88,7 @@ export default async function DashboardPage() {
     const socials = await kv.get(`user:${email}:socials`) as Record<string, string> | null;
     const profileImage = await kv.get(`user:${email}:profileImage`);
     const coverImage = await kv.get(`user:${email}:coverImage`);
-    const roomType = await kv.get(`user:${email}:roomType`);
+    const roomType = await kv.get(`user:${email}:roomType`) as 'audio' | 'video' | null;
     const isRoomFree = await kv.get(`user:${email}:isRoomFree`);
     const templates = await kv.get(`user:${email}:templates`) as Array<Record<string, unknown>> | null;
     const faqs = await kv.get(`user:${email}:faqs`) as Array<Record<string, unknown>> | null;
@@ -115,7 +115,7 @@ export default async function DashboardPage() {
     }
     if (profileImage) initialSettings.profileImage = String(profileImage);
     if (coverImage) initialSettings.coverImage = String(coverImage);
-    if (roomType) initialSettings.roomType = roomType;
+    if (roomType === 'audio' || roomType === 'video') initialSettings.roomType = roomType;
     if (isRoomFree !== null) initialSettings.isRoomFree = !!isRoomFree;
     if (templates) initialSettings.templates = templates;
     if (faqs) initialSettings.faqs = faqs;

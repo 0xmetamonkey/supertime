@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useAlertDialog } from './AlertDialog';
 
 type WalletProps = {
-  onBalanceChange: (balance: number) => void;
+  onBalanceChange?: (balance: number) => void;
+  onWalletUpdate?: (data: { balance: number; withdrawable: number; isCreator: boolean }) => void;
 };
 
-export default function WalletManager({ onBalanceChange }: WalletProps) {
+export default function WalletManager({ onBalanceChange, onWalletUpdate }: WalletProps) {
   const router = useRouter();
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,11 +30,13 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
   });
 
   const fetchBalance = async () => {
+    if (typeof document !== 'undefined' && document.hidden) return;
     try {
       const res = await fetch(`/api/wallet`);
       const data = await res.json();
       setBalance(data.balance);
-      onBalanceChange(data.balance);
+      if (onBalanceChange) onBalanceChange(data.balance);
+      if (onWalletUpdate) onWalletUpdate(data);
     } catch (e) {
       console.error('Failed to fetch balance', e);
     }
@@ -142,7 +145,22 @@ export default function WalletManager({ onBalanceChange }: WalletProps) {
   useEffect(() => {
     fetchBalance();
     const interval = setInterval(fetchBalance, 10000);
-    return () => clearInterval(interval);
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        fetchBalance();
+      }
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
   }, []);
 
   return (

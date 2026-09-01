@@ -371,6 +371,7 @@ export default function CallStage({
   useEffect(() => {
     if (!isConnected) return;
     const fetchMsgs = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const res = await fetch(`/api/broadcast/chat?channelName=${channelName}`);
         const data = await res.json();
@@ -379,7 +380,22 @@ export default function CallStage({
     };
     fetchMsgs();
     const interval = setInterval(fetchMsgs, 2000);
-    return () => clearInterval(interval);
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        fetchMsgs();
+      }
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
   }, [isConnected, channelName]);
 
   // Fetch Wallet Balance
