@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   try {
     const booking = await createBooking({
       creatorUsername, date, time, templateId, type, duration, price, visitorEmail: email.toLowerCase(),
-      host: req.headers.get('host') || 'supertime.wtf'
+      host: req.headers.get('x-forwarded-host') || req.headers.get('host') || 'supertime.wtf'
     });
     return NextResponse.json({ success: true, booking });
   } catch (error: any) {

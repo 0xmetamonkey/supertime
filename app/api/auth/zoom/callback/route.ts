@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get('code');
   const error = searchParams.get('error');
 
-  const host = req.headers.get('host') || 'localhost:3000';
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'localhost:3000';
   const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
   const dashboardUrl = `${protocol}://${host}/dashboard?tab=settings`;
 

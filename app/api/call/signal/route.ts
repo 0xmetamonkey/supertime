@@ -59,6 +59,9 @@ export async function POST(req: NextRequest) {
               }
             };
 
+            if (!messaging) {
+              throw new Error('Firebase Admin SDK Messaging is not initialized');
+            }
             const response = await messaging.send(message);
             console.log(`[Signal API] ✅ FCM push sent successfully to ${to}. ID:`, response);
           } else {
@@ -103,6 +106,9 @@ export async function POST(req: NextRequest) {
           const fcmToken = await kv.get(`user:${target.toLowerCase()}:fcm_token`);
           if (fcmToken && typeof fcmToken === 'string') {
             const { messaging } = await import('@/app/lib/firebase-admin');
+            if (!messaging) {
+              throw new Error('Firebase Admin SDK Messaging is not initialized');
+            }
             await messaging.send({
               token: fcmToken,
               data: {

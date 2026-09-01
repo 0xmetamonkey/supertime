@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
 
       if (process.env.RESEND_API_KEY && productType !== 'booking') {
         try {
-          const host = req.headers.get('host') || 'supertime.wtf';
+          const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'supertime.wtf';
           const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
           const baseUrl = `${protocol}://${host}`;
           const isBooking = productType === 'booking';

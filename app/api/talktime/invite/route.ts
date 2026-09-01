@@ -74,9 +74,9 @@ export async function POST(req: NextRequest) {
     // Get sender's username for display
     const senderUsername = await kv.get(`user:${senderEmail}:username`) as string || senderEmail.split('@')[0];
 
-    const hostHeader = req.headers.get('host') || 'supertime.wtf';
+    const hostHeader = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'supertime.wtf';
     const protocol = req.headers.get('x-forwarded-proto') || 'https';
-    const appUrl = hostHeader.includes('localhost')
+    const appUrl = (hostHeader.includes('localhost') || hostHeader.includes('127.0.0.1'))
       ? `http://${hostHeader}`
       : `${protocol}://${hostHeader}`;
     const joinUrl = `${appUrl}/talktime/${roomId}?invited=true&u=${encodeURIComponent(cleanUsername)}`;

@@ -34,9 +34,9 @@ export async function POST(req: NextRequest) {
     // Persist with 24h TTL
     await kv.set(`meeting:${roomId}`, sessionData, { ex: 86400 });
 
-    const hostHeader = req.headers.get('host') || 'supertime.wtf';
+    const hostHeader = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'supertime.wtf';
     const protocol = req.headers.get('x-forwarded-proto') || 'https';
-    const appUrl = hostHeader.includes('localhost')
+    const appUrl = (hostHeader.includes('localhost') || hostHeader.includes('127.0.0.1'))
       ? `http://${hostHeader}`
       : `${protocol}://${hostHeader}`;
     const inviteUrl = `${appUrl}/talktime/${roomId}`;

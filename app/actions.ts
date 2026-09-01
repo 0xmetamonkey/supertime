@@ -1,8 +1,8 @@
 'use server';
-
 import { kv } from "@vercel/kv";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { unstable_cache, revalidateTag } from "next/cache";
 
 // Helper to handle key migration (New vs Old)
 export async function resolveUsername(emailRaw: string): Promise<string | null> {
@@ -94,10 +94,15 @@ export async function completeOnboarding(usernameRaw: string, role: 'creator' | 
     }
   }
 
+  // Purge cache to reflect new registration/claim
+  revalidateTag(`creator-profile-${email}`, "max");
+  revalidateTag('featured-creators', "max");
+  revalidateTag('all-creators', "max");
+
   return { success: true, username, role };
 }
 
-export async function getFeaturedCreators() {
+async function fetchFeaturedCreators() {
   if (!process.env.KV_URL) return [];
   try {
     const keys = await kv.keys("owner:*");
@@ -140,7 +145,15 @@ export async function getFeaturedCreators() {
   }
 }
 
-export async function getAllCreators() {
+export async function getFeaturedCreators() {
+  return unstable_cache(
+    async () => fetchFeaturedCreators(),
+    ['featured-creators'],
+    { revalidate: 300, tags: ['featured-creators'] }
+  )();
+}
+
+async function fetchAllCreators() {
   if (!process.env.KV_URL) return [];
   try {
     const keys = await kv.keys("owner:*");
@@ -180,5 +193,78 @@ export async function getAllCreators() {
     console.error("Failed to fetch all creators:", err);
     return [];
   }
+}
+
+export async function getAllCreators() {
+  return unstable_cache(
+    async () => fetchAllCreators(),
+    ['all-creators'],
+    { revalidate: 300, tags: ['all-creators'] }
+  )();
+}
+
+export async function getCreatorProfileData(ownerEmail: string) {
+  const [
+    isVerified,
+    socials,
+    vRate,
+    aRate,
+    pImage,
+    cImage,
+    roomType,
+    isRoomFree,
+    studioMode,
+    tpls,
+    arts,
+    fqs,
+    fetchedBio,
+    fetchedSubPrice,
+    fetchedSubBenefits,
+    displayName
+  ] = await Promise.all([
+    kv.get<boolean>(`user:${ownerEmail}:verified`),
+    kv.get<Record<string, string>>(`user:${ownerEmail}:socials`),
+    kv.get<number>(`user:${ownerEmail}:rate:video`),
+    kv.get<number>(`user:${ownerEmail}:rate:audio`),
+    kv.get<string>(`user:${ownerEmail}:profileImage`),
+    kv.get<string>(`user:${ownerEmail}:coverImage`),
+    kv.get<string>(`user:${ownerEmail}:roomType`),
+    kv.get<boolean>(`user:${ownerEmail}:isRoomFree`),
+    kv.get<string>(`user:${ownerEmail}:mode`),
+    kv.get<any[]>(`user:${ownerEmail}:templates`),
+    kv.get<any[]>(`user:${ownerEmail}:artifacts`),
+    kv.get<any[]>(`user:${ownerEmail}:faqs`),
+    kv.get<string>(`user:${ownerEmail}:bio`),
+    kv.get<number>(`user:${ownerEmail}:subscriptionPrice`),
+    kv.get<string[]>(`user:${ownerEmail}:subscriptionBenefits`),
+    kv.get<string>(`user:${ownerEmail}:displayName`)
+  ]);
+
+  return {
+    isVerified: !!isVerified,
+    socials: socials || {},
+    videoRate: vRate !== null ? Number(vRate) : 100,
+    audioRate: aRate !== null ? Number(aRate) : 50,
+    profileImage: pImage ? String(pImage) : "",
+    coverImage: cImage ? String(cImage) : "",
+    roomType: roomType || 'audio',
+    isRoomFree: isRoomFree === null ? true : !!isRoomFree,
+    studioMode: studioMode || 'solitude',
+    templates: tpls || [],
+    artifacts: arts || [],
+    faqs: fqs || [],
+    bio: fetchedBio || "",
+    subscriptionPrice: fetchedSubPrice !== null ? Number(fetchedSubPrice) : 199,
+    subscriptionBenefits: fetchedSubBenefits || [],
+    displayName: displayName || ""
+  };
+}
+
+export async function getCachedCreatorProfileData(ownerEmail: string) {
+  return unstable_cache(
+    async () => getCreatorProfileData(ownerEmail),
+    [`creator-profile-${ownerEmail}`],
+    { revalidate: 300, tags: [`creator-profile-${ownerEmail}`] }
+  )();
 }
 

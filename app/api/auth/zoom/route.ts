@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     }, { status: 501 });
   }
 
-  const host = req.headers.get('host') || 'localhost:3000';
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'localhost:3000';
   const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
   const redirectUri = `${protocol}://${host}/api/auth/zoom/callback`;
 

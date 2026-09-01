@@ -3,7 +3,8 @@ import CreatorWrapper from "./CreatorWrapper";
 import { kv } from "@vercel/kv";
 import { Metadata } from 'next';
 import { trackEvent } from "../lib/analytics";
-import { resolveUsername } from "../actions";
+import { resolveUsername, getCachedCreatorProfileData } from "../actions";
+import { revalidateTag } from "next/cache";
 
 type Props = {
   params: Promise<{ username: string }>
@@ -66,6 +67,9 @@ export default async function CreatorPage({ params }: Props) {
         await kv.set(`user:${email}:username`, username);
         ownerEmail = email;
         isOwner = true;
+        revalidateTag(`creator-profile-${email}`, "max");
+        revalidateTag('featured-creators', "max");
+        revalidateTag('all-creators', "max");
       }
     }
   }
@@ -73,14 +77,6 @@ export default async function CreatorPage({ params }: Props) {
   if (email && ownerEmail && ownerEmail.toLowerCase() === email) {
     // This user owns this username
     isOwner = true;
-  }
-
-  let fundraiser: any = null;
-  if (ownerEmail && process.env.KV_URL) {
-    const f: any = await kv.get(`fundraise:${username}`);
-    if (f && f.isActive) {
-      fundraiser = f;
-    }
   }
 
   if (!ownerEmail) {
@@ -106,67 +102,52 @@ export default async function CreatorPage({ params }: Props) {
     );
   }
 
-  let isVerified = false;
-  let socials = {};
-  let videoRate = 100;
-  let audioRate = 50;
-  let profileImage = "";
-  let coverImage = "";
+  // Fetch static settings and dynamic state in parallel
+  let fundraiser: any = null;
   let isLive = false;
   let isAcceptingCalls = true;
-  let templates: any[] = [];
-  let artifacts: any[] = [];
-  let faqs: any[] = [];
-  let bio = "";
-  let subscriptionPrice = 199;
-  let subscriptionBenefits: string[] = [];
+  let staticProfile: any = {};
 
   if (ownerEmail && process.env.KV_URL) {
-    isVerified = !!(await kv.get(`user:${ownerEmail}:verified`));
-    socials = (await kv.get(`user:${ownerEmail}:socials`)) || {};
+    const [liveStatus, acceptingCalls, f, profileData] = await Promise.all([
+      kv.get(`user:${ownerEmail}:isLive`),
+      kv.get(`user:${ownerEmail}:isAcceptingCalls`),
+      kv.get(`fundraise:${username}`),
+      getCachedCreatorProfileData(ownerEmail)
+    ]);
 
-    // Fetch Rates
-    const vRate = await kv.get(`user:${ownerEmail}:rate:video`);
-    const aRate = await kv.get(`user:${ownerEmail}:rate:audio`);
-    const pImage = await kv.get(`user:${ownerEmail}:profileImage`);
-    const cImage = await kv.get(`user:${ownerEmail}:coverImage`);
-    const liveStatus = await kv.get(`user:${ownerEmail}:isLive`);
-    const acceptingCalls = await kv.get(`user:${ownerEmail}:isAcceptingCalls`);
-    console.log('[CreatorPage] Debug:', { username, ownerEmail, acceptingCalls });
-    const roomType = await kv.get(`user:${ownerEmail}:roomType`);
-    const isRoomFree = await kv.get(`user:${ownerEmail}:isRoomFree`);
-    const studioMode = await kv.get(`user:${ownerEmail}:mode`) || 'solitude';
-    const tpls = await kv.get(`user:${ownerEmail}:templates`) as any[];
-    const arts = await kv.get(`user:${ownerEmail}:artifacts`) as any[];
-    const fqs = await kv.get(`user:${ownerEmail}:faqs`) as any[];
-    const fetchedBio = await kv.get(`user:${ownerEmail}:bio`) as string;
-    const fetchedSubPrice = await kv.get(`user:${ownerEmail}:subscriptionPrice`);
-    const fetchedSubBenefits = await kv.get(`user:${ownerEmail}:subscriptionBenefits`) as string[];
-
-    if (vRate !== null) videoRate = Number(vRate);
-    if (aRate !== null) audioRate = Number(aRate);
-    if (pImage) profileImage = String(pImage);
-    if (cImage) coverImage = String(cImage);
-    if (liveStatus === null) isLive = true; // Default to LIVE
-    else isLive = !!liveStatus;
-    if (acceptingCalls === null) isAcceptingCalls = true; // Default to true
-    else isAcceptingCalls = !!acceptingCalls;
-    if (tpls) templates = tpls;
-    if (arts) artifacts = arts;
-    if (fqs) faqs = fqs;
-    if (fetchedBio) bio = fetchedBio;
-    if (fetchedSubPrice !== null) subscriptionPrice = Number(fetchedSubPrice);
-    if (fetchedSubBenefits) subscriptionBenefits = fetchedSubBenefits;
-
-    (socials as any).roomType = roomType || 'audio';
-    (socials as any).isRoomFree = isRoomFree === null ? true : !!isRoomFree;
-    (socials as any).studioMode = studioMode;
+    isLive = liveStatus === null ? true : !!liveStatus;
+    isAcceptingCalls = acceptingCalls === null ? true : !!acceptingCalls;
+    if (f && (f as any).isActive) {
+      fundraiser = f;
+    }
+    staticProfile = profileData;
 
     // Track Profile View (Server-side)
     if (!isOwner) {
       await trackEvent(username, "view");
     }
   }
+
+  const isVerified = staticProfile.isVerified ?? false;
+  const socials = { ...(staticProfile.socials || {}) };
+  const videoRate = staticProfile.videoRate ?? 100;
+  const audioRate = staticProfile.audioRate ?? 50;
+  const profileImage = staticProfile.profileImage ?? "";
+  const coverImage = staticProfile.coverImage ?? "";
+  const templates = staticProfile.templates ?? [];
+  const artifacts = staticProfile.artifacts ?? [];
+  const faqs = staticProfile.faqs ?? [];
+  const bio = staticProfile.bio ?? "";
+  const subscriptionPrice = staticProfile.subscriptionPrice ?? 199;
+  const subscriptionBenefits = staticProfile.subscriptionBenefits ?? [];
+  const roomType = staticProfile.roomType ?? 'audio';
+  const isRoomFree = staticProfile.isRoomFree ?? true;
+  const studioMode = staticProfile.studioMode ?? 'solitude';
+
+  (socials as any).roomType = roomType;
+  (socials as any).isRoomFree = isRoomFree;
+  (socials as any).studioMode = studioMode;
 
   return (
     <CreatorWrapper

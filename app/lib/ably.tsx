@@ -379,6 +379,7 @@ export function useBroadcastChat(channelName: string, username: string) {
 
     console.log('[Chat] ⚠️ Using Polling Fallback');
     const poll = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const res = await fetch(`/api/broadcast/chat?channelName=${encodeURIComponent(channelName)}&since=${Date.now() - 10000}`);
         const data = await res.json();
@@ -392,7 +393,22 @@ export function useBroadcastChat(channelName: string, username: string) {
 
     // Poll every 3 seconds
     const interval = setInterval(poll, 3000);
-    return () => clearInterval(interval);
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        poll();
+      }
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
   }, [useFallback, channelName, addMessage]);
 
   const sendMessage = useCallback(async (text: string, isTip?: boolean, tipAmount?: number) => {

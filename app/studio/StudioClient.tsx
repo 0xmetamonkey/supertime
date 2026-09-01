@@ -152,8 +152,6 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
   useEffect(() => {
     fetchDetailedWallet();
-    const interval = setInterval(fetchDetailedWallet, 10000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleWithdraw = async () => {
@@ -902,7 +900,13 @@ export default function StudioClient({ username, session, initialSettings }: { u
                   <h3 className="text-sm font-medium text-muted mb-1 relative z-10">Energy Wallet</h3>
                   <p className="font-bold text-4xl mb-4 tracking-tight tabular-nums relative z-10">{balance ?? '0'} <span className="text-lg font-medium text-muted">Credits</span></p>
                   <div className="relative z-10">
-                    <WalletManager onBalanceChange={setBalance} />
+                    <WalletManager 
+                      onBalanceChange={setBalance} 
+                      onWalletUpdate={(data) => {
+                        setBalance(data.balance);
+                        setWithdrawable(data.withdrawable || 0);
+                      }}
+                    />
                   </div>
                 </div>
 
