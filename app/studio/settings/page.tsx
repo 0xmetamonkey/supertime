@@ -45,20 +45,46 @@ export default async function SettingsPage() {
   };
 
   if (process.env.KV_URL) {
-    const vRate = await kv.get(`user:${email}:rate:video`);
-    const aRate = await kv.get(`user:${email}:rate:audio`);
-    const socials = await kv.get(`user:${email}:socials`) as Record<string, string> | null;
-    const profileImage = await kv.get(`user:${email}:profileImage`);
-    const roomType = await kv.get(`user:${email}:roomType`);
-    const isRoomFree = await kv.get(`user:${email}:isRoomFree`);
-    const templates = await kv.get(`user:${email}:templates`) as Array<Record<string, unknown>> | null;
-    const faqs = await kv.get(`user:${email}:faqs`) as Array<Record<string, unknown>> | null;
-    const videoProvider = await kv.get(`user:${email}:videoProvider`) as string | null;
-    const googleTokens = await kv.get(`user:${email}:google_tokens`);
-    const zoomTokens = await kv.get(`user:${email}:zoom_tokens`);
+    const [
+      vRate,
+      aRate,
+      socials,
+      profileImage,
+      roomType,
+      isRoomFree,
+      templates,
+      faqs,
+      videoProvider,
+      googleTokens,
+      zoomTokens
+    ] = await kv.mget<[
+      number | null,
+      number | null,
+      Record<string, string> | null,
+      string | null,
+      string | null,
+      boolean | null,
+      Array<Record<string, unknown>> | null,
+      Array<Record<string, unknown>> | null,
+      string | null,
+      any,
+      any
+    ]>(
+      `user:${email}:rate:video`,
+      `user:${email}:rate:audio`,
+      `user:${email}:socials`,
+      `user:${email}:profileImage`,
+      `user:${email}:roomType`,
+      `user:${email}:isRoomFree`,
+      `user:${email}:templates`,
+      `user:${email}:faqs`,
+      `user:${email}:videoProvider`,
+      `user:${email}:google_tokens`,
+      `user:${email}:zoom_tokens`
+    );
 
-    if (vRate !== null) settings.videoRate = Number(vRate);
-    if (aRate !== null) settings.audioRate = Number(aRate);
+    if (vRate !== null && vRate !== undefined) settings.videoRate = Number(vRate);
+    if (aRate !== null && aRate !== undefined) settings.audioRate = Number(aRate);
     if (videoProvider) settings.videoProvider = videoProvider;
     settings.isGoogleConnected = !!googleTokens;
     settings.isZoomConnected = !!zoomTokens;
@@ -71,7 +97,7 @@ export default async function SettingsPage() {
     }
     if (profileImage) settings.profileImage = String(profileImage);
     if (roomType === 'audio' || roomType === 'video') settings.roomType = roomType;
-    if (isRoomFree !== null) settings.isRoomFree = !!isRoomFree;
+    if (isRoomFree !== null && isRoomFree !== undefined) settings.isRoomFree = !!isRoomFree;
     if (templates) settings.templates = templates;
     if (faqs) settings.faqs = faqs;
   }

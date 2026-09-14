@@ -60,12 +60,16 @@ export default async function DashboardPage() {
     subscriptionPrice: number;
     subscriptionBenefits: string[];
     displayName?: string;
+    isAcceptingCalls?: boolean;
+    upiId?: string;
   }
 
   // 3. Fetch Settings for embedded Settings tab
   const initialSettings: DashboardSettings = {
     videoRate: 100,
     audioRate: 50,
+    isAcceptingCalls: true,
+    upiId: '',
     socials: { instagram: '', x: '', youtube: '', website: '' },
     profileImage: '',
     coverImage: '',
@@ -83,29 +87,75 @@ export default async function DashboardPage() {
   };
 
   if (process.env.KV_URL) {
-    const vRate = await kv.get(`user:${email}:rate:video`);
-    const aRate = await kv.get(`user:${email}:rate:audio`);
-    const socials = await kv.get(`user:${email}:socials`) as Record<string, string> | null;
-    const profileImage = await kv.get(`user:${email}:profileImage`);
-    const coverImage = await kv.get(`user:${email}:coverImage`);
-    const roomType = await kv.get(`user:${email}:roomType`) as 'audio' | 'video' | null;
-    const isRoomFree = await kv.get(`user:${email}:isRoomFree`);
-    const templates = await kv.get(`user:${email}:templates`) as Array<Record<string, unknown>> | null;
-    const faqs = await kv.get(`user:${email}:faqs`) as Array<Record<string, unknown>> | null;
-    const displayName = await kv.get(`user:${email}:displayName`) as string | null;
-    const videoProvider = await kv.get(`user:${email}:videoProvider`) as string | null;
-    const googleTokens = await kv.get(`user:${email}:google_tokens`);
-    const zoomTokens = await kv.get(`user:${email}:zoom_tokens`);
-    const bio = await kv.get(`user:${email}:bio`) as string | null;
-    const subscriptionPrice = await kv.get(`user:${email}:subscriptionPrice`);
-    const subscriptionBenefits = await kv.get(`user:${email}:subscriptionBenefits`) as string[] | null;
-    const products = username ? await kv.get(`user_products:${username}`) as Array<Record<string, unknown>> | null : null;
+    const [
+      vRate,
+      aRate,
+      socials,
+      profileImage,
+      coverImage,
+      roomType,
+      isRoomFree,
+      templates,
+      faqs,
+      displayName,
+      videoProvider,
+      googleTokens,
+      zoomTokens,
+      bio,
+      subscriptionPrice,
+      subscriptionBenefits,
+      products,
+      isAcceptingCalls,
+      upiId
+    ] = await kv.mget<[
+      number | null,
+      number | null,
+      Record<string, string> | null,
+      string | null,
+      string | null,
+      'audio' | 'video' | null,
+      boolean | null,
+      Array<Record<string, unknown>> | null,
+      Array<Record<string, unknown>> | null,
+      string | null,
+      string | null,
+      any,
+      any,
+      string | null,
+      number | null,
+      string[] | null,
+      Array<Record<string, unknown>> | null,
+      boolean | null,
+      string | null
+    ]>(
+      `user:${email}:rate:video`,
+      `user:${email}:rate:audio`,
+      `user:${email}:socials`,
+      `user:${email}:profileImage`,
+      `user:${email}:coverImage`,
+      `user:${email}:roomType`,
+      `user:${email}:isRoomFree`,
+      `user:${email}:templates`,
+      `user:${email}:faqs`,
+      `user:${email}:displayName`,
+      `user:${email}:videoProvider`,
+      `user:${email}:google_tokens`,
+      `user:${email}:zoom_tokens`,
+      `user:${email}:bio`,
+      `user:${email}:subscriptionPrice`,
+      `user:${email}:subscriptionBenefits`,
+      username ? `user_products:${username}` : `noop`,
+      `user:${email}:isAcceptingCalls`,
+      `user:${email}:upiId`
+    );
 
-    if (vRate !== null) initialSettings.videoRate = Number(vRate);
-    if (aRate !== null) initialSettings.audioRate = Number(aRate);
+    if (vRate !== null && vRate !== undefined) initialSettings.videoRate = Number(vRate);
+    if (aRate !== null && aRate !== undefined) initialSettings.audioRate = Number(aRate);
     if (videoProvider) initialSettings.videoProvider = videoProvider;
     initialSettings.isGoogleConnected = !!googleTokens;
     initialSettings.isZoomConnected = !!zoomTokens;
+    if (isAcceptingCalls !== null && isAcceptingCalls !== undefined) initialSettings.isAcceptingCalls = !!isAcceptingCalls;
+    if (upiId) initialSettings.upiId = String(upiId);
     if (socials) {
       if (socials.twitter && !socials.x) {
         socials.x = socials.twitter;
@@ -116,13 +166,13 @@ export default async function DashboardPage() {
     if (profileImage) initialSettings.profileImage = String(profileImage);
     if (coverImage) initialSettings.coverImage = String(coverImage);
     if (roomType === 'audio' || roomType === 'video') initialSettings.roomType = roomType;
-    if (isRoomFree !== null) initialSettings.isRoomFree = !!isRoomFree;
+    if (isRoomFree !== null && isRoomFree !== undefined) initialSettings.isRoomFree = !!isRoomFree;
     if (templates) initialSettings.templates = templates;
     if (faqs) initialSettings.faqs = faqs;
     if (products) initialSettings.products = products;
     if (displayName) initialSettings.displayName = displayName;
     if (bio) initialSettings.bio = bio;
-    if (subscriptionPrice !== null) initialSettings.subscriptionPrice = Number(subscriptionPrice);
+    if (subscriptionPrice !== null && subscriptionPrice !== undefined) initialSettings.subscriptionPrice = Number(subscriptionPrice);
     if (subscriptionBenefits) initialSettings.subscriptionBenefits = subscriptionBenefits;
   }
 

@@ -17,11 +17,13 @@ export interface WithdrawalRequest {
  * Audit Tool: Get detailed state of a user's economics
  */
 export async function getDetailedWallet(email: string) {
-  const balance = (await kv.get<number>(`balance:${email.toLowerCase()}`)) ?? 0;
-  const withdrawable = (await kv.get<number>(`withdrawable:${email.toLowerCase()}`)) ?? 0;
+  const [balance, withdrawable] = await kv.mget<[number | null, number | null]>(
+    `balance:${email.toLowerCase()}`,
+    `withdrawable:${email.toLowerCase()}`
+  );
   return {
-    balance,       // Spending credits
-    withdrawable,  // Earned INR (Credits equivalent)
+    balance: balance ?? 0,       // Spending credits
+    withdrawable: withdrawable ?? 0,  // Earned INR (Credits equivalent)
   };
 }
 

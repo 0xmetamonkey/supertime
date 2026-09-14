@@ -80,11 +80,16 @@ export function OnboardingFlow({ initialEmail }: OnboardingFlowProps) {
     setIsUploading(true);
     const file = event.target.files[0];
     try {
-      const response = await fetch(`/api/upload?filename=${file.name}`, { method: 'POST', body: file });
+      const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Upload failed");
+      }
       const newBlob = await response.json();
+      if (!newBlob.url) throw new Error("Upload response missing url");
       setProfileImage(newBlob.url);
-    } catch (e) {
-      setError("Upload failed");
+    } catch (e: any) {
+      setError(e.message || "Upload failed");
     } finally {
       setIsUploading(false);
     }

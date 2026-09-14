@@ -84,8 +84,17 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
 
   const handleCoverUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) return;
-    setIsUploadingCover(true);
     const file = event.target.files[0];
+    if (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif')) {
+      customAlert({
+        title: 'GIF Not Allowed',
+        message: 'GIFs are not allowed for cover photo. Please upload a JPG, PNG, or WebP image.',
+        variant: 'error',
+      });
+      event.target.value = '';
+      return;
+    }
+    setIsUploadingCover(true);
     try {
       const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
       if (!response.ok) throw new Error("Upload failed");
@@ -94,7 +103,11 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
       setCoverImage(newBlob.url);
     } catch (e) {
       console.error("Cover photo upload failed:", e);
-      alert("Upload failed. Please try again.");
+      customAlert({
+        title: 'Upload Failed',
+        message: 'Upload failed. Please try again.',
+        variant: 'error',
+      });
     } finally {
       setIsUploadingCover(false);
     }
@@ -161,12 +174,12 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
                 ) : (
                   <label className="bg-white/90 dark:bg-black/80 backdrop-blur-md text-gray-900 dark:text-white text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer shadow-sm hover:opacity-90 transition-opacity">
                     Change Cover
-                    <input type="file" accept="image/*" onChange={handleCoverUpload} className="hidden" />
+                    <input type="file" accept="image/png, image/jpeg, image/webp" onChange={handleCoverUpload} className="hidden" />
                   </label>
                 )}
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">Recommended: 1200x400. Max 5MB.</p>
+            <p className="text-xs text-gray-500 mt-2">Recommended: 1200x400. Max 5MB. JPG, PNG, WebP only (GIFs not allowed).</p>
           </div>
 
           <hr className="border-border my-6" />

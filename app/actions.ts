@@ -110,23 +110,26 @@ async function fetchFeaturedCreators() {
     const shuffledKeys = keys.sort(() => 0.5 - Math.random());
     // Slice up to 4 creators
     const usernames = shuffledKeys.slice(0, 4).map(k => k.replace("owner:", ""));
+    if (usernames.length === 0) return [];
 
-    // Fetch emails in parallel
-    const emails = await Promise.all(usernames.map(username => kv.get<string>(`owner:${username}`)));
+    // Fetch emails in single batch
+    const emails = await kv.mget<string[]>(...usernames.map(u => `owner:${u}`));
 
     const validPairs = usernames
       .map((username, i) => ({ username, email: emails[i] }))
       .filter(pair => !!pair.email) as { username: string, email: string }[];
 
+    if (validPairs.length === 0) return [];
+
     const featured = await Promise.all(validPairs.map(async ({ username, email }) => {
-      // Execute all 5 property queries in parallel for this creator
-      const [profileImage, vRate, bio, role, displayName] = await Promise.all([
-        kv.get<string>(`user:${email}:profileImage`),
-        kv.get<number>(`user:${email}:rate:video`),
-        kv.get<string>(`user:${email}:bio`),
-        kv.get<string>(`user:${email}:role`),
-        kv.get<string>(`user:${email}:displayName`)
-      ]);
+      // Execute 5 property queries in a single MGET batch per creator
+      const [profileImage, vRate, bio, role, displayName] = await kv.mget<[string | null, number | null, string | null, string | null, string | null]>(
+        `user:${email}:profileImage`,
+        `user:${email}:rate:video`,
+        `user:${email}:bio`,
+        `user:${email}:role`,
+        `user:${email}:displayName`
+      );
 
       return {
         name: displayName || (username.charAt(0).toUpperCase() + username.slice(1)),
@@ -160,23 +163,26 @@ async function fetchAllCreators() {
   try {
     const keys = await kv.keys("owner:*");
     const usernames = keys.map(k => k.replace("owner:", ""));
+    if (usernames.length === 0) return [];
 
-    // Fetch emails in parallel
-    const emails = await Promise.all(usernames.map(username => kv.get<string>(`owner:${username}`)));
+    // Fetch emails in single batch
+    const emails = await kv.mget<string[]>(...usernames.map(u => `owner:${u}`));
 
     const validPairs = usernames
       .map((username, i) => ({ username, email: emails[i] }))
       .filter(pair => !!pair.email) as { username: string, email: string }[];
 
+    if (validPairs.length === 0) return [];
+
     const creators = await Promise.all(validPairs.map(async ({ username, email }) => {
-      // Execute all 5 property queries in parallel for this creator
-      const [profileImage, vRate, bio, role, displayName] = await Promise.all([
-        kv.get<string>(`user:${email}:profileImage`),
-        kv.get<number>(`user:${email}:rate:video`),
-        kv.get<string>(`user:${email}:bio`),
-        kv.get<string>(`user:${email}:role`),
-        kv.get<string>(`user:${email}:displayName`)
-      ]);
+      // Execute 5 property queries in a single MGET batch per creator
+      const [profileImage, vRate, bio, role, displayName] = await kv.mget<[string | null, number | null, string | null, string | null, string | null]>(
+        `user:${email}:profileImage`,
+        `user:${email}:rate:video`,
+        `user:${email}:bio`,
+        `user:${email}:role`,
+        `user:${email}:displayName`
+      );
 
       return {
         name: displayName || (username.charAt(0).toUpperCase() + username.slice(1)),
@@ -206,6 +212,7 @@ export async function getAllCreators() {
 }
 
 export async function getCreatorProfileData(ownerEmail: string) {
+  // Batch all 16 property reads into 1 single MGET command to drastically cut Upstash reads
   const [
     isVerified,
     socials,
@@ -223,40 +230,57 @@ export async function getCreatorProfileData(ownerEmail: string) {
     fetchedSubPrice,
     fetchedSubBenefits,
     displayName
-  ] = await Promise.all([
-    kv.get<boolean>(`user:${ownerEmail}:verified`),
-    kv.get<Record<string, string>>(`user:${ownerEmail}:socials`),
-    kv.get<number>(`user:${ownerEmail}:rate:video`),
-    kv.get<number>(`user:${ownerEmail}:rate:audio`),
-    kv.get<string>(`user:${ownerEmail}:profileImage`),
-    kv.get<string>(`user:${ownerEmail}:coverImage`),
-    kv.get<string>(`user:${ownerEmail}:roomType`),
-    kv.get<boolean>(`user:${ownerEmail}:isRoomFree`),
-    kv.get<string>(`user:${ownerEmail}:mode`),
-    kv.get<any[]>(`user:${ownerEmail}:templates`),
-    kv.get<any[]>(`user:${ownerEmail}:artifacts`),
-    kv.get<any[]>(`user:${ownerEmail}:faqs`),
-    kv.get<string>(`user:${ownerEmail}:bio`),
-    kv.get<number>(`user:${ownerEmail}:subscriptionPrice`),
-    kv.get<string[]>(`user:${ownerEmail}:subscriptionBenefits`),
-    kv.get<string>(`user:${ownerEmail}:displayName`)
-  ]);
+  ] = await kv.mget<[
+    boolean | null,
+    Record<string, string> | null,
+    number | null,
+    number | null,
+    string | null,
+    string | null,
+    string | null,
+    boolean | null,
+    string | null,
+    any[] | null,
+    any[] | null,
+    any[] | null,
+    string | null,
+    number | null,
+    string[] | null,
+    string | null
+  ]>(
+    `user:${ownerEmail}:verified`,
+    `user:${ownerEmail}:socials`,
+    `user:${ownerEmail}:rate:video`,
+    `user:${ownerEmail}:rate:audio`,
+    `user:${ownerEmail}:profileImage`,
+    `user:${ownerEmail}:coverImage`,
+    `user:${ownerEmail}:roomType`,
+    `user:${ownerEmail}:isRoomFree`,
+    `user:${ownerEmail}:mode`,
+    `user:${ownerEmail}:templates`,
+    `user:${ownerEmail}:artifacts`,
+    `user:${ownerEmail}:faqs`,
+    `user:${ownerEmail}:bio`,
+    `user:${ownerEmail}:subscriptionPrice`,
+    `user:${ownerEmail}:subscriptionBenefits`,
+    `user:${ownerEmail}:displayName`
+  );
 
   return {
     isVerified: !!isVerified,
     socials: socials || {},
-    videoRate: vRate !== null ? Number(vRate) : 100,
-    audioRate: aRate !== null ? Number(aRate) : 50,
+    videoRate: vRate !== null && vRate !== undefined ? Number(vRate) : 100,
+    audioRate: aRate !== null && aRate !== undefined ? Number(aRate) : 50,
     profileImage: pImage ? String(pImage) : "",
     coverImage: cImage ? String(cImage) : "",
     roomType: roomType || 'audio',
-    isRoomFree: isRoomFree === null ? true : !!isRoomFree,
+    isRoomFree: isRoomFree === null || isRoomFree === undefined ? true : !!isRoomFree,
     studioMode: studioMode || 'solitude',
     templates: tpls || [],
     artifacts: arts || [],
     faqs: fqs || [],
     bio: fetchedBio || "",
-    subscriptionPrice: fetchedSubPrice !== null ? Number(fetchedSubPrice) : 199,
+    subscriptionPrice: fetchedSubPrice !== null && fetchedSubPrice !== undefined ? Number(fetchedSubPrice) : 199,
     subscriptionBenefits: fetchedSubBenefits || [],
     displayName: displayName || ""
   };

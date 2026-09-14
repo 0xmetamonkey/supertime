@@ -80,8 +80,17 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video' | 'doc') => {
     if (!event.target.files || event.target.files.length === 0) return;
-    setIsUploading(type);
     const file = event.target.files[0];
+    if (type === 'image' && (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif'))) {
+      customAlert({
+        title: 'GIF Not Allowed',
+        message: 'GIFs are not allowed for cover photo. Please upload a JPG, PNG, or WebP image.',
+        variant: 'error',
+      });
+      event.target.value = '';
+      return;
+    }
+    setIsUploading(type);
     try {
       const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
       if (!response.ok) throw new Error('Upload failed');
@@ -351,7 +360,7 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
                     <div className="flex gap-2">
                       <label className="flex-1 py-2 bg-surface hover:bg-background border border-border rounded-lg font-medium text-xs cursor-pointer text-center transition-colors">
                         Replace
-                        <input type="file" accept="image/*" onChange={e => handleUpload(e, 'image')} className="hidden" />
+                        <input type="file" accept="image/png, image/jpeg, image/webp" onChange={e => handleUpload(e, 'image')} className="hidden" />
                       </label>
                       <button onClick={() => setImageUrl('')} className="px-3.5 py-2 bg-red-500 text-white rounded-lg font-medium text-xs hover:bg-red-600 transition-colors">
                         <Trash2 className="w-4 h-4" />
@@ -365,7 +374,7 @@ export default function FundraiserManager({ username }: FundraiserManagerProps) 
                       {isUploading === 'image' ? 'Uploading...' : 'Upload Cover Photo'}
                     </p>
                     <p className="text-[10px] text-muted">JPG, PNG, WebP</p>
-                    <input type="file" accept="image/*" onChange={e => handleUpload(e, 'image')} className="hidden" />
+                    <input type="file" accept="image/png, image/jpeg, image/webp" onChange={e => handleUpload(e, 'image')} className="hidden" />
                   </label>
                 )}
               </div>

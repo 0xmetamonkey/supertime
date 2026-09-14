@@ -36,6 +36,8 @@ import {
   Copy,
   Check,
   Loader2,
+  MoreHorizontal,
+  User,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
@@ -47,6 +49,15 @@ import { useConfirmDialog } from '../components/ConfirmDialog';
 import { useAlertDialog } from '../components/AlertDialog';
 import GlobalStudioRecorder from '../dashboard/GlobalStudioRecorder';
 
+import RoomModeCards, { RoomMode } from '../components/studio/RoomModeCards';
+import RoomPreflightModal, { RoomConfig } from '../components/studio/RoomPreflightModal';
+import ActiveRoomView from '../components/studio/ActiveRoomView';
+import InRoomMenuDrawer from '../components/studio/InRoomMenuDrawer';
+import WaitlistDrawer, { WaitlistUser } from '../components/studio/WaitlistDrawer';
+import IncomingCallModal from '../components/studio/IncomingCallModal';
+import RoomEndedSummary from '../components/studio/RoomEndedSummary';
+import ScheduleDrawer from '../components/studio/ScheduleDrawer';
+
 export default function StudioClient({ username, session, initialSettings }: { username: string | null, session: any, initialSettings?: any }) {
   const router = useRouter();
   const { signOut } = useClerk();
@@ -55,6 +66,16 @@ export default function StudioClient({ username, session, initialSettings }: { u
 
   const effectiveUsername = isSimulated ? (username || 'test-creator') : username;
   const ablySignaling = initialSettings?._ablySignaling;
+
+  // New Studio State
+  const [selectedRoomMode, setSelectedRoomMode] = useState<RoomMode>('1v1');
+  const [showPreflight, setShowPreflight] = useState(false);
+  const [activeRoomConfig, setActiveRoomConfig] = useState<RoomConfig | null>(null);
+  const [showInRoomMenu, setShowInRoomMenu] = useState(false);
+  const [showWaitlist, setShowWaitlist] = useState(false);
+  const [showScheduleDrawer, setShowScheduleDrawer] = useState(false);
+  const [incomingCallData, setIncomingCallData] = useState<{ name: string; roomType: string; duration: string } | null>(null);
+  const [roomEndedSummary, setRoomEndedSummary] = useState<{ title: string; duration: string; guest: string } | null>(null);
 
   const [isLive, setIsLive] = useState(initialSettings?.isLive ?? false);
   const [isCalling, setIsCalling] = useState(false);
@@ -222,13 +243,18 @@ export default function StudioClient({ username, session, initialSettings }: { u
     setIsUploading(true);
     const file = event.target.files[0];
     try {
-      const response = await fetch(`/api/upload?filename=${file.name}`, { method: 'POST', body: file });
+      const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Upload failed');
+      }
       const newBlob = await response.json();
+      if (!newBlob.url) throw new Error('Upload response is missing url');
       setPendingProfileImage(newBlob.url);
-    } catch (e) {
+    } catch (e: any) {
       customAlert({
         title: 'Upload Failed',
-        message: 'Upload failed.',
+        message: e?.message || 'Upload failed.',
         variant: 'error',
       });
     } finally {
@@ -659,113 +685,128 @@ export default function StudioClient({ username, session, initialSettings }: { u
         )}
       </AnimatePresence>
 
-      <main className="max-w-7xl mx-auto px-6 pt-32 pb-32">
-        <div className="grid lg:grid-cols-12 gap-12 mt-12">
-          {/* QUEUE & SCHEDULE */}
-          <div className="lg:col-span-12">
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* WAITLIST */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <h3 className="text-lg font-medium text-foreground tracking-tight">Waitlist</h3>
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="text-xs font-semibold bg-surface text-muted px-2.5 py-0.5 rounded-full">{requests.length}</span>
+      {/* MODERN STUDIO HERO & ROOM SELECTOR */}
+      <main className="max-w-lg mx-auto px-5 pt-28 pb-32">
+        {/* Title & Prompt */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Good evening</h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+            What kind of room are you opening?
+          </p>
+        </div>
+
+        {/* 3 Core Room Selector Cards */}
+        <div className="mb-8">
+          <RoomModeCards
+            selectedMode={selectedRoomMode}
+            onSelectMode={(mode) => {
+              setSelectedRoomMode(mode);
+              setShowPreflight(true);
+            }}
+          />
+        </div>
+
+        {/* Upcoming Sessions Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold tracking-tight text-foreground">Upcoming</h2>
+            <button
+              onClick={() => setShowScheduleDrawer(true)}
+              className="text-xs text-neutral-500 hover:text-foreground font-medium transition-colors"
+            >
+              View all &gt;
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {/* Scheduled 1:1 Item */}
+            <div className="flex items-center justify-between p-4 rounded-3xl bg-surface border border-border shadow-xs hover:border-neutral-400 transition-all">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
+                  <User className="w-5 h-5 text-neutral-700 dark:text-neutral-300 stroke-[1.75]" />
                 </div>
-                {requests.length === 0 ? (
-                  <div className="border border-border border-dashed p-10 text-center rounded-2xl bg-surface">
-                    <p className="text-xs text-muted font-medium">Queue is currently empty</p>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">10:00 AM</span>
+                    <span className="text-sm font-semibold text-foreground">Priya S.</span>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {requests.map((req, i) => (
-                      <div key={i} className="bg-surface border border-border p-4 rounded-xl flex justify-between items-center group shadow-sm hover:shadow-md transition-all">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-background text-xs font-medium text-muted flex items-center justify-center border border-border">#{i + 1}</div>
-                          <div>
-                            <p className="font-medium text-sm text-foreground">{req.from || 'Guest'}</p>
-                            <p className="text-xs text-muted mt-0.5">{new Date(req.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                          </div>
-                        </div>
-                        <button className="w-8 h-8 rounded-lg bg-background border border-border flex items-center justify-center text-muted hover:bg-surface transition-colors">
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">1 : 1 session</p>
+                </div>
               </div>
 
-              {/* SCHEDULE */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <h3 className="text-lg font-medium text-foreground tracking-tight">Schedule</h3>
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="text-xs font-semibold bg-surface text-muted px-2.5 py-0.5 rounded-full">{bookings.length}</span>
+              <button
+                onClick={() => {
+                  setSelectedRoomMode('1v1');
+                  setShowPreflight(true);
+                }}
+                className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-foreground"
+              >
+                <MoreHorizontal className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scheduled Circle Room Item */}
+            <div className="flex items-center justify-between p-4 rounded-3xl bg-surface border border-border shadow-xs hover:border-neutral-400 transition-all">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-neutral-700 dark:text-neutral-300 stroke-[1.75]" />
                 </div>
-                {bookings.length === 0 ? (
-                  <div className="border border-border border-dashed p-10 text-center rounded-2xl bg-surface">
-                    <p className="text-xs text-muted font-medium">No bookings scheduled today</p>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">2:00 PM</span>
+                    <span className="text-sm font-semibold text-foreground">Open Circle</span>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {bookings.map((booking, i) => (
-                      <div key={i} className="bg-surface border border-border p-4 rounded-xl shadow-sm hover:shadow-md transition-all group">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-xs font-medium text-indigo-500">{booking.date} @ {booking.time}</span>
-                          <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                        </div>
-                        <p className="font-medium text-base text-foreground mb-1">{booking.visitorEmail.split('@')[0]}</p>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-muted">{booking.duration} Min {booking.type}</span>
-                          <button onClick={() => window.open(`mailto:${booking.visitorEmail}`)} className="text-xs font-medium text-blue-500 hover:text-blue-600 hover:underline transition-all">Notify Client</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Many : Many</p>
+                </div>
               </div>
+
+              <button
+                onClick={() => {
+                  setSelectedRoomMode('circle');
+                  setShowPreflight(true);
+                }}
+                className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-foreground"
+              >
+                <MoreHorizontal className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
       </main>
 
-      {/* BOTTOM ACTION BAR */}
-      <div className="fixed bottom-0 left-0 right-0 z-[90] bg-background/80 backdrop-blur-md border-t border-border p-4 flex justify-between items-center gap-3">
-        <div className="flex items-center gap-3 flex-1">
+      {/* MODERN BOTTOM NAVIGATION BAR */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-surface/90 backdrop-blur-md border-t border-border py-3 px-6 max-w-lg mx-auto">
+        <div className="grid grid-cols-3 gap-2">
+          {/* Go Live / Open Room */}
           <button
-            onClick={() => {
-              const next = !isLive;
-              setIsLive(next);
-              fetch('/api/studio/update', { method: 'POST', body: JSON.stringify({ isLive: next }) });
-            }}
-            className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${isLive ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-green-600 text-white hover:bg-green-700'}`}
+            onClick={() => setShowPreflight(true)}
+            className="flex flex-col items-center justify-center py-2.5 px-3 rounded-2xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 font-semibold text-xs shadow-md transition-all active:scale-95"
           >
-            {isLive ? 'End Stream' : 'Go Live'}
-          </button>
-          <button
-            onClick={handleToggleCalls}
-            className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border ${isAcceptingCalls ? 'bg-foreground text-background border-transparent' : 'bg-surface text-muted border-border hover:bg-background'}`}
-          >
-            {isAcceptingCalls ? 'Calls Ready' : 'Calls Off'}
+            <Video className="w-5 h-5 mb-1 stroke-[2]" />
+            <span>Go Live</span>
           </button>
 
-          {/* / TalkTime */}
+          {/* Schedule */}
           <button
-            onClick={handleCreateTalkTime}
-            disabled={isTalkTimeCreating}
-            className="hidden md:flex flex-1 md:flex-none items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-violet-600 to-rose-500 text-white shadow-md hover:opacity-90 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => setShowScheduleDrawer(true)}
+            className="flex flex-col items-center justify-center py-2.5 px-3 rounded-2xl bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 font-semibold text-xs transition-all active:scale-95"
           >
-            {isTalkTimeCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Radio className="w-4 h-4" />}
-            / TalkTime
+            <Calendar className="w-5 h-5 mb-1 stroke-[2]" />
+            <span>Schedule</span>
+          </button>
+
+          {/* Waitlist */}
+          <button
+            onClick={() => setShowWaitlist(true)}
+            className="relative flex flex-col items-center justify-center py-2.5 px-3 rounded-2xl bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 font-semibold text-xs transition-all active:scale-95"
+          >
+            <Users className="w-5 h-5 mb-1 stroke-[2]" />
+            <span>Waitlist</span>
+            <span className="absolute top-1.5 right-4 w-4 h-4 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-[9px] flex items-center justify-center font-bold">
+              5
+            </span>
           </button>
         </div>
-
-        <button
-          onClick={() => setShowDashboard(true)}
-          className="px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm border border-border bg-surface hover:bg-background text-foreground flex items-center gap-2 group"
-        >
-          <LayoutDashboard className="w-4 h-4 text-muted group-hover:text-foreground transition-colors" /> Command Center
-        </button>
       </div>
 
       {/* TALKTIME INVITE MODAL */}
@@ -1060,6 +1101,121 @@ export default function StudioClient({ username, session, initialSettings }: { u
           </motion.div>
         )}
       </AnimatePresence>
+      {/* NEW STUDIO OVERLAYS & VIEWS */}
+      {showPreflight && (
+        <RoomPreflightModal
+          mode={selectedRoomMode}
+          onClose={() => setShowPreflight(false)}
+          onOpenRoom={(config) => {
+            setShowPreflight(false);
+            setActiveRoomConfig(config);
+            setIsLive(true);
+          }}
+        />
+      )}
+
+      {activeRoomConfig && (
+        <ActiveRoomView
+          config={activeRoomConfig}
+          creatorName={effectiveUsername || 'Host'}
+          onEndRoom={() => {
+            setRoomEndedSummary({
+              title: activeRoomConfig.mode === '1v1' ? '1 : 1' : activeRoomConfig.mode === 'circle' ? 'Circle Room' : 'Stage Room',
+              duration: `${activeRoomConfig.duration} min`,
+              guest: 'Priya S.',
+            });
+            setActiveRoomConfig(null);
+            setIsLive(false);
+          }}
+          onOpenMenu={() => setShowInRoomMenu(true)}
+          onOpenWaitlist={() => setShowWaitlist(true)}
+        />
+      )}
+
+      <InRoomMenuDrawer
+        isOpen={showInRoomMenu}
+        onClose={() => setShowInRoomMenu(false)}
+        onEndRoom={() => {
+          setShowInRoomMenu(false);
+          if (activeRoomConfig) {
+            setRoomEndedSummary({
+              title: activeRoomConfig.mode === '1v1' ? '1 : 1' : activeRoomConfig.mode === 'circle' ? 'Circle Room' : 'Stage Room',
+              duration: `${activeRoomConfig.duration} min`,
+              guest: 'Priya S.',
+            });
+          }
+          setActiveRoomConfig(null);
+          setIsLive(false);
+        }}
+        roomType={activeRoomConfig?.mode || selectedRoomMode}
+      />
+
+      <WaitlistDrawer
+        isOpen={showWaitlist}
+        onClose={() => setShowWaitlist(false)}
+        onAcceptUser={(user) => {
+          setShowWaitlist(false);
+          setActiveRoomConfig({
+            mode: user.roomType,
+            duration: 30,
+            capacity: user.roomType === 'stage' ? 50 : 8,
+            acceptFromWaitlist: true,
+            autoStartNext: false,
+            allowEveryoneToSpeak: true,
+            enableRaiseHand: true,
+            joinFromWaitlist: true,
+            allowAudienceToSpeak: false,
+            inviteToStage: true,
+            enableLiveChat: true,
+          });
+          setIsLive(true);
+        }}
+      />
+
+      <ScheduleDrawer
+        isOpen={showScheduleDrawer}
+        onClose={() => setShowScheduleDrawer(false)}
+      />
+
+      {incomingCallData && (
+        <IncomingCallModal
+          callerName={incomingCallData.name}
+          roomTypeLabel={incomingCallData.roomType}
+          durationLabel={incomingCallData.duration}
+          onAccept={() => {
+            setIncomingCallData(null);
+            setActiveRoomConfig({
+              mode: '1v1',
+              duration: 30,
+              capacity: 1,
+              acceptFromWaitlist: true,
+              autoStartNext: false,
+              allowEveryoneToSpeak: true,
+              enableRaiseHand: true,
+              joinFromWaitlist: true,
+              allowAudienceToSpeak: false,
+              inviteToStage: true,
+              enableLiveChat: true,
+            });
+            setIsLive(true);
+          }}
+          onDecline={() => setIncomingCallData(null)}
+        />
+      )}
+
+      {roomEndedSummary && (
+        <RoomEndedSummary
+          roomTitle={roomEndedSummary.title}
+          durationText={roomEndedSummary.duration}
+          guestName={roomEndedSummary.guest}
+          onBackToStudio={() => setRoomEndedSummary(null)}
+          onViewSummary={() => {
+            setRoomEndedSummary(null);
+            setShowDashboard(true);
+          }}
+        />
+      )}
+
       {ConfirmDialogEl}
       {AlertDialog}
 

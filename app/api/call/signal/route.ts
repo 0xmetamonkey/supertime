@@ -77,102 +77,102 @@ export async function POST(req: NextRequest) {
         setTimeout(() => global.mockSignalStore.delete(`call_signal:${to}`), 60000);
       }
 
-      console.log('[Signal API] Returning channelName to caller:', channelName);
-      return NextResponse.json({ success: true, channelName });
-    }
-
-    if (action === 'reject') {
-      const targetUser = from || to;
-      const rejectData = { rejected: true, timestamp: Date.now() };
-
-      if (hasKV) {
-        await kv.set(`call_signal:${targetUser}`, JSON.stringify(rejectData), { ex: 10 });
-      } else {
-        global.mockSignalStore.set(`call_signal:${targetUser}`, rejectData);
-        setTimeout(() => global.mockSignalStore.delete(`call_signal:${targetUser}`), 10000);
+        console.log('[Signal API] Returning channelName to caller:', channelName);
+        return NextResponse.json({ success: true, channelName });
       }
-      return NextResponse.json({ success: true });
-    }
 
-    if (action === 'answer' || action === 'end') {
-      const targetUser = from || to;
+      if (action === 'reject') {
+        const targetUser = from || to;
+        const rejectData = { rejected: true, timestamp: Date.now() };
 
-      if (hasKV) {
-        await kv.del(`call_signal:${targetUser}`);
-        if (to) await kv.del(`call_signal:${to}`);
+        if (hasKV) {
+          await kv.set(`call_signal:${targetUser}`, JSON.stringify(rejectData), { ex: 10 });
+        } else {
+          global.mockSignalStore.set(`call_signal:${targetUser}`, rejectData);
+          setTimeout(() => global.mockSignalStore.delete(`call_signal:${targetUser}`), 10000);
+        }
+        return NextResponse.json({ success: true });
+      }
 
-        // Signal background SW to hide notification
-        try {
-          const target = to || from;
-          const fcmToken = await kv.get(`user:${target.toLowerCase()}:fcm_token`);
-          if (fcmToken && typeof fcmToken === 'string') {
-            const { messaging } = await import('@/app/lib/firebase-admin');
-            if (messaging) {
-              await messaging.send({
-                token: fcmToken,
-                data: {
-                  action: 'cancel-call'
-                },
-                android: { priority: 'high' }
-              });
-            } else {
-              console.warn('[Signal API] ⚠️ Firebase Admin not initialized. Cancel push skipped.');
+      if (action === 'answer' || action === 'end') {
+        const targetUser = from || to;
+
+        if (hasKV) {
+          await kv.del(`call_signal:${targetUser}`);
+          if (to) await kv.del(`call_signal:${to}`);
+
+          // Signal background SW to hide notification
+          try {
+            const target = to || from;
+            const fcmToken = await kv.get(`user:${target.toLowerCase()}:fcm_token`);
+            if (fcmToken && typeof fcmToken === 'string') {
+              const { messaging } = await import('@/app/lib/firebase-admin');
+              if (messaging) {
+                await messaging.send({
+                  token: fcmToken,
+                  data: {
+                    action: 'cancel-call'
+                  },
+                  android: { priority: 'high' }
+                });
+              } else {
+                console.warn('[Signal API] ⚠️ Firebase Admin not initialized. Cancel push skipped.');
+              }
             }
-          }
-        } catch (e) { }
-      } else {
-        console.log(`[MockKV] Deleting signal for ${targetUser}`);
-        global.mockSignalStore.delete(`call_signal:${targetUser}`);
-        if (to) global.mockSignalStore.delete(`call_signal:${to}`);
+          } catch (e) { }
+        } else {
+          console.log(`[MockKV] Deleting signal for ${targetUser}`);
+          global.mockSignalStore.delete(`call_signal:${targetUser}`);
+          if (to) global.mockSignalStore.delete(`call_signal:${to}`);
+        }
+        return NextResponse.json({ success: true });
       }
-      return NextResponse.json({ success: true });
-    }
 
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
-  } catch (error) {
-    console.error("Signal POST Error:", error);
-    return NextResponse.json({ error: 'Signal failed' }, { status: 500 });
+      return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    } catch (error) {
+      console.error("Signal POST Error:", error);
+      return NextResponse.json({ error: 'Signal failed' }, { status: 500 });
+    }
   }
-}
 
 export async function GET(req: NextRequest) {
-  const username = req.nextUrl.searchParams.get('username');
-  if (!username) return NextResponse.json({ error: 'Missing username' }, { status: 400 });
+    const username = req.nextUrl.searchParams.get('username');
+    if (!username) return NextResponse.json({ error: 'Missing username' }, { status: 400 });
 
-  try {
-    let signal: any;
+    try {
+      let signal: any;
 
-    if (hasKV) {
-      const raw = await kv.get(`call_signal:${username}`);
-      if (typeof raw === 'string') {
-        try { signal = JSON.parse(raw); } catch (e) { signal = null; }
-      } else {
-        signal = raw;
-      }
-    } else {
-      signal = global.mockSignalStore.get(`call_signal:${username}`);
-    }
-
-    if (signal && !signal.rejected) {
-      console.log('[Signal API] Returning signal to creator:', {
-        username,
-        channelName: signal.channelName,
-        from: signal.from,
-        type: signal.type
-      });
-      return NextResponse.json({
-        incoming: {
-          from: signal.from,
-          fromName: signal.fromName,
-          type: signal.type,
-          channelName: signal.channelName
+      if (hasKV) {
+        const raw = await kv.get(`call_signal:${username}`);
+        if (typeof raw === 'string') {
+          try { signal = JSON.parse(raw); } catch (e) { signal = null; }
+        } else {
+          signal = raw;
         }
-      });
-    }
+      } else {
+        signal = global.mockSignalStore.get(`call_signal:${username}`);
+      }
 
-    return NextResponse.json({ active: false });
-  } catch (error) {
-    console.error("Signal GET Error:", error);
-    return NextResponse.json({ error: 'Poll failed' }, { status: 500 });
+      if (signal && !signal.rejected) {
+        console.log('[Signal API] Returning signal to creator:', {
+          username,
+          channelName: signal.channelName,
+          from: signal.from,
+          type: signal.type
+        });
+        return NextResponse.json({
+          incoming: {
+            from: signal.from,
+            fromName: signal.fromName,
+            type: signal.type,
+            channelName: signal.channelName
+          }
+        });
+      }
+
+      return NextResponse.json({ active: false });
+    } catch (error) {
+      console.error("Signal GET Error:", error);
+      return NextResponse.json({ error: 'Poll failed' }, { status: 500 });
+    }
   }
-}

@@ -67,8 +67,17 @@ export default function FeastTab({ username }: { username: string }) {
 
   const handleUploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) return;
-    setIsUploading(true);
     const file = event.target.files[0];
+    if (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif')) {
+      customAlert({
+        title: 'GIF Not Allowed',
+        message: 'GIFs are not allowed for cover image. Please upload a JPG, PNG, or WebP image.',
+        variant: 'error',
+      });
+      event.target.value = '';
+      return;
+    }
+    setIsUploading(true);
     try {
       const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
       if (!response.ok) throw new Error('Upload failed');
@@ -253,7 +262,7 @@ export default function FeastTab({ username }: { username: string }) {
               <label className="flex items-center gap-2 px-4 py-2 bg-background border border-border rounded-xl cursor-pointer hover:bg-surface transition-colors">
                 {isUploading ? <Loader2 className="w-4 h-4 animate-spin text-muted" /> : <ImageIcon className="w-4 h-4 text-muted" />}
                 <span className="text-xs font-medium text-foreground">{imageUrl ? 'Change Cover' : 'Add Cover'}</span>
-                <input type="file" accept="image/*" onChange={handleUploadImage} className="hidden" />
+                <input type="file" accept="image/png, image/jpeg, image/webp" onChange={handleUploadImage} className="hidden" />
               </label>
 
               <button

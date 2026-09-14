@@ -53,13 +53,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const normalizedEmail = email.toLowerCase();
-  const { balance, withdrawable } = await getDetailedWallet(normalizedEmail);
-
-  // Check if they are a creator (have a username)
+  let balance = 0;
+  let withdrawable = 0;
   let isCreator = false;
+
   if (process.env.KV_URL) {
-    const username = await kv.get(`user:${email}:username`);
+    const [b, w, username] = await kv.mget<[number | null, number | null, string | null]>(
+      `balance:${normalizedEmail}`,
+      `withdrawable:${normalizedEmail}`,
+      `user:${normalizedEmail}:username`
+    );
+    balance = b ?? 0;
+    withdrawable = w ?? 0;
     isCreator = !!username;
+  } else {
+    balance = global.mockWalletStore.get(normalizedEmail) ?? 0;
   }
 
   return NextResponse.json({

@@ -9,32 +9,26 @@ import {
   Settings,
   LogOut,
   LayoutDashboard,
-  Store,
-  Wrench,
-  Bot,
+  Calendar,
   Share,
   CheckCircle,
-  FileText,
   MessageSquare,
   User,
   Sun,
   Moon,
-  Heart,
+  Sparkles,
+  PhoneCall,
   Zap,
 } from 'lucide-react';
 import { useClerk, UserButton } from "@clerk/nextjs";
 
 import OverviewTab from './OverviewTab';
 import WalletTab from './WalletTab';
-// import ToolsTab from './ToolsTab';
-import StorefrontTab from './StorefrontTab';
-import FeastTab from './FeastTab';
+import BookingsTab from './BookingsTab';
 import ProfileEditor from './ProfileEditor';
 import SettingsClient from '../studio/settings/SettingsClient';
-import GlobalStudioRecorder from './GlobalStudioRecorder';
 import InboxTab from './InboxTab';
 import { useTheme } from '../components/ThemeProvider';
-import FundraiserManager from './FundraiserManager';
 import MessagesPanel from '../components/chat/upgrade/MessagesPanel';
 import ActiveChatWindow from '../components/chat/upgrade/ActiveChatWindow';
 
@@ -47,7 +41,7 @@ interface UIProps {
   initialSettings?: any;
 }
 
-type Tab = 'overview' | 'storefront' | 'wallet' | 'settings' | 'feast' | 'inbox' | 'fundraise';
+type Tab = 'overview' | 'bookings' | 'wallet' | 'settings' | 'inbox';
 
 export default function DashboardClient({ session, username: initialUsername, role: initialRole, initialBalance, initialWithdrawable, initialSettings }: UIProps) {
   const router = useRouter();
@@ -115,7 +109,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     const toParam = searchParams.get('to');
-    if (tabParam && ['overview', 'storefront', 'wallet', 'settings', 'feast', 'inbox', 'fundraise', 'tools'].includes(tabParam)) {
+    if (tabParam && ['overview', 'bookings', 'wallet', 'settings', 'inbox'].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
     } else if (toParam) {
       setActiveTab('inbox');
@@ -207,11 +201,11 @@ export default function DashboardClient({ session, username: initialUsername, ro
                   className="w-full flex items-center p-4 border border-border rounded-xl hover:border-foreground hover:bg-foreground/5 transition-all text-left group"
                 >
                   <div className="w-12 h-12 bg-surface border border-border rounded-lg flex items-center justify-center group-hover:bg-foreground/10 transition-colors shrink-0 mr-4">
-                    <Store className="w-6 h-6 text-foreground" />
+                    <Sparkles className="w-6 h-6 text-foreground" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground">I am a Creator</h3>
-                    <p className="text-sm text-muted">I want to host paid calls, sell digital products, and manage my audience.</p>
+                    <p className="text-sm text-muted">I want to host paid calls, receive tips, and connect with my believers.</p>
                   </div>
                 </button>
 
@@ -291,12 +285,8 @@ export default function DashboardClient({ session, username: initialUsername, ro
 
   const menuItems = [
     { label: 'Overview', icon: LayoutDashboard, id: 'overview' as const },
-    { label: 'Feast', icon: FileText, id: 'feast' as const },
+    { label: 'Bookings', icon: Calendar, id: 'bookings' as const },
     { label: 'Inbox', icon: MessageSquare, id: 'inbox' as const },
-    ...(isCreator ? [
-      { label: 'Storefront', icon: Store, id: 'storefront' as const },
-      { label: 'Fundraise', icon: Heart, id: 'fundraise' as const },
-    ] : []),
     { label: 'Wallet', icon: Wallet, id: 'wallet' as const },
     ...(isCreator ? [
       { label: 'Settings', icon: Settings, id: 'settings' as const },
@@ -383,11 +373,11 @@ export default function DashboardClient({ session, username: initialUsername, ro
             </button>
             {isCreator && (
               <button
-                onClick={() => handleTabChange('storefront')}
-                className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'storefront' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
+                onClick={() => handleTabChange('bookings')}
+                className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'bookings' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
               >
-                <Store className="w-5 h-5" />
-                <span className="text-[10px] font-medium tracking-wide text-center">Store</span>
+                <Calendar className="w-5 h-5" />
+                <span className="text-[10px] font-medium tracking-wide text-center">Bookings</span>
               </button>
             )}
             <button
@@ -403,22 +393,12 @@ export default function DashboardClient({ session, username: initialUsername, ro
                 </span>
               )}
             </button>
-
-            {isCreator && (
-              <button
-                onClick={() => handleTabChange('fundraise')}
-                className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'fundraise' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
-              >
-                <Heart className="w-5 h-5" />
-                <span className="text-[10px] font-medium tracking-wide text-center">Fundraise</span>
-              </button>
-            )}
             <button
               onClick={() => handleTabChange('wallet')}
               className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'wallet' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
             >
               <Wallet className="w-5 h-5" />
-              <span className="text-[10px] font-medium tracking-wide text-center">Vault</span>
+              <span className="text-[10px] font-medium tracking-wide text-center">Wallet</span>
             </button>
             {isCreator && (
               <button
@@ -543,22 +523,8 @@ export default function DashboardClient({ session, username: initialUsername, ro
                 />
               )}
 
-              {activeTab === 'wallet' && (
-                <WalletTab
-                  balance={balance}
-                  withdrawable={withdrawable}
-                />
-              )}
-
-              {activeTab === 'storefront' && (
-                <StorefrontTab
-                  username={username}
-                  initialSettings={initialSettings}
-                />
-              )}
-
-              {activeTab === 'feast' && (
-                <FeastTab
+              {activeTab === 'bookings' && (
+                <BookingsTab
                   username={username || ''}
                 />
               )}
@@ -572,8 +538,11 @@ export default function DashboardClient({ session, username: initialUsername, ro
                 />
               )}
 
-              {activeTab === 'fundraise' && (
-                <FundraiserManager username={username || ''} />
+              {activeTab === 'wallet' && (
+                <WalletTab
+                  balance={balance}
+                  withdrawable={withdrawable}
+                />
               )}
 
               {activeTab === 'settings' && (
@@ -604,9 +573,6 @@ export default function DashboardClient({ session, username: initialUsername, ro
           </div>
         </main>
       )}
-
-      {/* Floating Studio Recorder */}
-      {username && <GlobalStudioRecorder username={username} />}
     </div>
   );
 }

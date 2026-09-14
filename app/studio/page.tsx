@@ -60,22 +60,52 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   };
 
   if (resolvedEmail && process.env.KV_URL) {
-    const vRate = await kv.get(`user:${resolvedEmail}:rate:video`);
-    const aRate = await kv.get(`user:${resolvedEmail}:rate:audio`);
-    const socials = await kv.get(`user:${resolvedEmail}:socials`) as Record<string, string> | null;
-    const profileImage = await kv.get(`user:${resolvedEmail}:profileImage`) as string | null;
-    const isLive = await kv.get(`user:${resolvedEmail}:isLive`);
-    const roomType = await kv.get(`user:${resolvedEmail}:roomType`) as string | null;
-    const isRoomFree = await kv.get(`user:${resolvedEmail}:isRoomFree`);
-    const templates = await kv.get(`user:${resolvedEmail}:templates`) as Array<Record<string, unknown>> | null;
-    const availability = await kv.get(`user:${resolvedEmail}:availability`) as Record<string, unknown> | null;
-    const artifacts = await kv.get(`user:${resolvedEmail}:artifacts`) as Array<Record<string, unknown>> | null || [];
-    const mode = await kv.get(`user:${resolvedEmail}:mode`) as string | null || 'solitude';
-    const isAcceptingCalls = await kv.get(`user:${resolvedEmail}:isAcceptingCalls`);
-    const upiId = await kv.get(`user:${resolvedEmail}:upiId`) as string | null;
+    const [
+      vRate,
+      aRate,
+      socials,
+      profileImage,
+      isLive,
+      roomType,
+      isRoomFree,
+      templates,
+      availability,
+      artifacts,
+      mode,
+      isAcceptingCalls,
+      upiId
+    ] = await kv.mget<[
+      number | null,
+      number | null,
+      Record<string, string> | null,
+      string | null,
+      boolean | null,
+      string | null,
+      boolean | null,
+      Array<Record<string, unknown>> | null,
+      Record<string, unknown> | null,
+      Array<Record<string, unknown>> | null,
+      string | null,
+      boolean | null,
+      string | null
+    ]>(
+      `user:${resolvedEmail}:rate:video`,
+      `user:${resolvedEmail}:rate:audio`,
+      `user:${resolvedEmail}:socials`,
+      `user:${resolvedEmail}:profileImage`,
+      `user:${resolvedEmail}:isLive`,
+      `user:${resolvedEmail}:roomType`,
+      `user:${resolvedEmail}:isRoomFree`,
+      `user:${resolvedEmail}:templates`,
+      `user:${resolvedEmail}:availability`,
+      `user:${resolvedEmail}:artifacts`,
+      `user:${resolvedEmail}:mode`,
+      `user:${resolvedEmail}:isAcceptingCalls`,
+      `user:${resolvedEmail}:upiId`
+    );
 
-    if (vRate !== null) settings.videoRate = Number(vRate);
-    if (aRate !== null) settings.audioRate = Number(aRate);
+    if (vRate !== null && vRate !== undefined) settings.videoRate = Number(vRate);
+    if (aRate !== null && aRate !== undefined) settings.audioRate = Number(aRate);
     if (upiId) settings.upiId = upiId;
     if (socials) {
       // Normalize twitter to x
@@ -88,19 +118,18 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
     if (profileImage) settings.profileImage = profileImage;
     // We ALWAYS want to start as "not live" (not broadcasting) on refresh
     settings.isLive = false;
-    if (isLive !== null) {
+    if (isLive !== null && isLive !== undefined) {
       // Still persist it for future use but start current session as offline
-      // Or just ignore it for the initial state
     }
-    if (isAcceptingCalls === null) settings.isAcceptingCalls = true;
+    if (isAcceptingCalls === null || isAcceptingCalls === undefined) settings.isAcceptingCalls = true;
     else settings.isAcceptingCalls = !!isAcceptingCalls;
 
     if (roomType) settings.roomType = roomType;
-    if (isRoomFree !== null) settings.isRoomFree = !!isRoomFree;
+    if (isRoomFree !== null && isRoomFree !== undefined) settings.isRoomFree = !!isRoomFree;
     if (templates) settings.templates = templates;
     if (availability) settings.availability = availability;
-    if (artifacts) settings.artifacts = artifacts;
-    settings.mode = mode;
+    if (artifacts) settings.artifacts = artifacts || [];
+    settings.mode = mode || 'solitude';
   }
 
   return (

@@ -75,33 +75,33 @@ export default function OverviewTab({ username, withdrawable, balance, initialSe
           </button>
         </motion.div>
 
-        {/* Storefront Card */}
+        {/* Sessions & Believers Card */}
         <motion.div variants={itemVariants} className="bg-surface p-6 rounded-2xl border border-border shadow-sm transition-colors">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <span className="text-xs font-medium text-muted uppercase tracking-wider">Storefront</span>
-              <h2 className="text-3xl font-medium text-foreground mt-2">Your Store</h2>
+              <span className="text-xs font-medium text-muted uppercase tracking-wider">Sessions & Believers</span>
+              <h2 className="text-3xl font-medium text-foreground mt-2">1:1 Calls</h2>
             </div>
-            <Store className="w-5 h-5 text-gray-400" />
+            <Clock className="w-5 h-5 text-gray-400" />
           </div>
           <div className="space-y-4">
             <div className="flex justify-between items-center py-2 border-b border-border">
-              <span className="text-muted">Active Products</span>
-              <span className="font-semibold text-foreground">0</span>
+              <span className="text-muted">Video Rate</span>
+              <span className="font-semibold text-foreground">₹{initialSettings?.videoRate ?? 100} / 30m</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border">
-              <span className="text-muted">Booking Templates</span>
-              <span className="font-semibold text-foreground">0</span>
+              <span className="text-muted">Audio Rate</span>
+              <span className="font-semibold text-foreground">₹{initialSettings?.audioRate ?? 50} / 30m</span>
             </div>
             <div className="flex justify-between items-center py-2">
-              <span className="text-muted">Digital Revenue</span>
-              <span className="font-semibold text-foreground">₹0</span>
+              <span className="text-muted">Believer Monthly Pass</span>
+              <span className="font-semibold text-foreground">₹{initialSettings?.subscriptionPrice ?? 199}/mo</span>
             </div>
             <button
-              onClick={() => setActiveTab('storefront')}
+              onClick={() => setActiveTab('bookings')}
               className="w-full py-2.5 bg-background text-foreground text-xs font-semibold rounded-lg hover:bg-surface transition-colors flex items-center justify-center gap-2 mt-2"
             >
-              Configure Storefront <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
+              View Bookings & Calls <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
             </button>
           </div>
         </motion.div>

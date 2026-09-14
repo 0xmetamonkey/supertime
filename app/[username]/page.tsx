@@ -109,10 +109,12 @@ export default async function CreatorPage({ params }: Props) {
   let staticProfile: any = {};
 
   if (ownerEmail && process.env.KV_URL) {
-    const [liveStatus, acceptingCalls, f, profileData] = await Promise.all([
-      kv.get(`user:${ownerEmail}:isLive`),
-      kv.get(`user:${ownerEmail}:isAcceptingCalls`),
-      kv.get(`fundraise:${username}`),
+    const [[liveStatus, acceptingCalls, f], profileData] = await Promise.all([
+      kv.mget<[boolean | null, boolean | null, any]>(
+        `user:${ownerEmail}:isLive`,
+        `user:${ownerEmail}:isAcceptingCalls`,
+        `fundraise:${username}`
+      ),
       getCachedCreatorProfileData(ownerEmail)
     ]);
 

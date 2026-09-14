@@ -12,14 +12,14 @@ test.describe('Phase 1 — Platform Integrity', () => {
     // await page.goto('/setup');
     // await page.fill('[data-testid="username-input"]', 'admin');
     // await expect(page.locator('[data-testid="username-error"]')).toContainText('reserved');
-    test.todo();
+    test.fixme();
   });
 
   test('profile-completeness-shows: widget visible when profile is incomplete', async ({ page }) => {
     // TODO: Sign in as a creator with no avatar/bio
     // await page.goto('/dashboard');
     // await expect(page.locator('[data-testid="profile-completeness"]')).toBeVisible();
-    test.todo();
+    test.fixme();
   });
 
   test('auth-mobile-no-scroll: sign-up page has no horizontal scroll on 375px', async ({ page }) => {
@@ -46,14 +46,14 @@ test.describe('Phase 2 — Creator Storefront', () => {
     // TODO: Seed test creator with 2 products in KV
     // await page.goto('/testcreator');
     // await expect(page.locator('[data-testid="product-card"]')).toHaveCount(2, { timeout: 2000 });
-    test.todo();
+    test.fixme();
   });
 
   test('buy-now-opens-modal: clicking Buy Now opens the checkout modal', async ({ page }) => {
     // await page.goto('/testcreator');
     // await page.click('[data-testid="buy-now-btn"]');
     // await expect(page.locator('[data-testid="checkout-modal"]')).toBeVisible();
-    test.todo();
+    test.fixme();
   });
 
   test('empty-state-renders: creator with no products shows empty state', async ({ page }) => {
@@ -61,13 +61,13 @@ test.describe('Phase 2 — Creator Storefront', () => {
     // await expect(page.locator('text=Nothing for sale yet')).toBeVisible();
     // No product grid or broken cards
     // await expect(page.locator('[data-testid="product-card"]')).toHaveCount(0);
-    test.todo();
+    test.fixme();
   });
 
   test('social-links-render: social links appear below bio', async ({ page }) => {
     // await page.goto('/testcreator');
     // await expect(page.locator('[data-testid="social-links"]')).toBeVisible();
-    test.todo();
+    test.fixme();
   });
 });
 
@@ -80,11 +80,11 @@ test.describe('Phase 3 — Calling Engine', () => {
   test('timezone-display-correct: slots convert to visitor local timezone', async ({ page }) => {
     // TODO: Mock Intl.DateTimeFormat to return IST (UTC+5:30)
     // Verify a 3pm UTC slot displays as 8:30pm on the booking calendar
-    test.todo();
+    test.fixme();
   });
 
   test('booking-created-in-kv: successful booking creates KV record', async ({ page }) => {
-    test.todo();
+    test.fixme();
   });
 
   test('mobile-call-room-layout: native call room has no horizontal scroll at 375px', async ({ page }) => {
@@ -92,7 +92,7 @@ test.describe('Phase 3 — Calling Engine', () => {
     // await page.goto('/live/testcreator/room-id');
     // const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     // expect(scrollWidth).toBeLessThanOrEqual(375);
-    test.todo();
+    test.fixme();
   });
 });
 
@@ -106,19 +106,19 @@ test.describe('Phase 4 — Broadcast Rooms', () => {
     // TODO: Mock isLive: true for testcreator in KV
     // await page.goto('/testcreator');
     // await expect(page.locator('text=Enter Live Room')).toBeVisible();
-    test.todo();
+    test.fixme();
   });
 
   test('live-badge-pulsing: LIVE badge ring is visible on avatar', async ({ page }) => {
     // await expect(page.locator('[data-testid="live-badge"]')).toBeVisible();
-    test.todo();
+    test.fixme();
   });
 
   test('controls-autohide: control bar fades after 3s of no interaction', async ({ page }) => {
     // await page.goto('/stream/testcreator');
     // await page.waitForTimeout(3500);
     // await expect(page.locator('[data-testid="control-bar"]')).toHaveCSS('opacity', '0');
-    test.todo();
+    test.fixme();
   });
 });
 
@@ -129,15 +129,15 @@ test.describe('Phase 4 — Broadcast Rooms', () => {
 
 test.describe('Phase 5 — Dashboard', () => {
   test('earnings-list-renders: past transactions appear in dashboard table', async ({ page }) => {
-    test.todo();
+    test.fixme();
   });
 
   test('withdrawal-request-created: withdrawal request creates KV record', async ({ page }) => {
-    test.todo();
+    test.fixme();
   });
 
   test('conversion-rate-correct: analytics shows correct conversion %', async ({ page }) => {
-    test.todo();
+    test.fixme();
   });
 });
 
@@ -152,7 +152,7 @@ test.describe('Phase 6 — Admin & Infrastructure', () => {
     await page.goto('/admin');
     // Should redirect away or show 403
     await expect(page).not.toHaveURL('/admin');
-    test.todo();
+    test.fixme();
   });
 
   test('rate-limit-429: checkout endpoint returns 429 after 10 requests in 1 min', async ({ request }) => {
@@ -174,6 +174,6 @@ test.describe('Phase 6 — Admin & Infrastructure', () => {
   });
 
   test('admin-search-works: admin can search for creator by username', async ({ page }) => {
-    test.todo();
+    test.fixme();
   });
 });

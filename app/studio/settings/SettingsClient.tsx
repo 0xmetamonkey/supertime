@@ -2,11 +2,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   Video,
   Mic,
-  Globe,
   Save,
   Check,
   Monitor,
@@ -14,7 +12,11 @@ import {
   Sun,
   PhoneCall,
   Calendar,
-  ExternalLink
+  ExternalLink,
+  Zap,
+  Sparkles,
+  CreditCard,
+  Radio,
 } from 'lucide-react';
 import { useTheme } from '../../components/ThemeProvider';
 import { useAlertDialog } from '../../components/AlertDialog';
@@ -24,11 +26,14 @@ interface SettingsClientProps {
   initialSettings: {
     videoRate: number;
     audioRate: number;
-    roomType: 'audio' | 'video';
-    isRoomFree: boolean;
+    isAcceptingCalls?: boolean;
+    subscriptionPrice?: number;
+    upiId?: string;
     videoProvider?: string;
     isGoogleConnected?: boolean;
     isZoomConnected?: boolean;
+    roomType?: 'audio' | 'video';
+    isRoomFree?: boolean;
   };
 }
 
@@ -36,10 +41,14 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
   const { theme, setTheme } = useTheme();
   const { alert: customAlert, AlertDialog } = useAlertDialog();
 
-  const [pendingVideoRate, setPendingVideoRate] = useState(initialSettings.videoRate);
-  const [pendingAudioRate, setPendingAudioRate] = useState(initialSettings.audioRate);
-  const [roomType, setRoomType] = useState<'audio' | 'video'>(initialSettings.roomType || 'audio');
-  const [isRoomFree, setIsRoomFree] = useState<boolean>(initialSettings.isRoomFree ?? true);
+  // Instant Availability state (Uber Driver Online model)
+  const [isAcceptingCalls, setIsAcceptingCalls] = useState<boolean>(initialSettings.isAcceptingCalls ?? true);
+
+  // Pricing & Payouts
+  const [pendingVideoRate, setPendingVideoRate] = useState(initialSettings.videoRate ?? 100);
+  const [pendingAudioRate, setPendingAudioRate] = useState(initialSettings.audioRate ?? 50);
+  const [pendingSubPrice, setPendingSubPrice] = useState(initialSettings.subscriptionPrice ?? 199);
+  const [pendingUpiId, setPendingUpiId] = useState(initialSettings.upiId ?? '');
 
   // Integrations state
   const [videoProvider, setVideoProvider] = useState<string>(initialSettings.videoProvider || 'supercalls');
@@ -61,8 +70,9 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
         body: JSON.stringify({
           videoRate: pendingVideoRate,
           audioRate: pendingAudioRate,
-          roomType,
-          isRoomFree,
+          isAcceptingCalls,
+          subscriptionPrice: pendingSubPrice,
+          upiId: pendingUpiId.trim(),
           videoProvider,
         })
       });
@@ -92,7 +102,10 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
   return (
     <div className="font-sans transition-colors duration-200">
       <div className="flex items-center justify-between mb-8">
-        <h2 className="text-2xl font-medium tracking-tight text-gray-900 dark:text-foreground">App Preferences & Calls</h2>
+        <div>
+          <h2 className="text-2xl font-medium tracking-tight text-gray-900 dark:text-foreground">Calls, Rates & Availability</h2>
+          <p className="text-sm text-muted mt-1">Control your live status, call pricing, and believer memberships.</p>
+        </div>
         <button
           onClick={saveSettings}
           disabled={isSaving}
@@ -103,202 +116,190 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* LEFT COLUMN */}
+        {/* LEFT COLUMN: AVAILABILITY & RATES */}
         <div className="space-y-6">
-          {/* ROOM CONFIGURATION */}
+          {/* INSTANT AVAILABILITY (UBER ONLINE TOGGLE) */}
           <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
-            <SectionHeader id="room" title="Room Config" icon={<Globe className="w-5 h-5 text-gray-400" />} />
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => setRoomType('audio')}
-                  className={`flex items-center justify-center gap-2 p-4 rounded-xl text-sm font-medium transition-all ${roomType === 'audio' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800' : 'bg-white dark:bg-surface text-gray-500 border border-gray-200 dark:border-border hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-                >
-                  <Mic className="w-4 h-4" /> Audio Room
-                </button>
-                <button
-                  onClick={() => setRoomType('video')}
-                  className={`flex items-center justify-center gap-2 p-4 rounded-xl text-sm font-medium transition-all ${roomType === 'video' ? 'bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 border border-pink-200 dark:border-pink-800' : 'bg-white dark:bg-surface text-gray-500 border border-gray-200 dark:border-border hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-                >
-                  <Video className="w-4 h-4" /> Video Room
-                </button>
+            <SectionHeader id="availability" title="Instant Availability" icon={<Radio className="w-5 h-5 text-neo-green" />} />
+            
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-900/50 border border-border rounded-xl">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${isAcceptingCalls ? 'bg-green-500 animate-pulse' : 'bg-gray-300 dark:bg-zinc-600'}`} />
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-foreground">
+                    {isAcceptingCalls ? 'Available for Instant Calls' : 'Offline / Scheduled Only'}
+                  </h4>
+                </div>
+                <p className="text-xs text-muted max-w-sm">
+                  {isAcceptingCalls 
+                    ? 'You appear as "Available Now" on Explore. Believers can call you instantly.' 
+                    : 'Instant calling is paused. Believers can only book scheduled timeslots.'}
+                </p>
               </div>
 
-              <div className="border-t border-gray-100 dark:border-border pt-6">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Entrance Fee</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => setIsRoomFree(true)}
-                    className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all ${isRoomFree ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800' : 'bg-white dark:bg-surface text-gray-500 border border-gray-200 dark:border-border hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-                  >
-                    <span className="font-medium text-sm">Free Entry</span>
-                    <span className={`text-xs mt-1 ${isRoomFree ? 'text-green-600/70 dark:text-green-400/70' : 'text-gray-400'}`}>Anyone can join</span>
-                  </button>
-                  <button
-                    onClick={() => setIsRoomFree(false)}
-                    className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all ${!isRoomFree ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800' : 'bg-white dark:bg-surface text-gray-500 border border-gray-200 dark:border-border hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-                  >
-                    <span className="font-medium text-sm">Paid Only</span>
-                    <span className={`text-xs mt-1 ${!isRoomFree ? 'text-purple-600/70 dark:text-purple-400/70' : 'text-gray-400'}`}>Requires payment</span>
-                  </button>
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsAcceptingCalls(!isAcceptingCalls)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  isAcceptingCalls ? 'bg-green-500' : 'bg-gray-200 dark:bg-zinc-700'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    isAcceptingCalls ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
             </div>
           </div>
 
-          {/* CALL RATES */}
-          {!isRoomFree && (
-            <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
-              <SectionHeader id="rates" title="Call Rates" icon={<PhoneCall className="w-5 h-5 text-gray-400" />} />
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2 flex items-center gap-2">
-                    <Mic className="w-4 h-4 text-blue-500" /> Audio Rate / min
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">₹</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={pendingAudioRate}
-                      onChange={(e) => setPendingAudioRate(Number(e.target.value))}
-                      className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-lg pl-8 pr-3 py-2.5 text-sm font-medium text-gray-900 dark:text-foreground outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
+          {/* CALL PRICING */}
+          <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
+            <SectionHeader id="rates" title="1:1 Session Pricing" icon={<PhoneCall className="w-5 h-5 text-gray-400" />} />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-2 flex items-center gap-1.5">
+                  <Video className="w-3.5 h-3.5 text-neo-pink" /> Video Session (30 min)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-medium text-sm">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={pendingVideoRate}
+                    onChange={(e) => setPendingVideoRate(Number(e.target.value))}
+                    className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-xl pl-8 pr-3 py-2.5 text-sm font-semibold text-gray-900 dark:text-foreground outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                    placeholder="500"
+                  />
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2 flex items-center gap-2">
-                    <Video className="w-4 h-4 text-pink-500" /> Video Rate / min
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">₹</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={pendingVideoRate}
-                      onChange={(e) => setPendingVideoRate(Number(e.target.value))}
-                      className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-lg pl-8 pr-3 py-2.5 text-sm font-medium text-gray-900 dark:text-foreground outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-2 flex items-center gap-1.5">
+                  <Mic className="w-3.5 h-3.5 text-blue-500" /> Audio Session (30 min)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-medium text-sm">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={pendingAudioRate}
+                    onChange={(e) => setPendingAudioRate(Number(e.target.value))}
+                    className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-xl pl-8 pr-3 py-2.5 text-sm font-semibold text-gray-900 dark:text-foreground outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                    placeholder="250"
+                  />
                 </div>
               </div>
             </div>
-          )}
+            <p className="text-[11px] text-muted mt-3">Fans pay this fee upfront via UPI/Cards when booking or calling.</p>
+          </div>
+
+          {/* BELIEVER MONTHLY PASS (SUBSCRIPTION) */}
+          <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
+            <SectionHeader id="subscription" title="Believer Monthly Pass" icon={<Sparkles className="w-5 h-5 text-neo-yellow" />} />
+            
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-2">
+                  Monthly Membership Price
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-medium text-sm">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={pendingSubPrice}
+                    onChange={(e) => setPendingSubPrice(Number(e.target.value))}
+                    className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-xl pl-8 pr-3 py-2.5 text-sm font-semibold text-gray-900 dark:text-foreground outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                    placeholder="199"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted leading-relaxed">
+                Fans who subscribe as your <strong>Believers</strong> get monthly recurring call credits and direct messaging access in your Inbox.
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* RIGHT COLUMN */}
+        {/* RIGHT COLUMN: PAYOUTS & INTEGRATIONS */}
         <div className="space-y-6">
-          {/* PREFERENCES */}
+          {/* UPI PAYOUT ACCOUNT */}
           <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
-            <SectionHeader id="theme" title="Preferences" icon={<Monitor className="w-5 h-5 text-gray-400" />} />
-            <div>
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Theme</p>
-              <div className="flex bg-gray-100 dark:bg-background rounded-lg p-1 w-full transition-colors">
-                <button
-                  onClick={() => setTheme('light')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${theme === 'light' ? 'bg-white dark:bg-surface text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-foreground'}`}
-                >
-                  <Sun className="w-4 h-4" /> Light
-                </button>
-                <button
-                  onClick={() => setTheme('dark')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${theme === 'dark' ? 'bg-white dark:bg-surface text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-foreground'}`}
-                >
-                  <Moon className="w-4 h-4" /> Dark
-                </button>
-                <button
-                  onClick={() => setTheme('system')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${theme === 'system' ? 'bg-white dark:bg-surface text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-foreground'}`}
-                >
-                  <Monitor className="w-4 h-4" /> System
-                </button>
+            <SectionHeader id="payout" title="Earnings Payout (UPI)" icon={<CreditCard className="w-5 h-5 text-green-500" />} />
+            
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-2">
+                  Your UPI ID (VPA)
+                </label>
+                <input
+                  type="text"
+                  value={pendingUpiId}
+                  onChange={(e) => setPendingUpiId(e.target.value)}
+                  placeholder="e.g. username@okhdfcbank or 9876543210@paytm"
+                  className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-xl px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-foreground outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                />
               </div>
+              <p className="text-xs text-muted">
+                Withdrawals from your Wallet will be credited directly to this UPI address.
+              </p>
             </div>
           </div>
 
-          {/* VIDEO MEETING INTEGRATIONS */}
-          <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors space-y-6">
-            <SectionHeader id="integrations" title="Video Integrations" icon={<Calendar className="w-5 h-5 text-gray-400" />} />
-
+          {/* MEETING & VIDEO PREFERENCES */}
+          <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
+            <SectionHeader id="integrations" title="Live Meeting Engine" icon={<Calendar className="w-5 h-5 text-gray-400" />} />
             <div className="space-y-4">
-              {/* Supercalls Native Engine */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-900/50 border border-gray-150 dark:border-border rounded-xl">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 dark:text-foreground">Supercalls Native Engine</h4>
-                  <p className="text-xs text-gray-400 mt-0.5">Built-in recording, screen sharing, and atomic booking locks.</p>
-                </div>
-                <div className="flex items-center">
-                  <span className="text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1 bg-green-50 dark:bg-green-950/30 px-2 py-1 rounded-md">
-                    <Check className="w-3.5 h-3.5" /> Active
-                  </span>
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-2">Meeting Service</label>
+                <select
+                  value={videoProvider}
+                  onChange={(e) => setVideoProvider(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-xl p-3 font-medium text-sm outline-none text-gray-900 dark:text-foreground"
+                >
+                  <option value="supercalls">Supercalls (In-Browser Instant Call, default)</option>
+                  <option value="googlemeet" disabled={!isGoogleConnected}>
+                    Google Meet {!isGoogleConnected && '(Connect calendar first)'}
+                  </option>
+                  <option value="zoom" disabled={!isZoomConnected}>
+                    Zoom Rooms {!isZoomConnected && '(Connect Zoom first)'}
+                  </option>
+                </select>
+                <p className="text-[11px] text-muted mt-2">
+                  For instant Uber-style calls, Supercalls connects believers and creators in zero-setup WebRTC rooms immediately.
+                </p>
               </div>
 
-              {/* Google Calendar & Meet Integration Card */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-900/50 border border-gray-150 dark:border-border rounded-xl">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 dark:text-foreground">Google Calendar & Meet</h4>
-                  <p className="text-xs text-gray-400 mt-0.5">Automate unique Google Meet links for bookings</p>
-                </div>
-                <div className="flex items-center">
+              {/* Connected Accounts */}
+              <div className="pt-2 border-t border-gray-100 dark:border-border space-y-2">
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-background rounded-xl border border-gray-150 dark:border-border">
+                  <div className="text-xs font-medium text-gray-900 dark:text-foreground">Google Calendar / Meet</div>
                   {isGoogleConnected ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1 bg-green-50 dark:bg-green-950/30 px-2 py-1 rounded-md">
-                        <Check className="w-3.5 h-3.5" /> Linked
-                      </span>
-                      <button
-                        onClick={async () => {
-                          if (confirm('Disconnect Google Calendar?')) {
-                            await fetch('/api/auth/google/disconnect', { method: 'POST' });
-                            setIsGoogleConnected(false);
-                            setVideoProvider('supercalls');
-                          }
-                        }}
-                        className="text-xs text-gray-400 hover:text-red-500 font-medium ml-2"
-                      >
-                        Disconnect
-                      </button>
-                    </div>
+                    <span className="text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> Connected
+                    </span>
                   ) : (
                     <a
                       href="/api/auth/google"
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 dark:bg-foreground text-white dark:text-background text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-900 dark:bg-foreground text-white dark:text-background text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
                     >
                       Connect <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
                 </div>
-              </div>
 
-              {/* Zoom Integration Card */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-900/50 border border-gray-150 dark:border-border rounded-xl">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 dark:text-foreground">Zoom Video Rooms</h4>
-                  <p className="text-xs text-gray-400 mt-0.5">Generate dynamic personal Zoom meeting rooms</p>
-                </div>
-                <div className="flex items-center">
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-background rounded-xl border border-gray-150 dark:border-border">
+                  <div className="text-xs font-medium text-gray-900 dark:text-foreground">Zoom Video Rooms</div>
                   {isZoomConnected ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1 bg-green-50 dark:bg-green-950/30 px-2 py-1 rounded-md">
-                        <Check className="w-3.5 h-3.5" /> Linked
-                      </span>
-                      <button
-                        onClick={async () => {
-                          if (confirm('Disconnect Zoom?')) {
-                            await fetch('/api/auth/zoom/disconnect', { method: 'POST' });
-                            setIsZoomConnected(false);
-                            setVideoProvider('supercalls');
-                          }
-                        }}
-                        className="text-xs text-gray-400 hover:text-red-500 font-medium ml-2"
-                      >
-                        Disconnect
-                      </button>
-                    </div>
+                    <span className="text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> Connected
+                    </span>
                   ) : (
                     <a
                       href="/api/auth/zoom"
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 dark:bg-foreground text-white dark:text-background text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-900 dark:bg-foreground text-white dark:text-background text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
                     >
                       Connect <ExternalLink className="w-3 h-3" />
                     </a>
@@ -306,26 +307,45 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Video Provider Preference Selector */}
-            <div className="border-t border-gray-100 dark:border-border pt-4">
-              <label className="block text-xs font-medium text-gray-400 mb-2">Preferred Live Meeting Method</label>
-              <select
-                value={videoProvider}
-                onChange={(e) => setVideoProvider(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-border rounded-xl p-3 font-medium text-sm outline-none bg-white dark:bg-background text-gray-900 dark:text-foreground"
+          {/* THEME PREFERENCE */}
+          <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
+            <SectionHeader id="appearance" title="Interface Appearance" icon={<Sun className="w-5 h-5 text-gray-400" />} />
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                onClick={() => setTheme('light')}
+                className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                  theme === 'light'
+                    ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 font-semibold'
+                    : 'border-gray-200 dark:border-border text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                }`}
               >
-                <option value="supercalls">Supercalls (Zero-Setup, default)</option>
-                <option value="googlemeet" disabled={!isGoogleConnected}>
-                  Google Meet {!isGoogleConnected && '(Connect calendar first)'}
-                </option>
-                <option value="zoom" disabled={!isZoomConnected}>
-                  Zoom Rooms {!isZoomConnected && '(Connect Zoom first)'}
-                </option>
-              </select>
-              <p className="text-[10px] text-gray-400 mt-2">
-                Clients will receive booking links according to this preference. If the selected service is disconnected or unavailable, Supertime falls back to Supercalls.
-              </p>
+                <Sun className="w-5 h-5" />
+                <span className="text-xs">Light</span>
+              </button>
+              <button
+                onClick={() => setTheme('dark')}
+                className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                  theme === 'dark'
+                    ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 font-semibold'
+                    : 'border-gray-200 dark:border-border text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                }`}
+              >
+                <Moon className="w-5 h-5" />
+                <span className="text-xs">Dark</span>
+              </button>
+              <button
+                onClick={() => setTheme('system')}
+                className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                  theme === 'system'
+                    ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 font-semibold'
+                    : 'border-gray-200 dark:border-border text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                }`}
+              >
+                <Monitor className="w-5 h-5" />
+                <span className="text-xs">System</span>
+              </button>
             </div>
           </div>
         </div>
@@ -334,4 +354,3 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
     </div>
   );
 }
-
