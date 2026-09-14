@@ -25,18 +25,22 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@supertime/shared": [
+        "./packages/shared/src/index.ts"
       ]
     }
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "packages/**/*.ts",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "mobile"
   ]
 }

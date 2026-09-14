@@ -105,8 +105,8 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   return (
     <StudioWrapper
       username={username || null}
-      session={userId ? { user: { id: userId, email: email } } : null}
-      initialSettings={settings}
+      session={userId && resolvedEmail ? { user: { id: userId, email: resolvedEmail } } : null}
+      initialSettings={settings as unknown as Record<string, unknown>}
     />
   );
 }

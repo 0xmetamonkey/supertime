@@ -11,14 +11,14 @@ export async function trackEvent(username: string, event: AnalyticsEvent, metada
     await kv.hincrby(key, event, 1);
 
     // If it's an earning event, add to total earnings for the day
-    if (event === "earning" && metadata.amount) {
+    if (event === "earning" && typeof metadata.amount === 'number') {
       await kv.hincrby(key, "earnings_amount", Math.floor(metadata.amount));
     }
 
     // Track total historical count
     await kv.hincrby(`stats:${username}:total`, event, 1);
 
-    if (event === "earning" && metadata.amount) {
+    if (event === "earning" && typeof metadata.amount === 'number') {
       await kv.hincrby(`stats:${username}:total`, "earnings_amount", Math.floor(metadata.amount));
     }
 

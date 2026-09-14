@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Radio, X, ArrowRight, Sparkles } from 'lucide-react';
 
-interface TalkTimeInvite {
+export interface TalkTimeInvite {
   from: string;
   fromEmail: string;
   roomId: string;

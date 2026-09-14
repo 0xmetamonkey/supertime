@@ -115,7 +115,7 @@ export default async function DashboardPage() {
     }
     if (profileImage) initialSettings.profileImage = String(profileImage);
     if (coverImage) initialSettings.coverImage = String(coverImage);
-    if (roomType) initialSettings.roomType = roomType;
+    if (roomType === 'audio' || roomType === 'video') initialSettings.roomType = roomType;
     if (isRoomFree !== null) initialSettings.isRoomFree = !!isRoomFree;
     if (templates) initialSettings.templates = templates;
     if (faqs) initialSettings.faqs = faqs;

@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Supertime",
+    "slug": "supertime",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#111111"
+    },
+    "ios": {
+      "bundleIdentifier": "com.supertime.app",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Supertime needs camera access for live video calls with creators.",
+        "NSMicrophoneUsageDescription": "Supertime needs microphone access for live audio and video calls."
+      }
+    },
+    "android": {
+      "package": "com.supertime.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#111111",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

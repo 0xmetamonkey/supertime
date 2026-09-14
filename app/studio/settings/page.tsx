@@ -76,5 +76,5 @@ export default async function SettingsPage() {
     if (faqs) settings.faqs = faqs;
   }
 
-  return <SettingsClient username={username} initialSettings={settings} />;
+  return <SettingsClient initialSettings={settings} />;
 }
