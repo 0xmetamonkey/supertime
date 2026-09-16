@@ -3,12 +3,134 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Zap, Sparkles, DollarSign, MessageSquare, Check, Eye, ChevronUp, ChevronDown, RefreshCw } from 'lucide-react';
 import { useUser } from "@clerk/nextjs";
 import { checkAvailability, completeOnboarding } from './actions';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import { useLanguage } from './components/LanguageContext';
+
+export type HomepageVariant = 'bold' | 'calm' | 'monetize' | 'direct';
+
+interface VariantData {
+  id: HomepageVariant;
+  label: string;
+  badge: string;
+  badgeColor: string;
+  title: React.ReactNode;
+  subtitle: string;
+  featHeader: string;
+  features: string[];
+  claimBtn: string;
+  claimPlaceholder: string;
+  beliefTitle: string;
+  beliefDesc: string;
+}
+
+const VARIANTS: Record<HomepageVariant, VariantData> = {
+  bold: {
+    id: 'bold',
+    label: '⚡ fuck time.',
+    badge: 'Raw & High-Conversion',
+    badgeColor: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+    title: (
+      <>
+        <span>fuck time.</span>
+        <br />
+        <span className="text-foreground/90">its supertime.</span>
+      </>
+    ),
+    subtitle: "Turn your minutes into money. No feed algorithms, no endless scroll traps. Set your rate, share your link, and get paid for real 1:1 human conversations.",
+    featHeader: "Why creators switch",
+    features: [
+      "💰 You set your rate per minute.",
+      "⚡ 100% direct instant payouts.",
+      "🚫 Zero feed manipulation or ads.",
+      "🎙️ High-fidelity 1:1 live calling.",
+      "🔒 Total control over your schedule."
+    ],
+    claimBtn: "Start earning",
+    claimPlaceholder: "claim your link",
+    beliefTitle: "The attention economy is broken. We're turning time into direct money.",
+    beliefDesc: "You shouldn't have to produce free content all day just to feed social media algorithms. Supertime lets you monetize your real attention, insights, and presence with paid 1:1 calls and zero noise."
+  },
+  calm: {
+    id: 'calm',
+    label: '🌿 make your time matter',
+    badge: 'Calm & Intentional',
+    badgeColor: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+    title: (
+      <>
+        Make your time matter.
+      </>
+    ),
+    subtitle: "Supertime is a calm space to connect with creators, thinkers, artists and experts. Real conversations. Not endless content.",
+    featHeader: "A better way to connect",
+    features: [
+      "No feeds.",
+      "No algorithms.",
+      "Just people.",
+      "Real time.",
+      "Real conversations."
+    ],
+    claimBtn: "Claim",
+    claimPlaceholder: "username",
+    beliefTitle: "We believe the internet can be calm, intentional and human.",
+    beliefDesc: "Supertime was built to rescue digital relationships from the clickbait economy. By providing focused, compensated 1:1 sessions, we unlock authentic human presence without the artificial noise of feeds and alerts."
+  },
+  monetize: {
+    id: 'monetize',
+    label: '💎 monetize attention',
+    badge: 'Creator Economy Value',
+    badgeColor: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    title: (
+      <>
+        <span>Your time has value.</span>
+        <br />
+        <span className="text-foreground/80">Stop giving it away for free.</span>
+      </>
+    ),
+    subtitle: "The live monetization engine for creators, consultants, and specialists. Book paid 1:1 sessions without the administrative headache or algorithm traps.",
+    featHeader: "Creator Economics",
+    features: [
+      "Keep 90% of your earnings.",
+      "Frictionless 1-tap booking.",
+      "Ultra-low latency studio.",
+      "Built-in tips & supercalls.",
+      "Instant direct bank transfers."
+    ],
+    claimBtn: "Get paid",
+    claimPlaceholder: "your handle",
+    beliefTitle: "Creators deserve direct compensation for their real presence.",
+    beliefDesc: "Stop trading your energy for vanity likes. When people value your insights, they can book your live time with zero friction, zero spam, and immediate value exchange."
+  },
+  direct: {
+    id: 'direct',
+    label: '🎯 stop scrolling',
+    badge: 'Anti-Social Media',
+    badgeColor: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+    title: (
+      <>
+        <span>Stop scrolling.</span>
+        <br />
+        <span className="text-foreground/80">Start speaking.</span>
+      </>
+    ),
+    subtitle: "The antidote to superficial social feeds. Get unhurried, focused 1:1 face time with the people whose work and insights you admire.",
+    featHeader: "Pure Interaction",
+    features: [
+      "Zero noise or notification spam.",
+      "Dedicated live availability slots.",
+      "Seamless in-browser studio.",
+      "Authentic, memorable connections.",
+      "Fair compensation for everyone."
+    ],
+    claimBtn: "Join now",
+    claimPlaceholder: "reserve handle",
+    beliefTitle: "Real presence beats passive consumption every single time.",
+    beliefDesc: "Content fatigue is real. The most impactful insights and relationships happen in direct, two-way dialogue between two focused human minds."
+  }
+};
 
 export default function LandingPageClient({
   session,
@@ -23,10 +145,57 @@ export default function LandingPageClient({
   const { user: clerkUser } = useUser();
   const { t } = useLanguage();
 
+  const [activeVariant, setActiveVariant] = useState<HomepageVariant>('bold');
+  const [isSwitcherOpen, setIsSwitcherOpen] = useState(true);
+  const [copiedLink, setCopiedLink] = useState(false);
+
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const isLoggedIn = !!clerkUser;
+
+  // Sync variant with URL query parameter or localStorage
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlVar = params.get('v') || params.get('variant');
+      if (urlVar && (urlVar in VARIANTS)) {
+        setActiveVariant(urlVar as HomepageVariant);
+        return;
+      }
+      const saved = localStorage.getItem('supertime_landing_variant');
+      if (saved && (saved in VARIANTS)) {
+        setActiveVariant(saved as HomepageVariant);
+      }
+    } catch (e) {
+      // Ignore in SSR
+    }
+  }, []);
+
+  const handleSelectVariant = (v: HomepageVariant) => {
+    setActiveVariant(v);
+    try {
+      localStorage.setItem('supertime_landing_variant', v);
+      const url = new URL(window.location.href);
+      url.searchParams.set('v', v);
+      window.history.replaceState(null, '', url.toString());
+    } catch (e) {
+      // Ignore
+    }
+  };
+
+  const handleCopyLink = () => {
+    try {
+      const url = `${window.location.origin}/?v=${activeVariant}`;
+      navigator.clipboard.writeText(url);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch (e) {
+      // Ignore
+    }
+  };
+
+  const currentVariant = VARIANTS[activeVariant] || VARIANTS.bold;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +215,6 @@ export default function LandingPageClient({
         await completeOnboarding(username, 'creator');
         window.location.href = '/dashboard';
       } else {
-        // Just send them to dashboard after sign-in; the new Onboarding Gate handles the rest
         router.push(`/sign-in?forceRedirectUrl=/dashboard`);
       }
     } catch (e: any) {
@@ -115,19 +283,24 @@ export default function LandingPageClient({
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-foreground selection:text-background antialiased transition-colors duration-300">
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-foreground selection:text-background antialiased transition-colors duration-300 pb-24">
       {/* Navigation */}
       <Header />
 
       {/* Hero Section */}
-      <section className="pt-20 md:pt-28 pb-20 md:pb-32">
+      <section className="pt-20 md:pt-28 pb-20 md:pb-32 transition-all duration-300">
         <div className="w-full px-6 sm:px-8 md:px-12 grid md:grid-cols-12 gap-12 md:gap-16 items-start">
           <div className="md:col-span-8 space-y-8">
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight text-foreground leading-[1.05]">
-              {t('heroTitle')}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold tracking-wide border transition-all duration-300 animate-in fade-in slide-in-from-top-2">
+              <span className={`inline-block w-2 h-2 rounded-full ${activeVariant === 'bold' ? 'bg-amber-500 animate-pulse' : activeVariant === 'calm' ? 'bg-emerald-500' : activeVariant === 'monetize' ? 'bg-blue-500' : 'bg-purple-500'}`} />
+              <span className="text-muted">{currentVariant.badge}</span>
+            </div>
+
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-semibold tracking-tight text-foreground leading-[1.05] transition-all">
+              {currentVariant.title}
             </h1>
-            <p className="text-lg md:text-xl text-muted leading-relaxed max-w-xl">
-              {t('heroSubtitle')}
+            <p className="text-lg md:text-xl text-muted leading-relaxed max-w-xl transition-all">
+              {currentVariant.subtitle}
             </p>
 
             {/* Claim Box & Explore Duality */}
@@ -140,7 +313,7 @@ export default function LandingPageClient({
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                      placeholder={t('claimUsername')}
+                      placeholder={currentVariant.claimPlaceholder}
                       className="flex-1 bg-transparent border-none outline-none text-foreground font-medium text-sm sm:text-base placeholder:text-muted/65 lowercase min-w-0"
                     />
                   </div>
@@ -149,7 +322,7 @@ export default function LandingPageClient({
                     disabled={!username || loading}
                     className="bg-foreground text-background font-semibold px-6 py-3.5 sm:py-0 rounded-xl sm:rounded-none hover:opacity-90 transition-all disabled:opacity-50 text-sm flex items-center justify-center gap-1 shrink-0"
                   >
-                    {loading ? '...' : t('claimBtn')}
+                    {loading ? '...' : currentVariant.claimBtn}
                   </button>
                 </div>
                 {error && (
@@ -173,28 +346,14 @@ export default function LandingPageClient({
 
           {/* Features Column (Aligned with subtle left border) */}
           <div className="md:col-span-4 md:border-l md:border-border md:pl-10 space-y-5 self-start md:pt-14 pt-6">
-            <h4 className="font-semibold text-xs uppercase tracking-wider text-foreground">{t('featHeader')}</h4>
-            <ul className="space-y-3 text-base text-muted font-medium leading-none">
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-foreground shrink-0" />
-                <span>No feeds.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-foreground shrink-0" />
-                <span>No algorithms.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-foreground shrink-0" />
-                <span>Just people.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-foreground shrink-0" />
-                <span>Real time.</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-foreground shrink-0" />
-                <span>Real conversations.</span>
-              </li>
+            <h4 className="font-semibold text-xs uppercase tracking-wider text-foreground">{currentVariant.featHeader}</h4>
+            <ul className="space-y-3.5 text-base text-muted font-medium leading-normal">
+              {currentVariant.features.map((feat, idx) => (
+                <li key={idx} className="flex items-start gap-2.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-foreground shrink-0 mt-2" />
+                  <span className="text-foreground/90">{feat}</span>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
@@ -270,12 +429,12 @@ export default function LandingPageClient({
         <div className="w-full px-6 sm:px-8 md:px-12 grid md:grid-cols-12 gap-12 md:gap-16 items-start">
           <div className="md:col-span-7">
             <h2 className="text-3xl md:text-5xl font-semibold tracking-tight text-foreground leading-tight max-w-lg">
-              {t('beliefTitle')}
+              {currentVariant.beliefTitle}
             </h2>
           </div>
           <div className="md:col-span-5 space-y-6">
             <p className="text-base text-muted leading-relaxed">
-              {t('beliefDesc')}
+              {currentVariant.beliefDesc}
             </p>
             <div className="pt-2">
               <Link href="/about" className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-muted transition-colors">
@@ -334,6 +493,75 @@ export default function LandingPageClient({
 
       {/* Footer */}
       <Footer />
+
+      {/* FLOATING HOMEPAGE VARIANT SWITCHER DOCK */}
+      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 max-w-[95vw] w-auto">
+        {isSwitcherOpen ? (
+          <div className="bg-surface/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-border/80 shadow-2xl rounded-2xl p-2 sm:p-2.5 flex flex-col sm:flex-row items-center gap-2 sm:gap-3 transition-all animate-in fade-in slide-in-from-bottom-3">
+            <div className="flex items-center gap-2 px-2 text-xs font-bold uppercase tracking-wider text-muted select-none">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>A/B TEST</span>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-1.5">
+              {(Object.keys(VARIANTS) as HomepageVariant[]).map((vKey) => {
+                const variant = VARIANTS[vKey];
+                const isSelected = activeVariant === vKey;
+                return (
+                  <button
+                    key={vKey}
+                    onClick={() => handleSelectVariant(vKey)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-foreground text-background shadow-sm scale-105'
+                        : 'bg-surface hover:bg-border/60 text-muted hover:text-foreground border border-border/50'
+                    }`}
+                  >
+                    <span>{variant.label}</span>
+                    {isSelected && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-1.5 border-t sm:border-t-0 sm:border-l border-border/70 pt-1.5 sm:pt-0 sm:pl-2 w-full sm:w-auto justify-between sm:justify-start">
+              <button
+                onClick={handleCopyLink}
+                title="Copy direct shareable link for this variant"
+                className="text-[11px] font-medium text-muted hover:text-foreground px-2 py-1 rounded-lg hover:bg-border/40 transition-colors flex items-center gap-1"
+              >
+                {copiedLink ? (
+                  <>
+                    <Check className="w-3 h-3 text-emerald-500" />
+                    <span className="text-emerald-500 font-semibold">Copied ?v={activeVariant}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Share link</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => setIsSwitcherOpen(false)}
+                title="Minimize toolbar"
+                className="p-1 text-muted hover:text-foreground rounded-lg hover:bg-border/40 transition-colors"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setIsSwitcherOpen(true)}
+            className="bg-surface/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-border shadow-xl hover:shadow-2xl rounded-full px-4 py-2 text-xs font-semibold text-foreground flex items-center gap-2 hover:border-foreground/40 transition-all hover:scale-105"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Variant: {VARIANTS[activeVariant]?.label}</span>
+            <ChevronUp className="w-3.5 h-3.5 text-muted" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

@@ -23,7 +23,7 @@ const translations: Record<Language, Record<string, string>> = {
     exploreHumans: "explore humans",
     
     // Hero Section
-    heroTitle: "Intentional time with humans.",
+    heroTitle: "Make your time matter.",
     heroSubtitle: "Supertime is a calm space to connect with creators, thinkers, artists and experts. Real conversations. Not endless content.",
     claimUsername: "username",
     claimBtn: "Claim",
@@ -72,7 +72,7 @@ const translations: Record<Language, Record<string, string>> = {
     exploreHumans: "लोगों को खोजें",
     
     // Hero Section
-    heroTitle: "लोगों के साथ सार्थक समय।",
+    heroTitle: "अपने समय को सार्थक बनाएं।",
     heroSubtitle: "सुपरटाइम रचनाकारों, विचारकों, कलाकारों और विशेषज्ञों से जुड़ने का एक शांत स्थान है। वास्तविक बातचीत। कोई अंतहीन सामग्री नहीं।",
     claimUsername: "यूज़रनेम",
     claimBtn: "दावा करें",
@@ -121,7 +121,7 @@ const translations: Record<Language, Record<string, string>> = {
     exploreHumans: "explorar humanos",
     
     // Hero Section
-    heroTitle: "Tiempo intencional con humanos.",
+    heroTitle: "Haz que tu tiempo importe.",
     heroSubtitle: "Supertime es un espacio tranquilo para conectar con creadores, pensadores, artistas y expertos. Conversaciones reales. No contenido infinito.",
     claimUsername: "usuario",
     claimBtn: "Reclamar",
@@ -170,7 +170,7 @@ const translations: Record<Language, Record<string, string>> = {
     exploreHumans: "explorer des humains",
     
     // Hero Section
-    heroTitle: "Du temps intentionnel avec des humains.",
+    heroTitle: "Faites que votre temps compte.",
     heroSubtitle: "Supertime est un espace calme pour se connecter avec des créateurs, des penseurs, des artistes et des experts. Vraies conversations. Pas de contenu infini.",
     claimUsername: "nom d'utilisateur",
     claimBtn: "Réclamer",
@@ -219,7 +219,7 @@ const translations: Record<Language, Record<string, string>> = {
     exploreHumans: "మనుషులను అన్వేషించండి",
     
     // Hero Section
-    heroTitle: "మనుషులతో విలువైన సమయం.",
+    heroTitle: "మీ సమయాన్ని విలువైనదిగా మార్చుకోండి.",
     heroSubtitle: "సూపర్‌టైమ్ అనేది సృష్టికర్తలు, ఆలోచనాపరులు, కళాకారులు మరియు నిపుణులతో కనెక్ట్ కావడానికి ఒక ప్రశాंतమైన స్థలం. నిజమైన సంభాషణలు. అంతులేని కంటెంట్ కాదు.",
     claimUsername: "వినియోగదారు పేరు",
     claimBtn: "క్లెయిమ్",
@@ -268,7 +268,7 @@ const translations: Record<Language, Record<string, string>> = {
     exploreHumans: "மனிதர்களை ஆராயுங்கள்",
     
     // Hero Section
-    heroTitle: "மனிதர்களுடன் பயனுள்ள நேரம்.",
+    heroTitle: "உங்கள் நேரத்தை பயனுள்ளதாக்குங்கள்.",
     heroSubtitle: "சூப்பர்டைம் என்பது படைப்பாளிகள், சிந்தனையாளர்கள், கலைஞர்கள் மற்றும் நிபுணர்களுடன் இணைவதற்கான ஒரு அமைதியான இடமாகும். உண்மையான உரையாடல்கள். அம்துலாடி உள்ளடக்கங்கள் இல்லை.",
     claimUsername: "பயனர் பெயர்",
     claimBtn: "கோரு",
