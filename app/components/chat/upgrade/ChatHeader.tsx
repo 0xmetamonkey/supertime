@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Phone, Video, MoreVertical, ArrowLeft, Trash2 } from 'lucide-react';
+import { Phone, Video, MoreVertical, ArrowLeft, Trash2, Zap } from 'lucide-react';
 import Link from 'next/link';
+import PingModal from '../../PingModal';
 
 interface ChatHeaderProps {
   recipientName: string;
@@ -18,6 +19,7 @@ interface ChatHeaderProps {
 export default function ChatHeader({ recipientName, recipientImage, isOnline, onBack, onAudioCall, onVideoCall, onDeleteChat, isCallActive }: ChatHeaderProps) {
   const initial = recipientName.charAt(0).toUpperCase();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showPingModal, setShowPingModal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu on click outside
@@ -77,6 +79,23 @@ export default function ChatHeader({ recipientName, recipientImage, isOnline, on
 
       {/* Right: Action Buttons */}
       <div className="flex items-center gap-1">
+        <button
+          onClick={() => setShowPingModal(true)}
+          className="w-9 h-9 rounded-full flex items-center justify-center transition-colors text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
+          title="Ping for Session"
+          aria-label="Ping for Session"
+        >
+          <Zap className="w-4.5 h-4.5 fill-current" />
+        </button>
+
+        {showPingModal && (
+          <PingModal
+            isOpen={showPingModal}
+            onClose={() => setShowPingModal(false)}
+            targetUsername={recipientName}
+          />
+        )}
+
         <button
           onClick={onAudioCall}
           disabled={isCallActive}

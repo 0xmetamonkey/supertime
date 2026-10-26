@@ -99,6 +99,31 @@ export default function RoomPreflightModal({ mode, onClose, onOpenRoom }: RoomPr
 
           {/* Configuration List */}
           <div className="w-full space-y-4">
+            {/* Roulette Config */}
+            {mode === 'roulette' && (
+              <>
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-neutral-800 dark:text-neutral-200 stroke-[1.75]" />
+                    <span className="text-sm font-medium">Session countdown</span>
+                  </div>
+                  <div className="text-sm font-semibold text-amber-500">
+                    30 seconds (+Time)
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <Play className="w-5 h-5 text-neutral-800 dark:text-neutral-200 stroke-[1.75]" />
+                    <span className="text-sm font-medium">Auto-find next on skip</span>
+                  </div>
+                  <div className="text-xs px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 font-medium">
+                    Enabled
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* 1:1 Config */}
             {mode === '1v1' && (
               <>

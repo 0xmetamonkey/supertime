@@ -1,24 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { kv } from '@vercel/kv';
+import { verifyRazorpayPayment } from '@/app/lib/razorpay';
+import { escapeHtml } from '@/app/lib/sanitize';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, productId, creatorUsername, buyerEmail, buyerName, amount: clientAmount } = body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, productId, creatorUsername, buyerEmail, buyerName } = body;
 
-    const secret = process.env.RAZORPAY_KEY_SECRET;
-    if (!secret) throw new Error("Razorpay secret missing");
+    // SECURITY: signature + payment/order binding verified against Razorpay.
+    const { order } = await verifyRazorpayPayment(
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature
+    );
 
-    const signBody = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto
-      .createHmac("sha256", secret)
-      .update(signBody)
-      .digest("hex");
-
-    if (expectedSignature !== razorpay_signature) {
-      return NextResponse.json({ success: false, error: 'SIGNATURE_MISMATCH' }, { status: 400 });
+    // Atomic idempotency claim before any fulfillment.
+    const claimed = await kv.set(`payment:processed:${razorpay_payment_id}`, '1', { nx: true, ex: 31536000 });
+    if (!claimed) {
+      return NextResponse.json({ success: false, error: 'ALREADY_FULFILLED' }, { status: 400 });
     }
+
+    const orderAmountRupees = Math.floor(Number(order.amount) / 100);
 
     let creatorEmail = '';
     let amount = 0;
@@ -37,23 +40,25 @@ export async function POST(req: NextRequest) {
             amount = Number(product.price);
             productName = product.name;
             productContent = product.content;
+            // SECURITY: the paid order must cover at least the server-side product price
+            if (orderAmountRupees < amount) {
+              return NextResponse.json({ success: false, error: 'ORDER_AMOUNT_MISMATCH' }, { status: 400 });
+            }
           } else {
              return NextResponse.json({ success: false, error: 'PRODUCT_NOT_FOUND' }, { status: 400 });
           }
         } else {
-          amount = Number(clientAmount) || 0;
+          // SECURITY: tip amount comes from the paid order, not the request body
+          amount = orderAmountRupees;
         }
 
         const COMMISSION_RATE = 0.20; // 20%
         const commission = Math.round(amount * COMMISSION_RATE);
         const netAmount = amount - commission;
 
-        // Update balances
-        const current = (await kv.get<number>(`withdrawable:${creatorEmail}`)) ?? 0;
-        await kv.set(`withdrawable:${creatorEmail}`, current + netAmount);
-
-        const totalCommission = (await kv.get<number>('platform:commission:total')) ?? 0;
-        await kv.set('platform:commission:total', totalCommission + commission);
+        // Update balances atomically
+        await kv.incrby(`withdrawable:${creatorEmail}`, netAmount);
+        await kv.incrby('platform:commission:total', commission);
 
         // Record sale
         const sales = (await kv.get<any[]>(`sales:${creatorEmail}`)) || [];
@@ -88,7 +93,7 @@ export async function POST(req: NextRequest) {
                   from: 'Supertime <noreply@supertime.app>',
                   to: [buyerEmail],
                   subject: `Your Receipt for ${productName}`,
-                  html: `<p>Hi ${buyerName || 'there'},</p><p>Thank you for purchasing <strong>${productName}</strong> from ${creatorUsername}!</p>`
+                  html: `<p>Hi ${escapeHtml(buyerName || 'there')},</p><p>Thank you for purchasing <strong>${escapeHtml(productName)}</strong> from ${escapeHtml(creatorUsername)}!</p>`
                 })
               });
            } catch (e) {

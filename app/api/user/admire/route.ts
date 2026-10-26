@@ -28,7 +28,14 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const response = NextResponse.json({ count, isAdmiring, admirers });
+  const response = NextResponse.json({
+    count,
+    isAdmiring,
+    admirers,
+    believersCount: count,
+    isBelieving: isAdmiring,
+    believers: admirers
+  });
 
   // Cache for 30 seconds at the edge
   response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60');
@@ -46,15 +53,23 @@ export async function POST(req: NextRequest) {
   const { username, action } = await req.json();
   if (!username) return NextResponse.json({ error: 'Username required' }, { status: 400 });
 
+  const shouldAdd = action === 'admire' || action === 'believe';
+
   if (process.env.KV_URL) {
-    if (action === 'admire') {
+    if (shouldAdd) {
       await kv.sadd(`admirers:${username}`, email);
     } else {
       await kv.srem(`admirers:${username}`, email);
     }
     const count = await kv.scard(`admirers:${username}`);
-    return NextResponse.json({ success: true, count, isAdmiring: action === 'admire' });
+    return NextResponse.json({
+      success: true,
+      count,
+      isAdmiring: shouldAdd,
+      believersCount: count,
+      isBelieving: shouldAdd
+    });
   }
 
-  return NextResponse.json({ success: true, count: 0 });
+  return NextResponse.json({ success: true, count: 0, believersCount: 0, isBelieving: false });
 }

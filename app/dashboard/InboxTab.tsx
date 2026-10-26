@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @next/next/no-img-element */
 import React, { useEffect, useState } from 'react';
-import { MessageSquare, ArrowRight, CheckCircle, AlertCircle, Bell, X } from 'lucide-react';
+import { MessageSquare, ArrowRight, CheckCircle, AlertCircle, Bell, X, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useAlertDialog } from '../components/AlertDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function formatMessageDate(timestamp: number | string | Date): string {
@@ -36,6 +35,17 @@ export default function InboxTab({
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => Promise<void>;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: async () => {},
+  });
   const [modal, setModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -48,7 +58,6 @@ export default function InboxTab({
     type: 'info'
   });
   const router = useRouter();
-  const { alert: customAlert, AlertDialog } = useAlertDialog();
 
   useEffect(() => {
     // Check if push is already permitted
@@ -123,6 +132,55 @@ export default function InboxTab({
     }
   };
 
+  const handleDeleteSingleChat = (recipient: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmModal({
+      isOpen: true,
+      title: 'Close Chat',
+      message: `Are you sure you want to close your chat with @${recipient}?`,
+      onConfirm: async () => {
+        try {
+          await fetch('/api/chat/inbox', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, recipient }),
+          });
+          setConversations(prev => prev.filter(c => c.with.toLowerCase() !== recipient.toLowerCase()));
+          setUnreadFrom(prev => {
+            const next = new Set(prev);
+            next.delete(recipient.toLowerCase());
+            return next;
+          });
+        } catch (err) {
+          console.error('Failed to delete chat:', err);
+        }
+      },
+    });
+  };
+
+  const handleCloseAllChats = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Close All Chats',
+      message: `Are you sure you want to close all ${conversations.length} open chats? They will be removed from your inbox.`,
+      onConfirm: async () => {
+        try {
+          await fetch('/api/chat/inbox', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, deleteAll: true }),
+          });
+          setConversations([]);
+          setUnreadFrom(new Set());
+          showModal('Chats Closed', 'All active chats have been removed from your inbox.', 'success');
+        } catch (err) {
+          console.error('Failed to close all chats:', err);
+          showModal('Error', 'Failed to close all chats. Please try again.', 'error');
+        }
+      },
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -133,16 +191,35 @@ export default function InboxTab({
 
   return (
     <div className="bg-surface border border-border p-6 rounded-2xl shadow-sm">
-      {!pushEnabled && (
-        <div className="mb-6 flex justify-end">
-          <button
-            onClick={enablePushNotifications}
-            className="text-sm px-4 py-2 bg-foreground text-background font-medium rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2"
-          >
-            Enable Push Notifications
-          </button>
+
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="w-5 h-5 text-foreground" />
+          <h2 className="text-lg font-semibold text-foreground">Inbox</h2>
+          <span className="text-xs px-2.5 py-0.5 rounded-full bg-background border border-border text-muted font-medium">
+            {conversations.length} {conversations.length === 1 ? 'chat' : 'chats'}
+          </span>
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          {conversations.length > 0 && (
+            <button
+              onClick={handleCloseAllChats}
+              className="text-xs px-3 py-1.5 border border-red-500/20 text-red-500 hover:bg-red-500/10 font-medium rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Close All Chats
+            </button>
+          )}
+          {!pushEnabled && (
+            <button
+              onClick={enablePushNotifications}
+              className="text-xs px-3 py-1.5 bg-foreground text-background font-medium rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5"
+            >
+              Enable Push Notifications
+            </button>
+          )}
+        </div>
+      </div>
 
       {conversations.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-border rounded-xl">
@@ -197,10 +274,17 @@ export default function InboxTab({
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <span className={`text-xs ${unreadFrom.has(conv.with.toLowerCase()) ? 'text-neo-pink font-semibold' : 'text-muted'}`}>
                   {formatMessageDate(conv.timestamp)}
                 </span>
+                <button
+                  onClick={(e) => handleDeleteSingleChat(conv.with, e)}
+                  title="Close chat"
+                  className="p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
                 <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center group-hover:bg-foreground group-hover:text-background transition-colors text-muted">
                   <ArrowRight className="w-4 h-4" />
                 </div>
@@ -258,6 +342,47 @@ export default function InboxTab({
               >
                 Got it
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {confirmModal.isOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+              className="absolute inset-0 bg-black/40 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="relative max-w-sm w-full bg-surface border border-border rounded-2xl p-6 shadow-xl z-10 flex flex-col items-center text-center"
+            >
+              <h3 className="text-lg font-semibold text-foreground mb-1">{confirmModal.title}</h3>
+              <p className="text-sm text-muted mb-6 leading-relaxed">{confirmModal.message}</p>
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                  className="flex-1 py-2.5 bg-background border border-border text-foreground font-semibold rounded-xl hover:bg-surface transition-colors text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                    await confirmModal.onConfirm();
+                  }}
+                  className="flex-1 py-2.5 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors text-sm"
+                >
+                  Confirm
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

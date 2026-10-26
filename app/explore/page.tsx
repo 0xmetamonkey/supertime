@@ -1,9 +1,7 @@
-import { getAllCreators } from "../actions";
-import ExploreClient from "./ExploreClient";
+import { redirect } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 
-export default async function ExplorePage() {
-  const creators = await getAllCreators();
-  return <ExploreClient initialCreators={creators} />;
+export default function ExplorePage() {
+  redirect('/');
 }

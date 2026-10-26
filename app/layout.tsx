@@ -40,6 +40,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { LanguageProvider } from "./components/LanguageContext";
 import GlobalChatListenerWrapper from "./components/GlobalChatListenerWrapper";
+import BottomNav from "./components/BottomNav";
 
 export default function RootLayout({
   children,
@@ -101,11 +102,12 @@ export default function RootLayout({
           />
         </head>
         <body
-          className={`${inter.variable} font-sans antialiased bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-200`}
+          className={`${inter.variable} font-sans antialiased bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-200 pb-20 md:pb-0`}
         >
           <ThemeProvider>
             <LanguageProvider>
               {children}
+              <BottomNav />
               <GlobalChatListenerWrapper />
             </LanguageProvider>
           </ThemeProvider>

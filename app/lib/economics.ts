@@ -4,6 +4,41 @@ import { kv } from "@vercel/kv";
 export const PLATFORM_FEE_PERCENT = 0.2;
 export const SPEAKER_SHARE_PERCENT = 0.8;
 
+/**
+ * SECURITY: every money-moving amount must be a positive safe integer.
+ * Negative or fractional values could mint balances (audit finding).
+ */
+export function assertPositiveAmount(amount: unknown): number {
+  if (typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount <= 0) {
+    throw new Error('Invalid amount');
+  }
+  return amount;
+}
+
+/**
+ * Best-effort per-wallet mutex (Vercel KV has no transactions over REST).
+ * Locks are taken in sorted order when multiple wallets are involved.
+ */
+async function acquireWalletLocks(emails: string[]): Promise<string | null> {
+  const unique = [...new Set(emails.map(e => e.toLowerCase()))].sort();
+  const token = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const acquired: string[] = [];
+  for (const email of unique) {
+    const ok = await kv.set(`lock:wallet:${email}`, token, { nx: true, ex: 15 });
+    if (!ok) {
+      for (const e of acquired) await kv.del(`lock:wallet:${e}`);
+      return null;
+    }
+    acquired.push(email);
+  }
+  return token;
+}
+
+async function releaseWalletLocks(emails: string[]) {
+  const unique = [...new Set(emails.map(e => e.toLowerCase()))];
+  await Promise.all(unique.map(e => kv.del(`lock:wallet:${e}`)));
+}
+
 export interface WithdrawalRequest {
   id: string;
   email: string;
@@ -52,80 +87,100 @@ export function calculateSessionSplit(totalCredits: number) {
  * This is the core function to be used in the new flow.
  */
 export async function processSplitPayment(fromEmail: string, toEmail: string, amount: number) {
+  assertPositiveAmount(amount);
   const from = fromEmail.toLowerCase();
   const to = toEmail.toLowerCase();
 
-  // 1. Transactional check for balance
-  const currentFullBalance = (await kv.get<number>(`balance:${from}`)) ?? 0;
-  if (currentFullBalance < amount) {
-    throw new Error('Insufficient funds in spending wallet');
+  const lockToken = await acquireWalletLocks([from, to]);
+  if (!lockToken) {
+    throw new Error('Wallet is busy. Please retry.');
   }
 
-  // 2. Calculate Split
-  const { speakerShare, platformShare } = calculateSessionSplit(amount);
+  try {
+    // 1. Transactional check for balance
+    const currentFullBalance = (await kv.get<number>(`balance:${from}`)) ?? 0;
+    if (currentFullBalance < amount) {
+      throw new Error('Insufficient funds in spending wallet');
+    }
 
-  // 3. Update Sender Balances
-  const finalSenderBalance = currentFullBalance - amount;
-  await kv.set(`balance:${from}`, finalSenderBalance);
+    // 2. Calculate Split
+    const { speakerShare, platformShare } = calculateSessionSplit(amount);
 
-  const senderWithdrawable = (await kv.get<number>(`withdrawable:${from}`)) ?? 0;
-  const senderTopup = currentFullBalance - senderWithdrawable;
-  if (amount > senderTopup) {
-    const withdrawableSpent = amount - senderTopup;
-    const newSenderWithdrawable = Math.max(0, senderWithdrawable - withdrawableSpent);
-    await kv.set(`withdrawable:${from}`, newSenderWithdrawable);
+    // 3. Update Sender Balances
+    const finalSenderBalance = currentFullBalance - amount;
+    await kv.set(`balance:${from}`, finalSenderBalance);
+
+    const senderWithdrawable = (await kv.get<number>(`withdrawable:${from}`)) ?? 0;
+    const senderTopup = currentFullBalance - senderWithdrawable;
+    if (amount > senderTopup) {
+      const withdrawableSpent = amount - senderTopup;
+      const newSenderWithdrawable = Math.max(0, senderWithdrawable - withdrawableSpent);
+      await kv.set(`withdrawable:${from}`, newSenderWithdrawable);
+    }
+
+    // Update Receiver Balances
+    const currentWithdrawable = (await kv.get<number>(`withdrawable:${to}`)) ?? 0;
+    await kv.set(`withdrawable:${to}`, currentWithdrawable + speakerShare);
+
+    const currentReceiverBalance = (await kv.get<number>(`balance:${to}`)) ?? 0;
+    await kv.set(`balance:${to}`, currentReceiverBalance + speakerShare);
+
+    // 4. Update Platform Revenue
+    const totalPlatformRevenue = (await kv.get<number>(`platform:revenue`)) ?? 0;
+    await kv.set(`platform:revenue`, totalPlatformRevenue + platformShare);
+
+    return {
+      success: true,
+      speakerShare,
+      platformShare,
+      balance: finalSenderBalance
+    };
+  } finally {
+    await releaseWalletLocks([from, to]);
   }
-
-  // Update Receiver Balances
-  const currentWithdrawable = (await kv.get<number>(`withdrawable:${to}`)) ?? 0;
-  await kv.set(`withdrawable:${to}`, currentWithdrawable + speakerShare);
-
-  const currentReceiverBalance = (await kv.get<number>(`balance:${to}`)) ?? 0;
-  await kv.set(`balance:${to}`, currentReceiverBalance + speakerShare);
-
-  // 4. Update Platform Revenue
-  const totalPlatformRevenue = (await kv.get<number>(`platform:revenue`)) ?? 0;
-  await kv.set(`platform:revenue`, totalPlatformRevenue + platformShare);
-
-  return {
-    success: true,
-    speakerShare,
-    platformShare,
-    balance: finalSenderBalance
-  };
 }
 
 /**
  * Withdrawal Flow
  */
 export async function recordWithdrawalRequest(email: string, amount: number, upiId: string) {
+  assertPositiveAmount(amount);
   const userEmail = email.toLowerCase();
 
-  // 1. Safety Check
-  const currentWithdrawable = (await kv.get<number>(`withdrawable:${userEmail}`)) ?? 0;
-  if (amount > currentWithdrawable) {
-    throw new Error('Insufficient withdrawable balance');
+  const lockToken = await acquireWalletLocks([userEmail]);
+  if (!lockToken) {
+    throw new Error('Wallet is busy. Please retry.');
   }
 
-  // 2. Deduct immediately
-  await kv.set(`withdrawable:${userEmail}`, currentWithdrawable - amount);
+  try {
+    // 1. Safety Check
+    const currentWithdrawable = (await kv.get<number>(`withdrawable:${userEmail}`)) ?? 0;
+    if (amount > currentWithdrawable) {
+      throw new Error('Insufficient withdrawable balance');
+    }
 
-  const currentFullBalance = (await kv.get<number>(`balance:${userEmail}`)) ?? 0;
-  await kv.set(`balance:${userEmail}`, Math.max(0, currentFullBalance - amount));
+    // 2. Deduct immediately
+    await kv.set(`withdrawable:${userEmail}`, currentWithdrawable - amount);
 
-  // 3. Create Request
-  const request: WithdrawalRequest = {
-    id: `wd_${Math.random().toString(36).slice(2, 10)}`,
-    email: userEmail,
-    amount,
-    upiId,
-    timestamp: Date.now(),
-    status: 'PENDING'
-  };
+    const currentFullBalance = (await kv.get<number>(`balance:${userEmail}`)) ?? 0;
+    await kv.set(`balance:${userEmail}`, Math.max(0, currentFullBalance - amount));
 
-  // 4. Append to Global List (at the beginning)
-  const currentList = await kv.get<WithdrawalRequest[]>('withdrawals:list') || [];
-  await kv.set('withdrawals:list', [request, ...currentList]);
+    // 3. Create Request
+    const request: WithdrawalRequest = {
+      id: `wd_${Math.random().toString(36).slice(2, 10)}`,
+      email: userEmail,
+      amount,
+      upiId,
+      timestamp: Date.now(),
+      status: 'PENDING'
+    };
 
-  return request;
+    // 4. Append to Global List (at the beginning)
+    const currentList = await kv.get<WithdrawalRequest[]>('withdrawals:list') || [];
+    await kv.set('withdrawals:list', [request, ...currentList]);
+
+    return request;
+  } finally {
+    await releaseWalletLocks([userEmail]);
+  }
 }

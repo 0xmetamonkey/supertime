@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { getBotResponse } from '../../lib/bot-logic';
 import { chatRatelimit } from '../../lib/ratelimit';
+import { getIdentity, matchesIdentity } from '@/app/lib/identity';
 
 // Team chat API — persistent messages in KV, realtime via Ably
 const TEAM_CHAT_KEY = 'team:chat:supertime';
@@ -10,11 +11,22 @@ const TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
 export async function POST(req: NextRequest) {
   try {
-    const { id, message, from, fromEmail, to, type, meta, status } = await req.json();
+    const identity = await getIdentity();
+    if (!identity) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id, message, from, to, type, meta, status } = await req.json();
 
     if ((!message && !type) || !from) {
       return NextResponse.json({ error: 'Missing message or from' }, { status: 400 });
     }
+
+    // Senders may only speak as themselves.
+    if (!matchesIdentity(from, identity)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const fromEmail = identity.email;
 
     const identifier = fromEmail || req.headers.get('x-forwarded-for') || 'anonymous';
     const { success } = await chatRatelimit.limit(identifier);
@@ -136,6 +148,11 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    const identity = await getIdentity();
+    if (!identity) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const since = parseInt(searchParams.get('since') || '0');
     const channel = searchParams.get('channel');
@@ -144,10 +161,14 @@ export async function GET(req: NextRequest) {
 
     // Determine target key
     let chatKey = TEAM_CHAT_KEY;
-    
+
     if (channel && channel !== 'team:supertime') {
-      chatKey = `chat:${channel}`;
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     } else if (from && to) {
+      // Only a participant of the DM may read its history.
+      if (!matchesIdentity(from, identity) && !matchesIdentity(to, identity)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       const participants = [from.toLowerCase(), to.toLowerCase()].sort();
       chatKey = `chat:dm:${participants.join(':')}`;
     }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { currentUser } from '@clerk/nextjs/server';
 import Razorpay from 'razorpay';
+import { verifyRazorpayPayment } from '@/app/lib/razorpay';
 
 // GET — fetch fundraiser
 export async function GET(req: NextRequest) {
@@ -107,15 +108,36 @@ export async function POST(req: NextRequest) {
 
   // VERIFY donation
   if (action === 'verify') {
-    const { username, amount, donorName, razorpay_payment_id } = body;
-    if (!username || !amount) return NextResponse.json({ error: 'Invalid params' }, { status: 400 });
+    const { username, donorName, razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
+    if (!username || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return NextResponse.json({ error: 'Missing payment verification fields' }, { status: 400 });
+    }
+
+    // SECURITY: confirm the donation was actually captured and belongs to a
+    // server-created fundraiser order for this username; amount comes from the order.
+    const { order, amountInRupees } = await verifyRazorpayPayment(
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature
+    );
+
+    const claimed = await kv.set(`payment:processed:${razorpay_payment_id}`, '1', { nx: true, ex: 31536000 });
+    if (!claimed) {
+      return NextResponse.json({ error: 'Payment already processed' }, { status: 409 });
+    }
+
+    const notes: Record<string, string> = (order as any).notes || {};
+    if (notes.type !== 'fundraiser' || (notes.username || '').toLowerCase() !== String(username).toLowerCase()) {
+      return NextResponse.json({ error: 'Order does not match this fundraiser' }, { status: 400 });
+    }
+    const amount = amountInRupees;
 
     const key = `fundraise:${username.toLowerCase()}`;
     const fundraiser: any = await kv.get(key);
     if (!fundraiser) return NextResponse.json({ error: 'Fundraiser not found' }, { status: 404 });
 
     // Update raised amount
-    fundraiser.raisedAmount = (fundraiser.raisedAmount || 0) + Number(amount);
+    fundraiser.raisedAmount = (fundraiser.raisedAmount || 0) + amount;
     fundraiser.donorCount = (fundraiser.donorCount || 0) + 1;
     await kv.set(key, fundraiser);
 
@@ -124,7 +146,7 @@ export async function POST(req: NextRequest) {
     const supporters: any[] = (await kv.get(supportersKey)) || [];
     supporters.unshift({
       name: donorName || 'Anonymous',
-      amount: Number(amount),
+      amount,
       paymentId: razorpay_payment_id || null,
       date: new Date().toISOString(),
     });

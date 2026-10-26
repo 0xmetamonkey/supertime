@@ -64,3 +64,14 @@ SUPERTIME_FEATURES.md
 # local test uploads
 public/uploads/*.webm
 dump.rdb
+
+# Mobile native & gradle
+mobile/android/
+mobile/ios/
+.gradle/
+android/
+ios/
+
+*.secret*
+*monkey-keys*
+*.apk

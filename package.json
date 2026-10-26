@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "roulette:server": "node server/roulette-server.js",
+    "mobile:start": "npm run --prefix mobile start",
+    "mobile:ios": "npm run --prefix mobile ios",
+    "mobile:android": "npm run --prefix mobile android"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.38.1",
@@ -29,6 +33,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-easy-crop": "^5.5.6",
+    "socket.io": "^4.8.4",
+    "socket.io-client": "^4.8.4",
     "uuid": "^11.0.0"
   },
   "devDependencies": {

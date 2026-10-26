@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
-import crypto from 'crypto';
 import { kv } from '@vercel/kv';
 import { currentUser } from "@clerk/nextjs/server";
 import { sendEmail } from '@/app/lib/email';
+import { verifyRazorpayPayment } from '@/app/lib/razorpay';
+import { escapeHtml, getCanonicalBaseUrl } from '@/app/lib/sanitize';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { action, creatorUsername,
+    const { action, creatorUsername: requestedCreator,
       razorpay_order_id, razorpay_payment_id, razorpay_signature,
       buyerEmail: providedBuyerEmail, buyerName: providedBuyerName } = body;
 
@@ -17,22 +18,27 @@ export async function POST(req: NextRequest) {
 
     // ─── VERIFY PAYMENT ───
     if (action === 'verify') {
-      const secret = process.env.RAZORPAY_KEY_SECRET;
-      if (!secret) throw new Error("Razorpay secret missing");
-
-      const signBody = razorpay_order_id + "|" + razorpay_payment_id;
-      const expectedSignature = crypto
-        .createHmac("sha256", secret)
-        .update(signBody)
-        .digest("hex");
-
-      if (expectedSignature !== razorpay_signature) {
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
-      }
+      const { order } = await verifyRazorpayPayment(
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature
+      );
 
       const claimed = await kv.set(`payment:processed:${razorpay_payment_id}`, '1', { nx: true, ex: 31536000 });
       if (!claimed) {
         return NextResponse.json({ error: 'Payment already processed' }, { status: 409 });
+      }
+
+      // SECURITY: creator and price come from the server-created subscription
+      // order only — not from this request body.
+      const notes: Record<string, string> = (order as any).notes || {};
+      if (notes.type !== 'subscription') {
+        return NextResponse.json({ error: 'Order type mismatch' }, { status: 400 });
+      }
+      const creatorUsername = notes.creatorUsername || '';
+      const verifiedAmount = Math.floor(Number(order.amount) / 100);
+      if (!creatorUsername || verifiedAmount < amount) {
+        return NextResponse.json({ error: 'Order does not match subscription plan' }, { status: 400 });
       }
 
       let buyerEmail = providedBuyerEmail || '';
@@ -55,16 +61,13 @@ export async function POST(req: NextRequest) {
         }
 
         if (creatorEmail) {
-          const grossAmount = amount || 0;
+          const grossAmount = verifiedAmount;
           const COMMISSION_RATE = 0.20;
           const commission = Math.round(grossAmount * COMMISSION_RATE);
           const netAmount = grossAmount - commission;
 
-          const current = (await kv.get<number>(`withdrawable:${creatorEmail}`)) ?? 0;
-          await kv.set(`withdrawable:${creatorEmail}`, current + netAmount);
-
-          const totalCommission = (await kv.get<number>('platform:commission:total')) ?? 0;
-          await kv.set('platform:commission:total', totalCommission + commission);
+          await kv.incrby(`withdrawable:${creatorEmail}`, netAmount);
+          await kv.incrby('platform:commission:total', commission);
 
           // Record sale
           const sales = (await kv.get<any[]>(`sales:${creatorEmail}`)) || [];
@@ -90,9 +93,8 @@ export async function POST(req: NextRequest) {
       // ─── SEND EMAIL NOTIFICATIONS ───
       if (process.env.RESEND_API_KEY) {
         try {
-          const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'supertime.wtf';
-          const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
-          const baseUrl = `${protocol}://${host}`;
+          const baseUrl = getCanonicalBaseUrl(req);
+          const safeBuyerName = escapeHtml(buyerName);
 
           // Buyer Receipt
           if (buyerEmail) {
@@ -119,7 +121,7 @@ export async function POST(req: NextRequest) {
               html: `
                 <div style="font-family: -apple-system, sans-serif; max-width: 500px; margin: 40px auto; padding: 32px; border: 1px solid #e5e7eb; border-radius: 12px;">
                   <h2 style="font-size: 18px;">You have a new subscriber!</h2>
-                  <p><strong>${buyerName}</strong> (${buyerEmail}) just joined your Inner Circle.</p>
+                  <p><strong>${safeBuyerName}</strong> (${escapeHtml(buyerEmail)}) just joined your Inner Circle.</p>
                 </div>
               `
             });
@@ -131,7 +133,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ─── CREATE ORDER ───
-    if (!creatorUsername) {
+    if (!requestedCreator) {
       return NextResponse.json({ error: 'Missing creator' }, { status: 400 });
     }
 
@@ -143,9 +145,9 @@ export async function POST(req: NextRequest) {
     const order = await instance.orders.create({
       amount: amount * 100, // paise
       currency: 'INR',
-      receipt: `sub_${creatorUsername}_${Date.now()}`,
+      receipt: `sub_${requestedCreator}_${Date.now()}`,
       notes: {
-        creatorUsername: creatorUsername,
+        creatorUsername: requestedCreator,
         type: 'subscription',
       },
     });

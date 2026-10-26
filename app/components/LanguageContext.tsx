@@ -20,45 +20,45 @@ const translations: Record<Language, Record<string, string>> = {
     dashboard: "Dashboard",
     backToSupertime: "Back to supertime",
     wantToSearch: "Want to search instead?",
-    exploreHumans: "explore humans",
+    exploreHumans: "explore artists",
     
     // Hero Section
     heroTitle: "Make your time matter.",
-    heroSubtitle: "Supertime is a calm space to connect with creators, thinkers, artists and experts. Real conversations. Not endless content.",
-    claimUsername: "username",
+    heroSubtitle: "Supertime is a calm sanctuary where Believers back hustling Artists. Real conversations. Zero algorithm noise.",
+    claimUsername: "artist handle",
     claimBtn: "Claim",
     
     // Features Column
-    featHeader: "A better way to connect",
+    featHeader: "The Artist-Believer bond",
     feat1Title: "100% Focused Presence",
-    feat1Desc: "Zero-latency dedicated live stream slots. No scrolling distractions.",
-    feat2Title: "Fair Compensation",
-    feat2Desc: "Respect creators' expertise with secure, direct micro-consulting micro-payments.",
-    feat3Title: "Zero Algorithm bias",
-    feat3Desc: "No feed manipulation. You choose when and with whom you want to talk.",
+    feat1Desc: "Zero-latency dedicated live stream slots. No endless scrolling or distractions.",
+    feat2Title: "Direct Believer Backing",
+    feat2Desc: "Believers directly support artists through real-time sessions and instant micro-payments.",
+    feat3Title: "Zero Algorithm Bias",
+    feat3Desc: "No feed manipulation. Artists and Believers choose when and how they connect.",
     
     // Grid Section
-    meetHumans: "Meet some humans",
-    exploreAll: "explore all creators",
+    meetHumans: "Meet some artists",
+    exploreAll: "explore all artists",
     
     // Belief Section
-    beliefTitle: "We believe the internet can be calm, intentional and human.",
-    beliefDesc: "Supertime was built to rescue digital relationships from the clickbait economy. By providing focused, compensated 1:1 sessions, we unlock authentic human presence without the artificial noise of feeds and alerts.",
+    beliefTitle: "We believe artists should focus on art, backed by true believers.",
+    beliefDesc: "Supertime was built to rescue artists and their supporters from the clickbait economy. By providing focused, compensated 1:1 sessions, we unlock authentic human presence without the artificial noise of feeds and alerts.",
     readThoughts: "Read our thoughts",
     
     // Pricing
-    pricingTitle: "Simple, straightforward pricing",
-    pricingDesc: "We believe in direct relationships. Supertime charging is fully transparent, putting the creator first.",
-    pricingFreeTitle: "For Members",
+    pricingTitle: "Simple, transparent backing",
+    pricingDesc: "We believe in direct relationships. Supertime puts the artist first with zero hidden cuts.",
+    pricingFreeTitle: "For Believers",
     pricingFreePrice: "Free",
-    pricingFreeDesc: "No subscriptions. Explore creators, look up availability, and pay only for the exact live slot you book.",
-    pricingProTitle: "For Creators",
+    pricingFreeDesc: "No subscriptions required. Discover artists, check availability, and back them per live session.",
+    pricingProTitle: "For Artists",
     pricingProPrice: "10%",
     pricingProDesc: "Keep 90% of your earnings. We only take a 10% flat platform fee to support ultra-low latency streams and fast global routing.",
     
     // Roadmap Section
     roadmapTitle: "On our roadmap",
-    roadmapDesc: "Follow our transparent progress as we build the next generation of borderless human video calling."
+    roadmapDesc: "Follow our transparent progress as we build the next generation of borderless artist-believer connection."
   },
   hi: {
     // Nav & Common

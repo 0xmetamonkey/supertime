@@ -1,0 +1,26 @@
+services:
+  roulette-signaling:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+
+  # Optional 100% Free Self-Hosted TURN/STUN Server on OCI
+  # coturn:
+  #   image: coturn/coturn:latest
+  #   restart: always
+  #   network_mode: "host"
+  #   command:
+  #     - "-n"
+  #     - "--log-file=stdout"
+  #     - "--min-port=49152"
+  #     - "--max-port=65535"
+  #     - "--realm=your-domain.com"
+  #     - "--user=supertime:secret_pass_123"
+  #     - "--listening-port=3478"
+  #     - "--tls-listening-port=5349"

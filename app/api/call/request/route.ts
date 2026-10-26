@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
+import { getIdentity, matchesIdentity } from '@/app/lib/identity';
 
 // Fallback for local dev
 declare global {
@@ -14,9 +15,15 @@ const hasKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
 
 export async function POST(req: NextRequest) {
   try {
+    const identity = await getIdentity();
+    if (!identity) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { to, from } = await req.json();
 
     if (!to || !from) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    if (!matchesIdentity(from, identity)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const requestData = { from, timestamp: Date.now() };
 
@@ -43,6 +50,11 @@ export async function GET(req: NextRequest) {
   if (!username) return NextResponse.json({ error: 'Missing username' }, { status: 400 });
 
   try {
+    const identity = await getIdentity();
+    if (!identity || !matchesIdentity(username, identity)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     let requests: any[] = [];
     if (hasKV) {
       requests = await kv.lrange(`requests:${username}`, 0, -1);

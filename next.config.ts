@@ -4,6 +4,26 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: false,
   devIndicators: false,
+  skipTrailingSlashRedirect: true,
+  allowedDevOrigins: [
+    "nongerminating-amir-unextravasated.ngrok-free.dev",
+    "*.ngrok-free.dev",
+    "*.ngrok.io",
+    "192.168.0.102",
+    "localhost:3000",
+  ],
+  async rewrites() {
+    return [
+      {
+        source: '/socket.io',
+        destination: 'http://localhost:3001/socket.io/',
+      },
+      {
+        source: '/socket.io/:path*',
+        destination: 'http://localhost:3001/socket.io/:path*',
+      },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {

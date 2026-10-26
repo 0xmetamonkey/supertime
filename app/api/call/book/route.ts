@@ -11,16 +11,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { creatorUsername, date, time, templateId, type, duration, price } = await req.json();
+  const { creatorUsername, date, time, templateId } = await req.json();
   try {
+    // SECURITY: template, price and duration come from server-stored products,
+    // never from the request body. Paid templates must go through payment
+    // verification (which finalizes the booking itself).
+    if (!creatorUsername || !templateId) throw new Error('Missing fields');
+    const products = (await kv.get<any[]>(`user_products:${creatorUsername.toLowerCase()}`)) || [];
+    const template = products.find((p: any) => p.id === templateId);
+    if (!template) throw new Error('Booking template not found');
+    const serverPrice = Number(template.price) || 0;
+    if (serverPrice > 0) throw new Error('This session requires payment — please use checkout.');
+
     const booking = await createBooking({
-      creatorUsername, date, time, templateId, type, duration, price, visitorEmail: email.toLowerCase(),
-      host: req.headers.get('x-forwarded-host') || req.headers.get('host') || 'supertime.wtf'
+      creatorUsername, date, time, templateId,
+      type: template.type, duration: template.duration, price: 0,
+      visitorEmail: email.toLowerCase(),
+      host: getCanonicalHost(req)
     });
     return NextResponse.json({ success: true, booking });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+}
+
+// Canonical host for building meeting links — never trust arbitrary Host headers
+// outside of localhost development.
+function getCanonicalHost(req: NextRequest): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || '';
+  if (host.includes('localhost') || host.includes('127.0.0.1')) return host;
+  return (configured || 'supertime.wtf').replace(/^https?:\/\//, '').replace(/\/$/, '');
 }
 
 export async function createBooking({

@@ -1,6 +1,5 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { resolveUsername, getFeaturedCreators } from "./actions";
+import { resolveUsername } from "./actions";
 import LandingPageClient from "./LandingPageClient";
 
 export const dynamic = 'force-dynamic';
@@ -19,17 +18,15 @@ export default async function LandingPage() {
     }
   }
 
-  // If logged in with username, go to dashboard
+  let username: string | null = null;
   if (email) {
-    const username = await resolveUsername(email);
-    if (username) {
-      redirect("/dashboard");
-    }
+    username = await resolveUsername(email);
   }
 
-  const realCreators = await getFeaturedCreators();
-
-  // Show the new Energy Exchange landing page
-  return <LandingPageClient session={userId ? { user: { id: userId, email: email } } : null} savedUsername={null} featuredCreators={realCreators} />;
+  return (
+    <LandingPageClient
+      session={userId ? { user: { id: userId, email: email } } : null}
+      savedUsername={username}
+    />
+  );
 }
-

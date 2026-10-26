@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Eye,
@@ -28,6 +29,7 @@ interface StorefrontTabProps {
 }
 
 export default function StorefrontTab({ username, initialSettings }: StorefrontTabProps) {
+  const router = useRouter();
   const [storefrontTab, setStorefrontTab] = useState<'store' | 'courses' | 'about'>('store');
   const [showCreateShow, setShowCreateShow] = useState(false);
   const [newShowTitle, setNewShowTitle] = useState('');
@@ -191,8 +193,8 @@ export default function StorefrontTab({ username, initialSettings }: StorefrontT
         <div className="flex gap-3">
           {username && (
             <button
-              onClick={() => window.open('/' + username, '_blank')}
-              className="bg-surface text-foreground px-5 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 border border-border hover:bg-background transition-colors shadow-sm"
+              onClick={() => router.push('/' + username)}
+              className="bg-surface text-foreground px-5 py-2.5 rounded-full font-medium text-sm flex items-center gap-2 border border-border hover:bg-background active:scale-95 transition-all shadow-sm cursor-pointer"
             >
               <Eye className="w-4 h-4" /> View Live Store
             </button>

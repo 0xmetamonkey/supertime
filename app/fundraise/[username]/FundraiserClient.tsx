@@ -88,17 +88,23 @@ export default function FundraiserClient({
         image: profileImage || undefined,
         handler: async (response: any) => {
           // 3. Verify and record
-          await fetch('/api/fundraise', {
+          const verifyRes = await fetch('/api/fundraise', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               action: 'verify',
               username,
-              amount,
               donorName: donorName || 'Anonymous',
+              razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
             }),
           });
+          const verifyData = await verifyRes.json();
+          if (!verifyRes.ok || !verifyData.success) {
+            setIsDonating(false);
+            return;
+          }
 
           setRaisedAmount(prev => prev + amount);
           setDonorCount(prev => prev + 1);

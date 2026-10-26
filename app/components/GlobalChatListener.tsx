@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Ably from 'ably';
 import { useRouter, usePathname } from 'next/navigation';
-import { MessageSquare, X } from 'lucide-react';
+import { MessageSquare, X, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export default function GlobalChatListener({ username }: { username: string }) {
@@ -48,6 +48,47 @@ export default function GlobalChatListener({ username }: { username: string }) {
         return;
       }
       
+      if (data.type === 'ping' && data.from !== username) {
+        const popupId = data.id || Math.random().toString(36);
+        setPopups(prev => [...prev, { ...data, id: popupId, isPing: true }]);
+
+        // Native notification
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+          if (Notification.permission === 'granted') {
+            const systemNotif = new Notification(`⚡ Ping from @${data.from}!`, {
+              body: `${data.from} requested a ${data.pingType?.toUpperCase() || ''} session (${data.duration || 15}m): "${data.message || ''}"`,
+              icon: '/icon.png',
+              tag: `ping:${data.from}`,
+            });
+            systemNotif.onclick = () => {
+              window.focus();
+              router.push(`/dashboard?tab=inbox&to=${data.from}`);
+              systemNotif.close();
+            };
+          }
+        }
+
+        setTimeout(() => {
+          setPopups(prev => prev.filter(p => p.id !== popupId));
+        }, 6000);
+
+        // Ping sound (higher pitch double-ping)
+        try {
+          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(880, ctx.currentTime);
+          osc.frequency.setValueAtTime(1320, ctx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.25, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.35);
+        } catch {}
+      }
+
       if (data.type === 'dm' && data.from !== username) {
         // Send delivered receipt back to sender
         try {
@@ -124,18 +165,38 @@ export default function GlobalChatListener({ username }: { username: string }) {
               setPopups(prev => prev.filter(p => p.id !== popup.id));
               router.push(`/dashboard?tab=inbox&to=${popup.from}`);
             }}
-            className="bg-surface border border-border shadow-2xl rounded-2xl p-4 flex items-start gap-3 w-80 cursor-pointer hover:bg-background transition-colors ring-1 ring-black/5 pointer-events-auto"
+            className={`border shadow-2xl rounded-2xl p-4 flex items-start gap-3 w-84 cursor-pointer hover:opacity-95 transition-all ring-1 pointer-events-auto ${
+              popup.isPing
+                ? 'bg-amber-50 dark:bg-zinc-900 border-amber-400 ring-amber-400/20'
+                : 'bg-surface border-border ring-black/5 hover:bg-background'
+            }`}
           >
-            <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center shrink-0">
-              <MessageSquare className="w-4 h-4 text-blue-500" />
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+              popup.isPing ? 'bg-amber-400 text-black border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]' : 'bg-blue-500/10 text-blue-500'
+            }`}>
+              {popup.isPing ? <Zap className="w-5 h-5 fill-black" /> : <MessageSquare className="w-4 h-4" />}
             </div>
             <div className="flex-1 min-w-0 mt-0.5">
-              <p className="font-semibold text-sm text-foreground">
-                @{popup.from}
+              <div className="flex items-center justify-between gap-1">
+                <p className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                  @{popup.from}
+                  {popup.isPing && (
+                    <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-black text-amber-300">
+                      {popup.pingType} sesh
+                    </span>
+                  )}
+                </p>
+              </div>
+              <p className="text-xs text-muted mt-1 leading-snug line-clamp-2">
+                {popup.isPing ? (popup.message || `Pinged for a ${popup.duration || 15}m session`) : popup.text}
               </p>
-              <p className="text-sm text-muted mt-0.5 truncate">
-                {popup.text}
-              </p>
+              {popup.isPing && (
+                <div className="mt-2.5 flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-black text-white px-2.5 py-1 rounded-md">
+                    Open Chat & Respond
+                  </span>
+                </div>
+              )}
             </div>
           </motion.div>
         ))}

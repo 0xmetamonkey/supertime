@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
-import { auth, currentUser } from '@clerk/nextjs/server';
-import { resolveUsername } from '../../../actions';
+import { getIdentity, matchesIdentity } from '@/app/lib/identity';
 
 /** KV key that stores the set of usernames whose chats this user has "deleted" */
 function deletedChatsKey(username: string) {
@@ -10,23 +9,21 @@ function deletedChatsKey(username: string) {
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId, sessionClaims } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    
+    const identity = await getIdentity();
+    if (!identity) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { searchParams } = new URL(req.url);
     let username = searchParams.get('username') || '';
 
-    if (!username) {
-      let email = (sessionClaims as any)?.email || '';
-      if (!email) {
-        const user = await currentUser();
-        email = user?.emailAddresses?.[0]?.emailAddress || '';
+    // A requested username must belong to the session; otherwise default to the session's own.
+    if (username) {
+      if (!matchesIdentity(username, identity)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
-
-      const resolvedUsername = email ? await resolveUsername(email) : null;
-      username = resolvedUsername || (email ? email.split('@')[0] : '');
+    } else {
+      username = identity.usernames[0];
     }
-    
+
     username = username.toLowerCase();
 
     // Fetch the set of deleted chat partners for this user
@@ -97,15 +94,54 @@ export async function GET(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const identity = await getIdentity();
+    if (!identity) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { username, recipient } = await req.json();
-    if (!username || !recipient) {
-      return NextResponse.json({ error: 'Missing username or recipient' }, { status: 400 });
+    const body = await req.json();
+    const { username, recipient, recipients, deleteAll } = body;
+
+    // The owner is always taken from the session; any client-supplied username must match it.
+    if (username && !matchesIdentity(username, identity)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await kv.sadd(deletedChatsKey(username.toLowerCase()), recipient.toLowerCase());
+    const targetUser = identity.usernames[0];
+
+    if (deleteAll) {
+      const keys = await kv.keys('chat:dm:*');
+      const toDelete: string[] = [];
+      for (const key of keys) {
+        const parts = key.split(':');
+        const dmIndex = parts.indexOf('dm');
+        if (dmIndex !== -1 && parts.length >= dmIndex + 3) {
+          const u1 = parts[dmIndex + 1];
+          const u2 = parts[dmIndex + 2];
+          if (u1 === targetUser.toLowerCase()) toDelete.push(u2.toLowerCase());
+          else if (u2 === targetUser.toLowerCase()) toDelete.push(u1.toLowerCase());
+        }
+      }
+      if (toDelete.length > 0) {
+        for (const item of toDelete) {
+          await kv.sadd(deletedChatsKey(targetUser), item);
+        }
+      }
+      return NextResponse.json({ success: true, count: toDelete.length });
+    }
+
+    if (Array.isArray(recipients) && recipients.length > 0) {
+      for (const r of recipients) {
+        if (typeof r === 'string' && r.trim()) {
+          await kv.sadd(deletedChatsKey(targetUser), r.toLowerCase().trim());
+        }
+      }
+      return NextResponse.json({ success: true, count: recipients.length });
+    }
+
+    if (!recipient) {
+      return NextResponse.json({ error: 'Missing recipient' }, { status: 400 });
+    }
+
+    await kv.sadd(deletedChatsKey(targetUser), recipient.toLowerCase());
 
     return NextResponse.json({ success: true });
   } catch (error) {

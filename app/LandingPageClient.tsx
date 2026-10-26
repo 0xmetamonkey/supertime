@@ -1,136 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, Zap, Sparkles, DollarSign, MessageSquare, Check, Eye, ChevronUp, ChevronDown, RefreshCw } from 'lucide-react';
+import { ArrowRight, Video, Sparkles, Check, Camera, Maximize, ShieldCheck, Mic, MicOff } from 'lucide-react';
 import { useUser } from "@clerk/nextjs";
 import { checkAvailability, completeOnboarding } from './actions';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import SafetyModal from './components/SafetyModal';
 import { useLanguage } from './components/LanguageContext';
-
-export type HomepageVariant = 'bold' | 'calm' | 'monetize' | 'direct';
-
-interface VariantData {
-  id: HomepageVariant;
-  label: string;
-  badge: string;
-  badgeColor: string;
-  title: React.ReactNode;
-  subtitle: string;
-  featHeader: string;
-  features: string[];
-  claimBtn: string;
-  claimPlaceholder: string;
-  beliefTitle: string;
-  beliefDesc: string;
-}
-
-const VARIANTS: Record<HomepageVariant, VariantData> = {
-  bold: {
-    id: 'bold',
-    label: '⚡ fuck time.',
-    badge: 'Raw & High-Conversion',
-    badgeColor: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-    title: (
-      <>
-        <span>fuck time.</span>
-        <br />
-        <span className="text-foreground/90">its supertime.</span>
-      </>
-    ),
-    subtitle: "Turn your minutes into money. No feed algorithms, no endless scroll traps. Set your rate, share your link, and get paid for real 1:1 human conversations.",
-    featHeader: "Why creators switch",
-    features: [
-      "💰 You set your rate per minute.",
-      "⚡ 100% direct instant payouts.",
-      "🚫 Zero feed manipulation or ads.",
-      "🎙️ High-fidelity 1:1 live calling.",
-      "🔒 Total control over your schedule."
-    ],
-    claimBtn: "Start earning",
-    claimPlaceholder: "claim your link",
-    beliefTitle: "The attention economy is broken. We're turning time into direct money.",
-    beliefDesc: "You shouldn't have to produce free content all day just to feed social media algorithms. Supertime lets you monetize your real attention, insights, and presence with paid 1:1 calls and zero noise."
-  },
-  calm: {
-    id: 'calm',
-    label: '🌿 make your time matter',
-    badge: 'Calm & Intentional',
-    badgeColor: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-    title: (
-      <>
-        Make your time matter.
-      </>
-    ),
-    subtitle: "Supertime is a calm space to connect with creators, thinkers, artists and experts. Real conversations. Not endless content.",
-    featHeader: "A better way to connect",
-    features: [
-      "No feeds.",
-      "No algorithms.",
-      "Just people.",
-      "Real time.",
-      "Real conversations."
-    ],
-    claimBtn: "Claim",
-    claimPlaceholder: "username",
-    beliefTitle: "We believe the internet can be calm, intentional and human.",
-    beliefDesc: "Supertime was built to rescue digital relationships from the clickbait economy. By providing focused, compensated 1:1 sessions, we unlock authentic human presence without the artificial noise of feeds and alerts."
-  },
-  monetize: {
-    id: 'monetize',
-    label: '💎 monetize attention',
-    badge: 'Creator Economy Value',
-    badgeColor: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-    title: (
-      <>
-        <span>Your time has value.</span>
-        <br />
-        <span className="text-foreground/80">Stop giving it away for free.</span>
-      </>
-    ),
-    subtitle: "The live monetization engine for creators, consultants, and specialists. Book paid 1:1 sessions without the administrative headache or algorithm traps.",
-    featHeader: "Creator Economics",
-    features: [
-      "Keep 90% of your earnings.",
-      "Frictionless 1-tap booking.",
-      "Ultra-low latency studio.",
-      "Built-in tips & supercalls.",
-      "Instant direct bank transfers."
-    ],
-    claimBtn: "Get paid",
-    claimPlaceholder: "your handle",
-    beliefTitle: "Creators deserve direct compensation for their real presence.",
-    beliefDesc: "Stop trading your energy for vanity likes. When people value your insights, they can book your live time with zero friction, zero spam, and immediate value exchange."
-  },
-  direct: {
-    id: 'direct',
-    label: '🎯 stop scrolling',
-    badge: 'Anti-Social Media',
-    badgeColor: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-    title: (
-      <>
-        <span>Stop scrolling.</span>
-        <br />
-        <span className="text-foreground/80">Start speaking.</span>
-      </>
-    ),
-    subtitle: "The antidote to superficial social feeds. Get unhurried, focused 1:1 face time with the people whose work and insights you admire.",
-    featHeader: "Pure Interaction",
-    features: [
-      "Zero noise or notification spam.",
-      "Dedicated live availability slots.",
-      "Seamless in-browser studio.",
-      "Authentic, memorable connections.",
-      "Fair compensation for everyone."
-    ],
-    claimBtn: "Join now",
-    claimPlaceholder: "reserve handle",
-    beliefTitle: "Real presence beats passive consumption every single time.",
-    beliefDesc: "Content fatigue is real. The most impactful insights and relationships happen in direct, two-way dialogue between two focused human minds."
-  }
-};
 
 export default function LandingPageClient({
   session,
@@ -145,57 +24,102 @@ export default function LandingPageClient({
   const { user: clerkUser } = useUser();
   const { t } = useLanguage();
 
-  const [activeVariant, setActiveVariant] = useState<HomepageVariant>('bold');
-  const [isSwitcherOpen, setIsSwitcherOpen] = useState(true);
-  const [copiedLink, setCopiedLink] = useState(false);
-
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [onlineCount, setOnlineCount] = useState<number>(1420);
+  const [talkMode, setTalkMode] = useState<'video' | 'audio'>('video');
+  const [showAudioNotice, setShowAudioNotice] = useState(false);
   const isLoggedIn = !!clerkUser;
 
-  // Sync variant with URL query parameter or localStorage
-  useEffect(() => {
+  // Live selfie camera preview for signed-in users
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isSafetyOpen, setIsSafetyOpen] = useState(false);
+
+  const toggleFullscreen = () => {
     try {
-      const params = new URLSearchParams(window.location.search);
-      const urlVar = params.get('v') || params.get('variant');
-      if (urlVar && (urlVar in VARIANTS)) {
-        setActiveVariant(urlVar as HomepageVariant);
-        return;
-      }
-      const saved = localStorage.getItem('supertime_landing_variant');
-      if (saved && (saved in VARIANTS)) {
-        setActiveVariant(saved as HomepageVariant);
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
       }
     } catch (e) {
-      // Ignore in SSR
+      console.warn('Fullscreen error:', e);
     }
+  };
+
+  useEffect(() => {
+    fetch('/api/roulette/online')
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data?.count === 'number' && data.count > 0) {
+          setOnlineCount(data.count);
+        }
+      })
+      .catch(() => {});
   }, []);
 
-  const handleSelectVariant = (v: HomepageVariant) => {
-    setActiveVariant(v);
-    try {
-      localStorage.setItem('supertime_landing_variant', v);
-      const url = new URL(window.location.href);
-      url.searchParams.set('v', v);
-      window.history.replaceState(null, '', url.toString());
-    } catch (e) {
-      // Ignore
-    }
-  };
+  // Initialize camera preview if user is signed in and in video mode
+  useEffect(() => {
+    if (!isLoggedIn) return;
 
-  const handleCopyLink = () => {
-    try {
-      const url = `${window.location.origin}/?v=${activeVariant}`;
-      navigator.clipboard.writeText(url);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    } catch (e) {
-      // Ignore
+    if (talkMode === 'audio') {
+      // In audio mode, turn off camera mirror completely
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      setCameraActive(false);
+      return;
     }
-  };
 
-  const currentVariant = VARIANTS[activeVariant] || VARIANTS.bold;
+    let mounted = true;
+    async function initSelfiePreview() {
+      try {
+        if (!navigator?.mediaDevices?.getUserMedia) return;
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'user',
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+          },
+          audio: false, // muted self-preview
+        });
+
+        if (mounted) {
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+          setCameraActive(true);
+          setCameraError(null);
+        } else {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+      } catch (err: any) {
+        if (mounted) {
+          console.warn('[Landing Hero Preview] Camera mirror error:', err);
+          setCameraActive(false);
+          setCameraError(err.message || 'Camera preview not available');
+        }
+      }
+    }
+
+    initSelfiePreview();
+
+    return () => {
+      mounted = false;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, [isLoggedIn, talkMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,350 +142,377 @@ export default function LandingPageClient({
         router.push(`/sign-in?forceRedirectUrl=/dashboard`);
       }
     } catch (e: any) {
-      console.error("Claim Hub Error:", e);
+      console.error("Claim Error:", e);
       setError(e.message || "Failed to process request. Try again.");
       setLoading(false);
     }
   };
 
-  // Mock fallback creators
-  const mockCreators = [
-    {
-      name: "Ananya",
-      role: "Writer",
-      desc: "Sunday letters & life conversations",
-      time: "30 min",
-      price: "₹299",
-      image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400&h=400",
-      isReal: false
-    },
-    {
-      name: "Kabir",
-      role: "Musician",
-      desc: "Music, process and everything in between",
-      time: "45 min",
-      price: "₹399",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400&h=400",
-      isReal: false
-    },
-    {
-      name: "Mei",
-      role: "Artist",
-      desc: "Show your work sessions",
-      time: "30 min",
-      price: "₹299",
-      image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=400&h=400",
-      isReal: false
-    },
-    {
-      name: "Arjun",
-      role: "Filmmaker",
-      desc: "Script notes & story discussions",
-      time: "45 min",
-      price: "₹399",
-      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400&h=400",
-      isReal: false
-    }
-  ];
-
-  // Merge real creators from KV with mock fallback creators
-  const displayCreators = [...featuredCreators];
-  if (displayCreators.length < 4) {
-    const needed = 4 - displayCreators.length;
-    for (let i = 0; i < needed; i++) {
-      const mock = mockCreators[i % mockCreators.length];
-      displayCreators.push(mock);
-    }
-  }
-
-  // Pre-configured neutral portraits for real creators who haven't uploaded an avatar yet
-  const fallbackAvatars = [
-    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400&h=400",
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400&h=400",
-    "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=400&h=400",
-    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400&h=400"
-  ];
+  const currentHandle = savedUsername || clerkUser?.username;
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-foreground selection:text-background antialiased transition-colors duration-300 pb-24">
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-foreground selection:text-background antialiased transition-colors duration-300">
       {/* Navigation */}
       <Header />
 
-      {/* Hero Section */}
-      <section className="pt-20 md:pt-28 pb-20 md:pb-32 transition-all duration-300">
-        <div className="w-full px-6 sm:px-8 md:px-12 grid md:grid-cols-12 gap-12 md:gap-16 items-start">
-          <div className="md:col-span-8 space-y-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold tracking-wide border transition-all duration-300 animate-in fade-in slide-in-from-top-2">
-              <span className={`inline-block w-2 h-2 rounded-full ${activeVariant === 'bold' ? 'bg-amber-500 animate-pulse' : activeVariant === 'calm' ? 'bg-emerald-500' : activeVariant === 'monetize' ? 'bg-blue-500' : 'bg-purple-500'}`} />
-              <span className="text-muted">{currentVariant.badge}</span>
+      {/* Hero Section — Minimal & Mobile-First */}
+      <section className="pt-8 sm:pt-14 md:pt-20 pb-16 sm:pb-20 md:pb-28">
+        <div className="w-full px-5 sm:px-8 md:px-12 max-w-5xl mx-auto">
+          
+          {/* Top Bar with Live Badge & Right-side Safety + Fullscreen controls */}
+          <div className="flex items-center justify-between gap-3 mb-5 max-w-md sm:max-w-xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold tracking-wide border border-emerald-500/30 bg-emerald-500/10 text-emerald-500">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>LIVE 1-ON-1 VIDEO</span>
             </div>
 
-            <h1 className="text-4xl sm:text-6xl md:text-7xl font-semibold tracking-tight text-foreground leading-[1.05] transition-all">
-              {currentVariant.title}
-            </h1>
-            <p className="text-lg md:text-xl text-muted leading-relaxed max-w-xl transition-all">
-              {currentVariant.subtitle}
-            </p>
+            <div className="flex items-center gap-2">
+              {/* Safety Button */}
+              <button
+                onClick={() => setIsSafetyOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface border border-border/80 hover:border-emerald-500/50 text-xs font-medium text-foreground hover:text-emerald-400 transition-all cursor-pointer shadow-xs active:scale-95"
+                title="Safety Guidelines & Trust"
+                aria-label="Safety Guidelines"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Safety</span>
+              </button>
 
-            {/* Claim Box & Explore Duality */}
-            <div className="max-w-lg pt-4 space-y-4">
-              <form onSubmit={handleSubmit} className="w-full">
-                <div className="flex flex-col sm:flex-row items-stretch gap-3 sm:gap-0 bg-transparent sm:bg-surface sm:border sm:border-border sm:rounded-xl sm:overflow-hidden sm:shadow-sm sm:hover:border-foreground sm:focus-within:border-foreground transition-all">
-                  <div className="flex-1 flex items-center px-4 py-3.5 bg-surface border border-border sm:border-none rounded-xl sm:rounded-none shadow-sm sm:shadow-none hover:border-foreground focus-within:border-foreground sm:hover:border-transparent sm:focus-within:border-transparent transition-all">
-                    <span className="text-muted font-medium mr-0.5 select-none text-sm sm:text-base">supertime.wtf/</span>
+              {/* Fullscreen Button */}
+              <button
+                onClick={toggleFullscreen}
+                className="p-1.5 rounded-full bg-surface border border-border/80 hover:border-foreground/40 text-muted hover:text-foreground transition-all cursor-pointer active:scale-95"
+                title="Fullscreen Mode"
+                aria-label="Toggle Fullscreen"
+              >
+                <Maximize className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Headline */}
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight text-foreground leading-[1.1] mb-3">
+            Talk live in Supertime.
+          </h1>
+          
+          {/* Subtitle */}
+          <p className="text-sm sm:text-base text-muted leading-relaxed max-w-xl mb-6">
+            Spontaneous 1-on-1 video conversations with real people. 30-second rounds. No awkward silences, just pure human presence.
+          </p>
+
+          {/* ============================================================== */}
+          {/* SIGNED-IN HERO STATE: Live Selfie Mirror + Start Button       */}
+          {/* ============================================================== */}
+          {isLoggedIn ? (
+            <div className="max-w-md space-y-4">
+              
+              {/* Media Mode Switcher (Video vs Audio-Only) */}
+              <div className="flex items-center p-1 rounded-2xl bg-surface/90 border border-border shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setTalkMode('video')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    talkMode === 'video'
+                      ? 'bg-foreground text-background shadow-xs'
+                      : 'text-muted hover:text-foreground'
+                  }`}
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  <span>Video Mode</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (talkMode !== 'audio') {
+                      setShowAudioNotice(true);
+                    }
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    talkMode === 'audio'
+                      ? 'bg-emerald-500 text-black shadow-xs font-black'
+                      : 'text-muted hover:text-foreground'
+                  }`}
+                >
+                  <Mic className="w-3.5 h-3.5" />
+                  <span>Audio Only 🎙️</span>
+                </button>
+              </div>
+
+              {/* Viewfinder Card (Camera mirror in Video Mode, Voice Orb in Audio Mode) */}
+              <div className="relative aspect-[4/3] rounded-3xl overflow-hidden bg-neutral-950 border border-border shadow-2xl">
+                {talkMode === 'audio' ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-900 select-none">
+                    <div className="relative flex items-center justify-center mb-4">
+                      <div className="w-28 h-28 rounded-full bg-emerald-500/10 animate-ping absolute" />
+                      <div className="w-20 h-20 rounded-full bg-emerald-500/20 animate-pulse absolute" />
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-2xl shadow-xl relative z-10 text-black font-black">
+                        🎙️
+                      </div>
+                    </div>
+                    <p className="text-sm font-bold text-white tracking-tight">Audio Mode Active</p>
+                    <p className="text-xs text-neutral-400 mt-1 max-w-xs leading-relaxed">
+                      Camera is off · You will only match with audio-ready artists and people
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={`w-full h-full object-cover -scale-x-100 transition-opacity duration-300 ${
+                        cameraActive ? 'opacity-100' : 'opacity-0'
+                      }`}
+                    />
+
+                    {!cameraActive && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                        <div className="w-12 h-12 rounded-full bg-surface border border-border flex items-center justify-center mb-2">
+                          <Camera className="w-5 h-5 text-muted" />
+                        </div>
+                        <p className="text-xs text-muted max-w-xs">
+                          {cameraError ? cameraError : 'Starting camera mirror...'}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Floating Self Tag */}
+                <div className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs text-white font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>{talkMode === 'audio' ? 'Audio ready' : 'Camera ready'}</span>
+                </div>
+
+                {currentHandle && (
+                  <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs text-white font-mono">
+                    @{currentHandle}
+                  </div>
+                )}
+              </div>
+
+              {/* Primary Action Button: Jump into Supertalks */}
+              <Link
+                href={`/supertalks?mode=${talkMode}`}
+                className={`group w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl text-white font-semibold shadow-xl active:scale-[0.98] hover:opacity-95 transition-all cursor-pointer ${
+                  talkMode === 'audio'
+                    ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 shadow-emerald-500/25'
+                    : 'bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 shadow-rose-500/25'
+                }`}
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl shadow-inner shrink-0 group-hover:scale-105 transition-transform">
+                    {talkMode === 'audio' ? '🎙️' : '⚡'}
+                  </div>
+                  <div className="text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-base sm:text-lg">
+                        {talkMode === 'audio' ? 'Start an Audio Supertalk' : 'Start a Supertalk'}
+                      </span>
+                      <span className="bg-white/25 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full">
+                        {talkMode === 'audio' ? 'Audio Pool' : 'Live'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-white/85 font-normal mt-0.5">
+                      {talkMode === 'audio'
+                        ? 'Audio-only match · Camera stays off'
+                        : 'Find someone live · 30s rounds'}
+                    </p>
+                  </div>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-transform">
+                  <ArrowRight className="w-4 h-4 text-white" />
+                </div>
+              </Link>
+
+              {/* Status / Quick Links */}
+              <div className="flex items-center justify-between text-xs text-muted px-1 pt-1">
+                <span className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  {onlineCount.toLocaleString()} online now
+                </span>
+                <span>•</span>
+                <Link href="/dashboard" className="text-foreground hover:underline font-semibold flex items-center gap-1">
+                  Studio <ArrowRight className="w-3 h-3" />
+                </Link>
+                {currentHandle && (
+                  <>
+                    <span>•</span>
+                    <Link href={`/${currentHandle}`} className="text-foreground hover:underline font-semibold">
+                      Profile
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* ============================================================== */
+            /* SIGNED-OUT HERO STATE: Button + Handle Claim                   */
+            /* ============================================================== */
+            <div className="max-w-md space-y-4">
+              {/* Media Mode Switcher (Video vs Audio-Only) */}
+              <div className="flex items-center p-1 rounded-2xl bg-surface/90 border border-border shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setTalkMode('video')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    talkMode === 'video'
+                      ? 'bg-foreground text-background shadow-xs'
+                      : 'text-muted hover:text-foreground'
+                  }`}
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  <span>Video Mode</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (talkMode !== 'audio') {
+                      setShowAudioNotice(true);
+                    }
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    talkMode === 'audio'
+                      ? 'bg-emerald-500 text-black shadow-xs font-black'
+                      : 'text-muted hover:text-foreground'
+                  }`}
+                >
+                  <Mic className="w-3.5 h-3.5" />
+                  <span>Audio Only 🎙️</span>
+                </button>
+              </div>
+
+              <Link
+                href={`/supertalks?mode=${talkMode}`}
+                className={`group w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl text-white font-semibold shadow-lg active:scale-[0.98] hover:opacity-95 transition-all cursor-pointer ${
+                  talkMode === 'audio'
+                    ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 shadow-emerald-500/25'
+                    : 'bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 shadow-rose-500/25'
+                }`}
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl shadow-inner shrink-0 group-hover:scale-105 transition-transform">
+                    {talkMode === 'audio' ? '🎙️' : '⚡'}
+                  </div>
+                  <div className="text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-base sm:text-lg">
+                        {talkMode === 'audio' ? 'Start an Audio Supertalk' : 'Start a Supertalk'}
+                      </span>
+                      <span className="bg-white/25 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full">
+                        {talkMode === 'audio' ? 'Audio Pool' : 'Live'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-white/85 font-normal mt-0.5">
+                      {talkMode === 'audio'
+                        ? 'Audio-only match · Camera stays off'
+                        : 'Instant 1-on-1 video · 30s rounds'}
+                    </p>
+                  </div>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-transform">
+                  <ArrowRight className="w-4 h-4 text-white" />
+                </div>
+              </Link>
+
+              {/* Feature Pills */}
+              <div className="flex items-center justify-between text-xs text-muted px-1 pt-1">
+                <span className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  {onlineCount.toLocaleString()} online now
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1.5">
+                  ⏱️ 30s timer
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1.5">
+                  🔒 Peer-to-peer
+                </span>
+              </div>
+
+              {/* Claim Handle Section */}
+              <div className="pt-6 border-t border-border/80">
+                <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-2.5">
+                  Or claim your personal link
+                </div>
+
+                <form onSubmit={handleSubmit} className="w-full">
+                  <div className="flex items-center bg-surface border border-border rounded-xl overflow-hidden focus-within:border-foreground transition-all p-1 shadow-sm">
+                    <span className="text-muted text-xs sm:text-sm font-medium pl-3 select-none">supertime.wtf/</span>
                     <input
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                      placeholder={currentVariant.claimPlaceholder}
-                      className="flex-1 bg-transparent border-none outline-none text-foreground font-medium text-sm sm:text-base placeholder:text-muted/65 lowercase min-w-0"
+                      placeholder="yourname"
+                      className="flex-1 bg-transparent border-none outline-none text-foreground font-medium text-xs sm:text-sm placeholder:text-muted/50 px-2 py-2 min-w-0"
                     />
+                    <button
+                      type="submit"
+                      disabled={!username || loading}
+                      className="bg-foreground text-background text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-40 transition-all shrink-0"
+                    >
+                      {loading ? '...' : 'Claim'}
+                    </button>
                   </div>
-                  <button
-                    type="submit"
-                    disabled={!username || loading}
-                    className="bg-foreground text-background font-semibold px-6 py-3.5 sm:py-0 rounded-xl sm:rounded-none hover:opacity-90 transition-all disabled:opacity-50 text-sm flex items-center justify-center gap-1 shrink-0"
-                  >
-                    {loading ? '...' : currentVariant.claimBtn}
-                  </button>
-                </div>
-                {error && (
-                  <div className="text-sm font-medium text-red-500 pl-1 mt-2">
-                    {error}
-                  </div>
-                )}
-              </form>
-              <div className="flex items-center gap-2 pl-1 pt-1">
-                <span className="text-muted text-sm">{t('wantToSearch')}</span>
-                <button
-                  type="button"
-                  onClick={() => router.push('/explore')}
-                  className="text-foreground hover:text-muted font-semibold text-sm underline decoration-1 underline-offset-4 flex items-center gap-1 transition-colors"
-                >
-                  {t('exploreHumans')} <ArrowRight className="w-4 h-4" />
-                </button>
+                  {error && (
+                    <div className="text-xs font-medium text-red-500 pt-1.5 pl-1">
+                      {error}
+                    </div>
+                  )}
+                </form>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Features Column (Aligned with subtle left border) */}
-          <div className="md:col-span-4 md:border-l md:border-border md:pl-10 space-y-5 self-start md:pt-14 pt-6">
-            <h4 className="font-semibold text-xs uppercase tracking-wider text-foreground">{currentVariant.featHeader}</h4>
-            <ul className="space-y-3.5 text-base text-muted font-medium leading-normal">
-              {currentVariant.features.map((feat, idx) => (
-                <li key={idx} className="flex items-start gap-2.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-foreground shrink-0 mt-2" />
-                  <span className="text-foreground/90">{feat}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* Creator Grid Section */}
-      <section id="creators" className="py-20 md:py-32 border-t border-border bg-surface">
-        <div className="w-full px-6 sm:px-8 md:px-12">
-          <div className="flex justify-between items-end mb-12">
-            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">{t('meetHumans')}</h2>
-            <Link href="/explore" className="text-sm font-medium text-foreground hover:text-muted flex items-center gap-1 transition-colors">
-              View all <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {displayCreators.map((creator, i) => {
-              const imageSrc = creator.image || fallbackAvatars[i % fallbackAvatars.length];
-              const handle = creator.username || creator.name.toLowerCase();
-              return (
-                <div
-                  key={i}
-                  onClick={() => {
-                    if (creator.isReal) {
-                      router.push(`/${handle}`);
-                    }
-                  }}
-                  className={`flex flex-col space-y-4 group ${creator.isReal ? 'cursor-pointer' : ''}`}
-                >
-                  <div className="aspect-[4/5] bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden relative border border-border shadow-sm transition-all duration-300 group-hover:border-foreground/30">
-                    <img
-                      src={imageSrc}
-                      alt={creator.name}
-                      className="w-full h-full object-cover grayscale contrast-[1.05] group-hover:scale-[1.03] transition-transform duration-500 ease-out"
-                    />
-                  </div>
-                  <div className="space-y-1.5 px-1">
-                    <div className="space-y-0.5">
-                      <div className="flex justify-between items-baseline">
-                        <span className="font-semibold text-lg text-foreground group-hover:underline decoration-1 underline-offset-4">
-                          {creator.name}
-                        </span>
-                        <span className="text-muted text-sm font-medium">
-                          {creator.role}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted font-medium">
-                        @{handle}
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted leading-relaxed line-clamp-2 min-h-[2.75rem]">
-                      {creator.desc}
-                    </p>
-                    <div className="flex gap-2 text-xs font-semibold text-foreground pt-1 items-center">
-                      <span>{creator.time}</span>
-                      {creator.isReal && (
-                        <>
-                          <span className="text-border">•</span>
-                          <span className="text-[10px] bg-foreground text-background px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">Active</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Mission / Belief Section */}
-      <section id="about" className="py-20 md:py-32 border-t border-border">
-        <div className="w-full px-6 sm:px-8 md:px-12 grid md:grid-cols-12 gap-12 md:gap-16 items-start">
-          <div className="md:col-span-7">
-            <h2 className="text-3xl md:text-5xl font-semibold tracking-tight text-foreground leading-tight max-w-lg">
-              {currentVariant.beliefTitle}
-            </h2>
-          </div>
-          <div className="md:col-span-5 space-y-6">
-            <p className="text-base text-muted leading-relaxed">
-              {currentVariant.beliefDesc}
-            </p>
-            <div className="pt-2">
-              <Link href="/about" className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-muted transition-colors">
-                {t('readThoughts')} <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Roadmap Section */}
-      <section id="roadmap" className="py-20 md:py-32 border-t border-border">
-        <div className="w-full px-6 sm:px-8 md:px-12">
-          <div className="flex justify-between items-end mb-16">
-            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">{t('roadmapTitle')}</h2>
-            <Link href="/roadmap" className="text-sm font-medium text-foreground hover:text-muted flex items-center gap-1 transition-colors">
-              View roadmap <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-12">
-            {[
-              {
-                status: "In progress",
-                title: "Mobile apps",
-                desc: "Native apps for iOS and Android built specifically for smooth interaction on the go."
-              },
-              {
-                status: "In progress",
-                title: "Instant calls",
-                desc: "One tap conversation setups with creators when they are online and available."
-              },
-              {
-                status: "Planned",
-                title: "Group conversations",
-                desc: "Small group sessions, workshops, and gatherings within structured circles."
-              },
-              {
-                status: "Planned",
-                title: "Realtime infrastructure",
-                desc: "Building our own ultra-low latency WebRTC video & audio engine for high fidelity presence."
-              }
-            ].map((item, i) => (
-              <div key={i} className="space-y-3.5">
-                <div className="flex items-center gap-2 text-xs font-semibold text-muted uppercase tracking-wider">
-                  <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'In progress' ? 'bg-foreground' : 'bg-zinc-300 dark:bg-zinc-700'}`} />
-                  {item.status}
-                </div>
-                <h3 className="font-semibold text-lg text-foreground">{item.title}</h3>
-                <p className="text-sm text-muted leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
       {/* Footer */}
       <Footer />
 
-      {/* FLOATING HOMEPAGE VARIANT SWITCHER DOCK */}
-      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 max-w-[95vw] w-auto">
-        {isSwitcherOpen ? (
-          <div className="bg-surface/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-border/80 shadow-2xl rounded-2xl p-2 sm:p-2.5 flex flex-col sm:flex-row items-center gap-2 sm:gap-3 transition-all animate-in fade-in slide-in-from-bottom-3">
-            <div className="flex items-center gap-2 px-2 text-xs font-bold uppercase tracking-wider text-muted select-none">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>A/B TEST</span>
-            </div>
+      {/* Safety Modal */}
+      <SafetyModal
+        isOpen={isSafetyOpen}
+        onClose={() => setIsSafetyOpen(false)}
+      />
 
-            <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-1.5">
-              {(Object.keys(VARIANTS) as HomepageVariant[]).map((vKey) => {
-                const variant = VARIANTS[vKey];
-                const isSelected = activeVariant === vKey;
-                return (
-                  <button
-                    key={vKey}
-                    onClick={() => handleSelectVariant(vKey)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                      isSelected
-                        ? 'bg-foreground text-background shadow-sm scale-105'
-                        : 'bg-surface hover:bg-border/60 text-muted hover:text-foreground border border-border/50'
-                    }`}
-                  >
-                    <span>{variant.label}</span>
-                    {isSelected && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
-                  </button>
-                );
-              })}
+      {/* Audio Mode Switch Confirmation Modal */}
+      {showAudioNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="max-w-sm w-full p-6 rounded-3xl bg-neutral-900 border border-white/10 shadow-2xl text-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto text-2xl shadow-inner">
+              🎙️
             </div>
-
-            <div className="flex items-center gap-1.5 border-t sm:border-t-0 sm:border-l border-border/70 pt-1.5 sm:pt-0 sm:pl-2 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-bold text-white tracking-tight">Switch to Audio-Only Mode?</h3>
+              <p className="text-xs text-neutral-300 leading-relaxed">
+                Your camera will be turned off. You will only be connected to artists and callers who are also in audio-only mode.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 pt-2">
               <button
-                onClick={handleCopyLink}
-                title="Copy direct shareable link for this variant"
-                className="text-[11px] font-medium text-muted hover:text-foreground px-2 py-1 rounded-lg hover:bg-border/40 transition-colors flex items-center gap-1"
+                type="button"
+                onClick={() => {
+                  setTalkMode('audio');
+                  setShowAudioNotice(false);
+                }}
+                className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs transition-colors cursor-pointer active:scale-95 shadow-md shadow-emerald-500/20"
               >
-                {copiedLink ? (
-                  <>
-                    <Check className="w-3 h-3 text-emerald-500" />
-                    <span className="text-emerald-500 font-semibold">Copied ?v={activeVariant}</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Share link</span>
-                  </>
-                )}
+                Got it, Switch to Audio Mode 🎙️
               </button>
-
               <button
-                onClick={() => setIsSwitcherOpen(false)}
-                title="Minimize toolbar"
-                className="p-1 text-muted hover:text-foreground rounded-lg hover:bg-border/40 transition-colors"
+                type="button"
+                onClick={() => setShowAudioNotice(false)}
+                className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 font-semibold text-xs transition-colors cursor-pointer"
               >
-                <ChevronDown className="w-4 h-4" />
+                Cancel (Stay in Video Mode)
               </button>
             </div>
           </div>
-        ) : (
-          <button
-            onClick={() => setIsSwitcherOpen(true)}
-            className="bg-surface/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-border shadow-xl hover:shadow-2xl rounded-full px-4 py-2 text-xs font-semibold text-foreground flex items-center gap-2 hover:border-foreground/40 transition-all hover:scale-105"
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Variant: {VARIANTS[activeVariant]?.label}</span>
-            <ChevronUp className="w-3.5 h-3.5 text-muted" />
-          </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -20,7 +20,10 @@ import {
   Coffee,
   Youtube,
   Link as LinkIcon,
+  QrCode,
 } from 'lucide-react';
+import ProfileQRModal from './ProfileQRModal';
+import CreatorLinksSheet from './CreatorLinksSheet';
 
 // FAQ Accordion — purely presentational
 function FAQSection({ faqs }: { faqs: { id: string; question: string; answer: string }[] }) {
@@ -95,6 +98,8 @@ export default function ProfileView({
   bio = '',
 }: ProfileViewProps) {
   const [profileTab, setProfileTab] = useState<'store' | 'courses' | 'about'>('store');
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [showLinksSheet, setShowLinksSheet] = useState(false);
 
   const tabClass = (tab: 'store' | 'courses' | 'about') => 
     profileTab === tab 
@@ -154,7 +159,24 @@ export default function ProfileView({
                 <Globe className="w-4 h-4" />
               </a>
             )}
-            <span className="w-8 h-8 rounded-full border border-[#E8E8E8] bg-white flex items-center justify-center text-[#6B6B6B] hover:text-[#111111] hover:border-[#111111] transition-all shadow-sm cursor-pointer">
+            <span
+              onClick={() => setShowQRModal(true)}
+              className="w-8 h-8 rounded-full border border-[#E8E8E8] bg-white flex items-center justify-center text-[#6B6B6B] hover:text-[#111111] hover:border-[#111111] transition-all shadow-sm cursor-pointer"
+              title="QR Code & Share"
+            >
+              <QrCode className="w-4 h-4" />
+            </span>
+            <span
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({ title: username, url: window.location.href }).catch(() => {});
+                } else {
+                  setShowQRModal(true);
+                }
+              }}
+              className="w-8 h-8 rounded-full border border-[#E8E8E8] bg-white flex items-center justify-center text-[#6B6B6B] hover:text-[#111111] hover:border-[#111111] transition-all shadow-sm cursor-pointer"
+              title="Share"
+            >
               <Send className="w-4 h-4" />
             </span>
           </div>
@@ -171,13 +193,22 @@ export default function ProfileView({
               )}
             </div>
           </div>
-          <h1 className={`font-semibold tracking-tight text-[#111111] leading-none mb-3 md:mb-4 flex items-center justify-center gap-1.5 ${isPreview ? 'text-2xl' : 'text-3xl md:text-5xl'}`}>
-            {username}
+          <h1 className={`font-semibold tracking-tight text-[#111111] leading-none mb-3 md:mb-4 flex items-center justify-center gap-2 ${isPreview ? 'text-2xl' : 'text-3xl md:text-5xl'}`}>
+            <span>{username}</span>
             {isVerified && <Zap className={`text-[#111111] fill-[#111111] shrink-0 ${isPreview ? 'w-4 h-4' : 'w-6 h-6 md:w-7 md:h-7'}`} />}
+            <button
+              onClick={() => setShowLinksSheet(true)}
+              className="inline-flex items-center justify-center text-[#6B6B6B] hover:text-[#111111] p-1 rounded-md hover:bg-black/5 active:scale-95 transition-all cursor-pointer"
+              title="All artist links"
+              aria-label={`Open all links for ${username}`}
+            >
+              <LinkIcon className={`text-[#6B6B6B] hover:text-[#111111] transition-colors ${isPreview ? 'w-3.5 h-3.5' : 'w-4 h-4 md:w-5 md:h-5'}`} />
+              <span className="sr-only">All artist links</span>
+            </button>
           </h1>
           <div className="flex items-center justify-center gap-2 mb-4 md:mb-6">
             <button className={`flex items-center gap-1.5 border border-[#E8E8E8] rounded-full px-3.5 py-1 text-xs font-semibold shadow-sm transition-all duration-300 hover:border-[#111111] ${isAdmiring ? 'bg-[#111111] text-white border-[#111111]' : 'bg-white text-[#111111]'}`}>
-              <Heart className={`w-3.5 h-3.5 ${isAdmiring ? 'fill-white text-white' : 'text-[#6B6B6B]'}`} /> {admirerCount}
+              <Sparkles className={`w-3.5 h-3.5 ${isAdmiring ? 'fill-white text-white' : 'text-[#6B6B6B]'}`} /> {admirerCount} {admirerCount === 1 ? 'Believer' : 'Believers'}
             </button>
           </div>
           <p className={`max-w-xl text-[#6B6B6B] leading-relaxed ${isPreview ? 'text-[10px]' : 'text-sm font-medium'}`}>
@@ -322,6 +353,24 @@ export default function ProfileView({
           </div>
         </footer>
       )}
+
+      <ProfileQRModal
+        isOpen={showQRModal}
+        onClose={() => setShowQRModal(false)}
+        username={username}
+        profileImage={profileImage}
+        bio={bio}
+      />
+
+      <CreatorLinksSheet
+        isOpen={showLinksSheet}
+        onClose={() => setShowLinksSheet(false)}
+        username={username}
+        profileImage={profileImage}
+        isVerified={isVerified}
+        socials={socials}
+        bio={bio}
+      />
     </div>
   );
 }

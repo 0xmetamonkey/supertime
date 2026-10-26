@@ -7,7 +7,8 @@ import AgoraRTC, {
   IMicrophoneAudioTrack,
   IAgoraRTCRemoteUser
 } from 'agora-rtc-sdk-ng';
-import { Sparkles, Mic, MicOff, Video, VideoOff, X, Volume2, VolumeX, MessageCircle, DollarSign, Send, Zap, MonitorUp } from 'lucide-react';
+import { Sparkles, Mic, MicOff, Video, VideoOff, X, Volume2, VolumeX, Phone, MessageCircle, DollarSign, Send, Zap, MonitorUp } from 'lucide-react';
+import { playRouteSwitchSound } from '@/app/utils/soundEffects';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAlertDialog } from '../AlertDialog';
 
@@ -74,17 +75,45 @@ export default function CallStage({
   const [userBalance, setUserBalance] = useState<number>(0);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  const toggleSpeaker = () => {
-    remoteUsers.forEach(user => {
-      if (user.audioTrack) {
-        if (isSpeakerOff) {
-          user.audioTrack.play();
-        } else {
-          user.audioTrack.stop();
-        }
+  const [audioOutputRoute, setAudioOutputRoute] = useState<'speaker' | 'earpiece'>('speaker');
+
+  const toggleSpeaker = async () => {
+    const nextRoute = audioOutputRoute === 'speaker' ? 'earpiece' : 'speaker';
+    setAudioOutputRoute(nextRoute);
+    playRouteSwitchSound();
+
+    try {
+      const devices = await AgoraRTC.getPlaybackDevices();
+      if (nextRoute === 'earpiece') {
+        const earpiece = devices.find(d => {
+          const l = d.label.toLowerCase();
+          return l.includes('earpiece') || l.includes('receiver') || l.includes('phone') || l.includes('internal');
+        });
+        remoteUsers.forEach(user => {
+          if (earpiece) {
+            (user.audioTrack as any)?.setPlaybackDevice?.(earpiece.deviceId);
+          }
+          (user.audioTrack as any)?.setVolume?.(45);
+        });
+      } else {
+        const speaker = devices.find(d => d.label.toLowerCase().includes('speaker'));
+        const targetId = speaker ? speaker.deviceId : '';
+        remoteUsers.forEach(user => {
+          (user.audioTrack as any)?.setPlaybackDevice?.(targetId);
+          (user.audioTrack as any)?.setVolume?.(100);
+        });
       }
-    });
-    setIsSpeakerOff(!isSpeakerOff);
+    } catch {
+      remoteUsers.forEach(user => {
+        (user.audioTrack as any)?.setVolume?.(nextRoute === 'earpiece' ? 45 : 100);
+      });
+    }
+
+    if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+      (window as any).ReactNativeWebView.postMessage(
+        JSON.stringify({ type: 'SET_AUDIO_OUTPUT', route: nextRoute })
+      );
+    }
   };
 
   // Guard against concurrent connection attempts
@@ -830,9 +859,14 @@ export default function CallStage({
 
           <button
             onClick={toggleSpeaker}
-            className={`flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-full md:rounded-2xl flex items-center justify-center transition-all border ${!isSpeakerOff ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-red-500/80 border-red-400/50'}`}
+            className={`flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-full md:rounded-2xl flex items-center justify-center transition-all border ${audioOutputRoute === 'earpiece' ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-white/5 border-white/10 hover:bg-white/10 text-white/80'}`}
+            title={audioOutputRoute === 'earpiece' ? 'Audio: Earpiece (Click for Speaker)' : 'Audio: Speaker (Click for Earpiece)'}
           >
-            {!isSpeakerOff ? <Volume2 className="w-5 h-5 text-white/80" /> : <VolumeX className="w-5 h-5 text-white" />}
+            {audioOutputRoute === 'earpiece' ? (
+              <Phone className="w-5 h-5 text-amber-300" />
+            ) : (
+              <Volume2 className="w-5 h-5 text-white/80" />
+            )}
           </button>
 
           <button

@@ -19,6 +19,7 @@ import {
   Sparkles,
   PhoneCall,
   Zap,
+  QrCode,
 } from 'lucide-react';
 import { useClerk, UserButton } from "@clerk/nextjs";
 
@@ -31,6 +32,7 @@ import InboxTab from './InboxTab';
 import { useTheme } from '../components/ThemeProvider';
 import MessagesPanel from '../components/chat/upgrade/MessagesPanel';
 import ActiveChatWindow from '../components/chat/upgrade/ActiveChatWindow';
+import ProfileQRModal from '../components/ProfileQRModal';
 
 interface UIProps {
   session: any;
@@ -64,6 +66,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
   const [balance, setBalance] = useState(initialBalance);
   const [withdrawable, setWithdrawable] = useState(initialWithdrawable);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
   const [activeChatUser, setActiveChatUser] = useState<string | null>(null);
   const [unreadFrom, setUnreadFrom] = useState<Set<string>>(new Set());
   const [chatListRefreshKey, setChatListRefreshKey] = useState(0);
@@ -339,6 +342,16 @@ export default function DashboardClient({ session, username: initialUsername, ro
 
         <div className={`${isSidebarCollapsed ? 'p-2' : 'p-4'} space-y-2`}>
           <button
+            onClick={() => router.push('/roulette')}
+            className={`sidebar-nav-item relative w-full flex items-center gap-2 text-sm font-bold bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-black rounded-md transition-all ${
+              isSidebarCollapsed ? 'justify-center px-0 py-3' : 'justify-center px-4 py-2.5'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            {!isSidebarCollapsed && <span>Live Roulette</span>}
+            {isSidebarCollapsed && <span className="sidebar-tooltip">Roulette</span>}
+          </button>
+          <button
             onClick={() => window.location.href = "/pricing"}
             className={`sidebar-nav-item relative w-full flex items-center gap-2 text-sm font-bold bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-md transition-all ${
               isSidebarCollapsed ? 'justify-center px-0 py-3' : 'justify-center px-4 py-2.5'
@@ -360,58 +373,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
         </div>
       </aside>
 
-      {/* MOBILE NAV BOTTOM — hidden when chat is open on mobile */}
-      {!isChatSplitView && (
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-50 px-2 py-3 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] dark:shadow-none transition-colors">
-          <div className="flex justify-around items-center">
-            <button
-              onClick={() => handleTabChange('overview')}
-              className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'overview' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
-            >
-              <LayoutDashboard className="w-5 h-5" />
-              <span className="text-[10px] font-medium tracking-wide text-center">Home</span>
-            </button>
-            {isCreator && (
-              <button
-                onClick={() => handleTabChange('bookings')}
-                className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'bookings' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
-              >
-                <Calendar className="w-5 h-5" />
-                <span className="text-[10px] font-medium tracking-wide text-center">Bookings</span>
-              </button>
-            )}
-            <button
-              onClick={() => handleTabChange('inbox')}
-              className={`relative flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'inbox' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
-            >
-              <MessageSquare className="w-5 h-5" />
-              <span className="text-[10px] font-medium tracking-wide text-center">Inbox</span>
-              {hasUnreadInbox && (
-                <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neo-pink opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-neo-pink" />
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => handleTabChange('wallet')}
-              className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'wallet' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
-            >
-              <Wallet className="w-5 h-5" />
-              <span className="text-[10px] font-medium tracking-wide text-center">Wallet</span>
-            </button>
-            {isCreator && (
-              <button
-                onClick={() => handleTabChange('settings')}
-                className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'settings' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
-              >
-                <Settings className="w-5 h-5" />
-                <span className="text-[10px] font-medium tracking-wide text-center">Settings</span>
-              </button>
-            )}
-          </div>
-        </nav>
-      )}
+      {/* MOBILE DASHBOARD VIEW — sub-tabs moved to header for clean native navigation */}
 
       {/* MAIN CONTENT AREA */}
       {isChatSplitView ? (
@@ -461,48 +423,55 @@ export default function DashboardClient({ session, username: initialUsername, ro
       ) : (
         /* ── NORMAL DASHBOARD MODE ── */
         <main className="flex-1 h-screen overflow-y-auto custom-scrollbar bg-background pb-20 lg:pb-0 transition-colors">
-          <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md px-6 py-4 flex justify-between items-center lg:px-12 lg:py-8 border-b border-border transition-colors">
-            <h2 className="text-lg font-medium text-foreground">
-              {menuItems.find(m => m.id === activeTab)?.label}
-            </h2>
-            <div className="flex items-center gap-3">
-              {username && (
-                <>
-                  <a
-                    href={`/${username}`}
-                    target="_blank"
-                    className="hidden md:flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
-                  >
-                    supertime.wtf/{username}
-                  </a>
-                  <button
-                    onClick={async () => {
-                      const url = `https://supertime.wtf/${username}`;
-                      if (navigator.share) {
-                        try {
-                          await navigator.share({ url });
-                          setCopiedLink(true);
-                          setTimeout(() => setCopiedLink(false), 2000);
-                        } catch (e) {
-                          navigator.clipboard.writeText(url);
-                          setCopiedLink(true);
-                          setTimeout(() => setCopiedLink(false), 2000);
-                        }
-                      } else {
-                        navigator.clipboard.writeText(url);
-                        setCopiedLink(true);
-                        setTimeout(() => setCopiedLink(false), 2000);
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-sm font-medium text-foreground hover:bg-surface transition-colors"
-                  >
-                    {copiedLink ? <><CheckCircle className="w-4 h-4 text-green-500" /> Shared</> : <><Share className="w-4 h-4" /> Share</>}
-                  </button>
-                  <div className="ml-2 flex items-center">
-                    <UserButton afterSignOutUrl="/" />
-                  </div>
-                </>
-              )}
+          <header className="sticky top-0 z-40 bg-background/85 backdrop-blur-md px-4 sm:px-6 py-3.5 lg:px-12 lg:py-6 border-b border-border/60 transition-colors">
+            <div className="flex justify-between items-center w-full">
+              <h2 className="text-base sm:text-lg font-bold text-foreground">
+                {menuItems.find(m => m.id === activeTab)?.label}
+              </h2>
+              <div className="flex items-center gap-2 sm:gap-3">
+                {username && (
+                  <>
+                    <a
+                      href={`/${username}`}
+                      target="_blank"
+                      className="hidden md:flex items-center gap-2 text-xs font-medium text-muted hover:text-foreground transition-colors"
+                    >
+                      @{username}
+                    </a>
+                    <button
+                      onClick={() => setShowQRModal(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-xs font-semibold text-foreground hover:bg-surface transition-colors cursor-pointer"
+                    >
+                      <QrCode className="w-3.5 h-3.5 text-foreground" />
+                      <span className="hidden sm:inline">QR & Share</span>
+                    </button>
+                    <div className="flex items-center">
+                      <UserButton afterSignOutUrl="/" />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Mobile Horizontal Sub-Tab Strip */}
+            <div className="lg:hidden flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2.5 -mx-1 px-1">
+              {menuItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleTabChange(item.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                    activeTab === item.id
+                      ? 'bg-foreground text-background shadow-xs'
+                      : 'bg-surface border border-border/50 text-muted hover:text-foreground'
+                  }`}
+                >
+                  <item.icon className="w-3.5 h-3.5" />
+                  <span>{item.label}</span>
+                  {item.id === 'inbox' && hasUnreadInbox && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                  )}
+                </button>
+              ))}
             </div>
           </header>
 
@@ -572,6 +541,17 @@ export default function DashboardClient({ session, username: initialUsername, ro
             </motion.div>
           </div>
         </main>
+      )}
+
+      {/* Profile QR & Share Modal */}
+      {username && (
+        <ProfileQRModal
+          isOpen={showQRModal}
+          onClose={() => setShowQRModal(false)}
+          username={username}
+          profileImage={initialSettings?.profileImage}
+          bio={initialSettings?.bio}
+        />
       )}
     </div>
   );

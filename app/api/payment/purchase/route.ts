@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
-import crypto from 'crypto';
 import { kv } from '@vercel/kv';
 import { currentUser } from "@clerk/nextjs/server";
 import { paymentRatelimit } from '@/app/lib/ratelimit';
 import { sendEmail } from '@/app/lib/email';
+import { verifyRazorpayPayment } from '@/app/lib/razorpay';
+import { escapeHtml, getCanonicalBaseUrl } from '@/app/lib/sanitize';
 import { createBooking } from '@/app/api/call/book/route';
 
 interface Product {
@@ -12,6 +13,7 @@ interface Product {
   name: string;
   content?: string;
   type?: string;
+  price?: number;
 }
 
 interface Sale {
@@ -35,25 +37,29 @@ export async function POST(req: NextRequest) {
     if (action === 'verify') {
       console.log('[Purchase API] ✅ Verify action hit — starting verification flow');
 
-      const secret = process.env.RAZORPAY_KEY_SECRET;
-      if (!secret) throw new Error("Razorpay secret missing");
-
-      const signBody = razorpay_order_id + "|" + razorpay_payment_id;
-      const expectedSignature = crypto
-        .createHmac("sha256", secret)
-        .update(signBody)
-        .digest("hex");
-
-      if (expectedSignature !== razorpay_signature) {
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
-      }
+      // Signature + Razorpay-side binding of payment to the server-created order.
+      const { order } = await verifyRazorpayPayment(
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature
+      );
 
       const claimed = await kv.set(`payment:processed:${razorpay_payment_id}`, '1', { nx: true, ex: 31536000 });
       if (!claimed) {
         return NextResponse.json({ error: 'Payment already processed' }, { status: 409 });
       }
 
-      console.log('[Purchase API] ✅ Signature valid');
+      // SECURITY: server-side truth only — amount, product and creator come from
+      // the order notes stored at create-order time, never from this request body.
+      const notes: Record<string, string> = (order as any).notes || {};
+      if (notes.type !== 'product' && notes.type !== 'tip') {
+        return NextResponse.json({ error: 'Order type mismatch' }, { status: 400 });
+      }
+      const creatorUsername = notes.creatorUsername || '';
+      const productId = notes.productId || '';
+      const amount = Math.floor(Number(order.amount) / 100);
+
+      console.log('[Purchase API] ✅ Payment verified against order:', razorpay_order_id, 'amount:', amount);
 
       // Get buyer info (use provided if guest, otherwise check Clerk)
       let buyerEmail = providedBuyerEmail || '';
@@ -87,7 +93,7 @@ export async function POST(req: NextRequest) {
       let meetingUrl = '';
       if (productType === 'booking' && creatorUsername && bookingDetails) {
         try {
-          const host = req.headers.get('host') || 'supertime.wtf';
+          const host = getCanonicalBaseUrl(req).replace(/^https?:\/\//, '');
           const bookingResult = await createBooking({
             creatorUsername,
             date: bookingDetails.date,
@@ -130,12 +136,11 @@ export async function POST(req: NextRequest) {
           const commission = Math.round(grossAmount * COMMISSION_RATE);
           const netAmount = grossAmount - commission;
 
-          const current = (await kv.get<number>(`withdrawable:${creatorEmail}`)) ?? 0;
-          await kv.set(`withdrawable:${creatorEmail}`, current + netAmount);
+          // Atomic increments — no read-modify-write races
+          await kv.incrby(`withdrawable:${creatorEmail}`, netAmount);
 
           // Track platform commission
-          const totalCommission = (await kv.get<number>('platform:commission:total')) ?? 0;
-          await kv.set('platform:commission:total', totalCommission + commission);
+          await kv.incrby('platform:commission:total', commission);
 
           // Record sale with commission breakdown
           const sales = (await kv.get<Sale[]>(`sales:${creatorEmail}`)) || [];
@@ -162,10 +167,12 @@ export async function POST(req: NextRequest) {
 
       if (process.env.RESEND_API_KEY && productType !== 'booking') {
         try {
-          const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'supertime.wtf';
-          const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
-          const baseUrl = `${protocol}://${host}`;
+          const baseUrl = getCanonicalBaseUrl(req);
           const isBooking = productType === 'booking';
+          // Escape untrusted strings before interpolating into HTML emails
+          const safeProductName = escapeHtml(productName);
+          const safeBuyerName = escapeHtml(buyerName);
+          const safeBuyerEmail = escapeHtml(buyerEmail);
 
           // 1. Send receipt to Buyer
           if (buyerEmail) {
@@ -182,12 +189,12 @@ export async function POST(req: NextRequest) {
                   <p style="font-size: 13px; color: #4b5563; line-height: 1.5; margin-bottom: 24px;">
                     ${isBooking
                       ? `Your Supertime call with <strong>@${creatorUsername}</strong> has been scheduled. Use the link below to join at the scheduled time.`
-                      : `Your payment for <strong>${productName}</strong> by <strong>@${creatorUsername}</strong> has been verified.`
+                      : `Your payment for <strong>${safeProductName}</strong> by <strong>@${creatorUsername}</strong> has been verified.`
                     }
                   </p>
                   <div style="background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                     <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
-                      <tr><td style="color: #6b7280; padding: 6px 0;">${isBooking ? 'Session' : 'Item'}</td><td style="text-align: right; font-weight: 500; padding: 6px 0;">${productName}</td></tr>
+                      <tr><td style="color: #6b7280; padding: 6px 0;">${isBooking ? 'Session' : 'Item'}</td><td style="text-align: right; font-weight: 500; padding: 6px 0;">${safeProductName}</td></tr>
                       <tr><td style="color: #6b7280; padding: 6px 0;">With</td><td style="text-align: right; font-weight: 500; padding: 6px 0;">@${creatorUsername}</td></tr>
                       <tr><td style="color: #6b7280; padding: 6px 0;">Amount</td><td style="text-align: right; font-weight: 500; padding: 6px 0;">₹${amount}</td></tr>
                     </table>
@@ -224,11 +231,11 @@ export async function POST(req: NextRequest) {
                   </div>
                   <h2 style="font-size: 18px; font-weight: 500; margin-bottom: 12px;">You made a sale!</h2>
                   <p style="font-size: 13px; color: #4b5563; line-height: 1.5; margin-bottom: 24px;">
-                    <strong>${buyerName}</strong>${buyerEmail ? ` (${buyerEmail})` : ''} purchased <strong>${productName}</strong>.
+                    <strong>${safeBuyerName}</strong>${buyerEmail ? ` (${safeBuyerEmail})` : ''} purchased <strong>${safeProductName}</strong>.
                   </p>
                   <div style="background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                     <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
-                      <tr><td style="color: #6b7280; padding: 6px 0;">Product</td><td style="text-align: right; font-weight: 500; padding: 6px 0;">${productName}</td></tr>
+                      <tr><td style="color: #6b7280; padding: 6px 0;">Product</td><td style="text-align: right; font-weight: 500; padding: 6px 0;">${safeProductName}</td></tr>
                       <tr><td style="color: #6b7280; padding: 6px 0;">Gross</td><td style="text-align: right; font-weight: 500; padding: 6px 0;">₹${amount}</td></tr>
                       <tr><td style="color: #6b7280; padding: 6px 0;">Your Earnings</td><td style="text-align: right; font-weight: bold; color: #10b981; padding: 6px 0;">₹${Math.round(amount * 0.80)}</td></tr>
                     </table>
@@ -272,8 +279,25 @@ export async function POST(req: NextRequest) {
     }
 
     // ─── CREATE ORDER ───
-    if (!amount || amount < 1) {
+    if (!Number.isSafeInteger(amount) || amount < 1) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    }
+
+    // SECURITY: for product purchases the server owns the price — the stored
+    // product price overrides any client-claimed amount (no ₹1 purchases of
+    // expensive products). Tips remain freely choosable.
+    let orderAmount = amount;
+    if (productId && creatorUsername) {
+      const products = (await kv.get<Product[]>(`user_products:${creatorUsername.toLowerCase()}`)) || [];
+      const product = products.find((p: Product) => p.id === productId);
+      if (!product) {
+        return NextResponse.json({ error: 'PRODUCT_NOT_FOUND' }, { status: 400 });
+      }
+      const price = Number(product.price);
+      if (!Number.isSafeInteger(price) || price < 1) {
+        return NextResponse.json({ error: 'Invalid product price' }, { status: 400 });
+      }
+      orderAmount = price;
     }
 
     const identifier = req.headers.get('x-forwarded-for') || 'anonymous';
@@ -297,7 +321,7 @@ export async function POST(req: NextRequest) {
     });
 
     const order = await instance.orders.create({
-      amount: amount * 100, // paise
+      amount: orderAmount * 100, // paise
       currency: 'INR',
       receipt: `${productId ? 'purchase' : 'tip'}_${Date.now()}`,
       notes: {

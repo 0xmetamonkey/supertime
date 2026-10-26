@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { User, Users, BarChart2 } from 'lucide-react';
+import { User, Users, BarChart2, Shuffle } from 'lucide-react';
 
-export type RoomMode = '1v1' | 'circle' | 'stage';
+export type RoomMode = '1v1' | 'circle' | 'stage' | 'roulette';
 
 interface RoomModeCardsProps {
   selectedMode: RoomMode;
@@ -20,6 +20,16 @@ export const ROOM_MODES_CONFIG = {
     badge: 'Private room',
     defaultDuration: 30,
     defaultCapacity: 1,
+  },
+  roulette: {
+    id: 'roulette' as RoomMode,
+    title: 'Roulette',
+    subtitle: 'Random 1:1\nSkip anytime',
+    description: 'Instant random video roulette with 30s countdown and +Time.',
+    icon: Shuffle,
+    badge: 'Speed Meet',
+    defaultDuration: 30,
+    defaultCapacity: 2,
   },
   circle: {
     id: 'circle' as RoomMode,
@@ -44,10 +54,10 @@ export const ROOM_MODES_CONFIG = {
 };
 
 export default function RoomModeCards({ selectedMode, onSelectMode }: RoomModeCardsProps) {
-  const modes: RoomMode[] = ['1v1', 'circle', 'stage'];
+  const modes: RoomMode[] = ['1v1', 'roulette', 'circle', 'stage'];
 
   return (
-    <div className="grid grid-cols-3 gap-3 w-full">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full">
       {modes.map((modeKey) => {
         const config = ROOM_MODES_CONFIG[modeKey];
         const Icon = config.icon;

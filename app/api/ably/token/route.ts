@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Ably from 'ably';
+import { getIdentity, matchesIdentity } from '@/app/lib/identity';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,24 @@ export async function GET(req: NextRequest) {
 
   if (!clientId) {
     return NextResponse.json({ error: 'Missing clientId' }, { status: 400 });
+  }
+
+  const normalizedClientId = clientId.toLowerCase();
+  const isGuestOrRoulette =
+    normalizedClientId.startsWith('roulette-') ||
+    normalizedClientId.startsWith('guest-') ||
+    normalizedClientId.startsWith('talktime-');
+
+  if (!isGuestOrRoulette) {
+    const identity = await getIdentity();
+    if (!identity) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // The requested clientId must belong to the logged-in session.
+    if (!matchesIdentity(clientId, identity)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
   }
 
   const apiKey = process.env.ABLY_API_KEY;
@@ -22,10 +41,10 @@ export async function GET(req: NextRequest) {
 
     // Generate a token with limited capabilities for this specific client
     const tokenRequest = await ably.auth.createTokenRequest({
-      clientId,
+      clientId: normalizedClientId,
       capability: {
         // User can subscribe to their own channel for incoming calls
-        [`user:${clientId.toLowerCase()}`]: ['subscribe', 'presence'],
+        [`user:${normalizedClientId}`]: ['subscribe', 'presence'],
         // User can publish to any user's channel to initiate calls
         ['user:*']: ['publish'],
         // User can join room/broadcast channels
@@ -37,6 +56,8 @@ export async function GET(req: NextRequest) {
         ['team:*']: ['subscribe', 'publish', 'presence'],
         // Direct messaging channels
         ['dm:*']: ['subscribe', 'publish', 'presence'],
+        // Roulette video channels
+        ['roulette:*']: ['subscribe', 'publish', 'presence'],
       }
     });
 

@@ -2,6 +2,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, Variants } from 'framer-motion';
 import {
   ArrowRight,
@@ -26,6 +27,8 @@ const itemVariants: Variants = {
 };
 
 export default function OverviewTab({ username, withdrawable, balance, initialSettings, setActiveTab }: OverviewTabProps) {
+  const router = useRouter();
+
   return (
     <>
       {/* HEADER SECTION */}
@@ -38,8 +41,8 @@ export default function OverviewTab({ username, withdrawable, balance, initialSe
         </div>
         {username && (
           <button
-            onClick={() => window.open('/studio', '_blank')}
-            className="flex items-center gap-2 bg-foreground text-background px-5 py-2.5 rounded-lg font-medium text-sm hover:opacity-90 transition-opacity shadow-sm"
+            onClick={() => router.push('/studio')}
+            className="flex items-center gap-2 bg-foreground text-background px-5 py-2.5 rounded-full font-medium text-sm hover:opacity-90 active:scale-95 transition-all shadow-sm cursor-pointer"
           >
             <Sparkles className="w-4 h-4" /> Access Studio
           </button>

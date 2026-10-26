@@ -33,6 +33,7 @@ import {
   X,
   Lock,
   FileText,
+  QrCode,
 } from 'lucide-react';
 import WalletManager from '../components/WalletManager';
 import dynamic from 'next/dynamic';
@@ -40,6 +41,9 @@ const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false 
 const BroadcastViewer = dynamic(() => import('../components/Broadcast/BroadcastViewer'), { ssr: false });
 import { useUser, useClerk } from "@clerk/nextjs";
 import { useAlertDialog } from '../components/AlertDialog';
+import PingModal from '../components/PingModal';
+import ProfileQRModal from '../components/ProfileQRModal';
+import CreatorLinksSheet from '../components/CreatorLinksSheet';
 
 interface CreatorClientProps {
   username: string,
@@ -157,6 +161,7 @@ export default function CreatorClient({
   const [creditsSpent, setCreditsSpent] = useState(0);
   const [isCreatorOnline, setIsCreatorOnline] = useState(isLive);
   const [activeChannelName, setActiveChannelName] = useState<string | null>(null);
+  const [showQRModal, setShowQRModal] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
@@ -168,7 +173,9 @@ export default function CreatorClient({
 
   const [admirerList, setAdmirerList] = useState<{ email: string; username: string | null }[]>([]);
   const [showAdmirersModal, setShowAdmirersModal] = useState(false);
+  const [showPingModal, setShowPingModal] = useState(false);
   const [isLoadingAdmirers, setIsLoadingAdmirers] = useState(false);
+  const [isLinksSheetOpen, setIsLinksSheetOpen] = useState(false);
 
   const [profileTab, setProfileTab] = useState<'sessions' | 'products' | 'feast' | 'about'>('sessions');
   const [shows, setShows] = useState<any[]>([]);
@@ -1017,55 +1024,172 @@ export default function CreatorClient({
       </div>
 
       <main className="max-w-2xl mx-auto px-5 -mt-16 pb-24 relative z-10">
-        {isOwner && (
-          <div className="absolute top-0 left-5">
-            <a href="/dashboard" className="flex items-center gap-2 text-xs font-semibold text-muted hover:text-foreground transition-colors bg-surface border border-border px-3 py-1.5 rounded-lg shadow-sm">
-              <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
+        {/* Apple Translucent Floating Top Pill Bar */}
+        <div className="flex items-center justify-between mb-4">
+          {isOwner ? (
+            <a
+              href="/dashboard"
+              className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-foreground/80 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border border-border/80 dark:border-white/10 px-3.5 py-1.5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.03)] active:scale-95 transition-all"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Studio
             </a>
-          </div>
-        )}
+          ) : (
+            <a
+              href="/explore"
+              className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-foreground/80 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border border-border/80 dark:border-white/10 px-3.5 py-1.5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.03)] active:scale-95 transition-all"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Explore
+            </a>
+          )}
 
-        {/* ── Profile Header ── */}
-        <div className="flex flex-col items-center text-center mb-10">
-          <div className="w-28 h-28 rounded-full overflow-hidden mb-5 shadow-sm border-4 border-background bg-background relative">
-            {profileImage ? (
-              <img src={profileImage} alt={username} className="w-full h-full object-cover" />
-            ) : (
-              <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`} alt={username} className="w-full h-full object-cover bg-surface" />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsLinksSheetOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-foreground/80 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border border-border/80 dark:border-white/10 px-3 py-1.5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.03)] active:scale-95 transition-all cursor-pointer"
+              title="All Links"
+            >
+              <LinkIcon className="w-3.5 h-3.5 text-muted" />
+              <span>Links</span>
+            </button>
+            <button
+              onClick={() => setShowQRModal(true)}
+              className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-foreground/80 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border border-border/80 dark:border-white/10 px-3 py-1.5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.03)] active:scale-95 transition-all cursor-pointer"
+              title="Scan QR Code / Share Profile"
+            >
+              <QrCode className="w-3.5 h-3.5 text-foreground" />
+              <span>Share</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ── Profile Header (Apple Translucent Vibrancy + Flat Clean Surfaces) ── */}
+        <div className="flex flex-col items-center text-center mb-8">
+          {/* Avatar Container with Subtle Translucent Ring */}
+          <div className="relative mb-4 group">
+            <div className="w-28 h-28 rounded-full p-1 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border border-border/80 dark:border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+              <div className="w-full h-full rounded-full overflow-hidden bg-surface relative">
+                {profileImage ? (
+                  <img src={profileImage} alt={username} className="w-full h-full object-cover" />
+                ) : (
+                  <img
+                    src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`}
+                    alt={username}
+                    className="w-full h-full object-cover bg-surface"
+                  />
+                )}
+              </div>
+            </div>
+            {isCreatorOnline && (
+              <span
+                className="absolute bottom-1 right-2 w-4 h-4 bg-emerald-500 border-2 border-background rounded-full animate-pulse shadow-xs"
+                title="Live Now"
+              />
             )}
           </div>
 
-          <h1 className="text-3xl font-semibold mb-2 flex items-center gap-1.5 text-foreground">
-            {username}
-            {isVerified && <span className="text-foreground"><Check className="w-5 h-5 bg-foreground text-background rounded-full p-0.5" /></span>}
+          {/* Artist Name Header with Tiny Hyperlink Icon (Alphabet-sized) */}
+          <h1 className="text-3xl font-semibold mb-2 flex items-center justify-center gap-2 text-foreground tracking-tight">
+            <span>{username}</span>
+            {isVerified && (
+              <span title="Verified Artist" className="text-foreground inline-flex items-center">
+                <Check className="w-4.5 h-4.5 bg-foreground text-background rounded-full p-0.5" />
+              </span>
+            )}
+            <button
+              onClick={() => setIsLinksSheetOpen(true)}
+              className="group relative inline-flex items-center justify-center text-muted hover:text-foreground transition-all duration-150 p-1 rounded-md hover:bg-foreground/5 dark:hover:bg-foreground/10 active:scale-95 cursor-pointer"
+              title="All links of artist"
+              aria-label={`Open all links for ${username}`}
+            >
+              <LinkIcon className="w-4 h-4 text-muted group-hover:text-foreground transition-colors" />
+              <span className="sr-only">All links of artist</span>
+            </button>
           </h1>
 
           {bio && (
-            <p className="text-sm text-muted max-w-sm mb-6 leading-relaxed whitespace-pre-wrap">
+            <p className="text-sm text-muted max-w-sm mb-4 leading-relaxed whitespace-pre-wrap font-normal">
               {bio}
             </p>
           )}
 
-          {/* Social links */}
-          <div className="flex items-center gap-5 mb-2">
+          {/* Believers & Belief Pill Chips (Material Tonal + Apple Tactile) */}
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              onClick={handleFetchAdmirers}
+              className="flex items-center gap-1.5 bg-surface dark:bg-surface border border-border/80 dark:border-white/10 px-3.5 py-1.5 rounded-full text-xs font-semibold text-foreground hover:border-foreground/30 active:scale-95 transition-all shadow-2xs group cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20 group-hover:scale-110 transition-transform" />
+              <span>{admirerCount} {admirerCount === 1 ? 'Believer' : 'Believers'}</span>
+            </button>
+
+            {!isOwner && (
+              <button
+                onClick={toggleAdmire}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95 shadow-2xs cursor-pointer ${
+                  isAdmiring
+                    ? 'bg-foreground text-background border border-foreground'
+                    : 'bg-surface dark:bg-surface text-foreground border border-border/80 dark:border-white/10 hover:border-foreground/30'
+                }`}
+              >
+                <Heart className={`w-3.5 h-3.5 transition-transform ${isAdmiring ? 'fill-current scale-110' : 'text-muted'}`} />
+                <span>{isAdmiring ? 'Believing' : 'Believe'}</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setIsLinksSheetOpen(true)}
+              className="flex items-center gap-1.5 bg-surface dark:bg-surface border border-border/80 dark:border-white/10 px-3.5 py-1.5 rounded-full text-xs font-semibold text-foreground hover:border-foreground/30 active:scale-95 transition-all shadow-2xs cursor-pointer"
+              title="Open all links"
+            >
+              <LinkIcon className="w-3.5 h-3.5 text-muted" />
+              <span>Links</span>
+            </button>
+          </div>
+
+          {/* Connected Networks Quick Row */}
+          <div className="flex items-center gap-2 mb-2">
             {socials?.instagram && (
-              <a href={socials.instagram.startsWith('http') ? socials.instagram : `https://instagram.com/${socials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-muted hover:text-foreground transition-colors">
-                <Instagram className="w-5 h-5" />
+              <a
+                href={socials.instagram.startsWith('http') ? socials.instagram : `https://instagram.com/${socials.instagram.replace('@', '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-8 h-8 rounded-full border border-border/80 dark:border-white/10 bg-surface dark:bg-surface flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/30 active:scale-90 transition-all shadow-2xs"
+                title="Instagram"
+              >
+                <Instagram className="w-4 h-4" />
               </a>
             )}
             {socials?.youtube && (
-              <a href={socials.youtube.startsWith('http') ? socials.youtube : `https://youtube.com/${socials.youtube.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-muted hover:text-foreground transition-colors">
-                <Youtube className="w-5 h-5" />
+              <a
+                href={socials.youtube.startsWith('http') ? socials.youtube : `https://youtube.com/${socials.youtube.replace('@', '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-8 h-8 rounded-full border border-border/80 dark:border-white/10 bg-surface dark:bg-surface flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/30 active:scale-90 transition-all shadow-2xs"
+                title="YouTube"
+              >
+                <Youtube className="w-4 h-4" />
               </a>
             )}
             {socials?.x && (
-              <a href={socials.x.startsWith('http') ? socials.x : `https://x.com/${socials.x.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-muted hover:text-foreground transition-colors font-serif text-xl leading-none flex items-center justify-center">
-                <span className="mb-0.5">𝕏</span>
+              <a
+                href={socials.x.startsWith('http') ? socials.x : `https://x.com/${socials.x.replace('@', '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-8 h-8 rounded-full border border-border/80 dark:border-white/10 bg-surface dark:bg-surface flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/30 active:scale-90 transition-all shadow-2xs font-serif text-sm font-bold"
+                title="X"
+              >
+                <span className="leading-none">𝕏</span>
               </a>
             )}
             {socials?.website && (
-              <a href={socials.website.startsWith('http') ? socials.website : `https://${socials.website}`} target="_blank" rel="noopener noreferrer" className="text-muted hover:text-foreground transition-colors">
-                <Globe className="w-5 h-5" />
+              <a
+                href={socials.website.startsWith('http') ? socials.website : `https://${socials.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-8 h-8 rounded-full border border-border/80 dark:border-white/10 bg-surface dark:bg-surface flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/30 active:scale-90 transition-all shadow-2xs"
+                title="Website"
+              >
+                <Globe className="w-4 h-4" />
               </a>
             )}
           </div>
@@ -1074,22 +1198,22 @@ export default function CreatorClient({
         {/* ── Quick Actions ── */}
         <div className="space-y-3 mb-10">
           
-          {/* Inner Circle / Membership */}
+          {/* Believer Circle / Direct Backing */}
           <div className="bg-surface border border-border rounded-2xl p-5 flex items-center justify-between shadow-sm">
             <div className="flex items-start gap-3">
-              <div className="mt-1"><Sparkles className="w-5 h-5 text-muted" /></div>
+              <div className="mt-1"><Sparkles className="w-5 h-5 text-amber-500 fill-amber-500/20" /></div>
               <div className="text-left">
-                <h3 className="font-semibold text-foreground text-sm mb-1">Join my inner circle</h3>
-                <p className="text-[11px] text-muted max-w-[180px] leading-tight">Monthly updates, behind the scenes, early access and more.</p>
+                <h3 className="font-semibold text-foreground text-sm mb-1">Believer Circle: Back @{username}</h3>
+                <p className="text-[11px] text-muted max-w-[200px] leading-tight">Monthly patron backing, behind-the-scenes art process, and direct live priority.</p>
               </div>
             </div>
             {isSubscribed ? (
               <button disabled className="bg-background text-foreground border border-border text-xs font-semibold px-4 py-2.5 rounded-lg shrink-0 flex items-center gap-1.5 opacity-70">
-                <Check className="w-3.5 h-3.5 text-green-500" /> Member
+                <Check className="w-3.5 h-3.5 text-green-500" /> Believer
               </button>
             ) : (
               <button onClick={handleSubscribe} disabled={isSubscribing} className="bg-foreground text-background text-xs font-semibold px-4 py-2.5 rounded-lg shrink-0 hover:opacity-90 transition-opacity disabled:opacity-50">
-                {isSubscribing ? <><Loader2 className="w-3.5 h-3.5 animate-spin inline mr-1" /> Loading...</> : 'Subscribe · ₹199 / 30 Days'}
+                {isSubscribing ? <><Loader2 className="w-3.5 h-3.5 animate-spin inline mr-1" /> Loading...</> : 'Back Art · ₹199 / 30 Days'}
               </button>
             )}
           </div>
@@ -1139,15 +1263,38 @@ export default function CreatorClient({
             </button>
           </div>
 
-          <button onClick={() => {
-            if (isOwner) {
-              showError("This is a preview! Fans will use this to DM you.");
-              return;
-            }
-            router.push(`/dashboard?tab=inbox&to=${username}`);
-          }} className="w-full bg-surface border border-border rounded-2xl py-3.5 flex items-center justify-center gap-2 hover:bg-background transition-colors font-medium text-sm text-foreground shadow-sm">
-            <MessageSquare className="w-4 h-4" /> Message
-          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => {
+                if (isOwner) {
+                  showError("This is a preview! Fans will use this to ping you.");
+                  return;
+                }
+                setShowPingModal(true);
+              }}
+              className="bg-amber-400 border border-black rounded-2xl py-3.5 flex items-center justify-center gap-2 hover:bg-amber-300 transition-colors font-black text-sm text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+            >
+              <Zap className="w-4 h-4 fill-black" /> Ping for Sesh
+            </button>
+
+            <button onClick={() => {
+              if (isOwner) {
+                showError("This is a preview! Fans will use this to DM you.");
+                return;
+              }
+              router.push(`/dashboard?tab=inbox&to=${username}`);
+            }} className="bg-surface border border-border rounded-2xl py-3.5 flex items-center justify-center gap-2 hover:bg-background transition-colors font-medium text-sm text-foreground shadow-sm">
+              <MessageSquare className="w-4 h-4" /> Message
+            </button>
+          </div>
+
+          {showPingModal && (
+            <PingModal
+              isOpen={showPingModal}
+              onClose={() => setShowPingModal(false)}
+              targetUsername={username}
+            />
+          )}
 
           {/* Fundraiser Card */}
           {fundraiser && fundraiser.isActive && (
@@ -1600,37 +1747,46 @@ export default function CreatorClient({
 
       {/* ── Modals ── */}
 
-      {/* Admirers Modal */}
+      {/* Believers Modal */}
       <AnimatePresence>
         {showAdmirersModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[400] bg-black/30 backdrop-blur-sm flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className="bg-surface rounded-xl border border-border shadow-lg p-6 max-w-md w-full max-h-[80vh] flex flex-col">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-semibold text-foreground">Admirers</h2>
-                <button onClick={() => setShowAdmirersModal(false)} className="w-8 h-8 rounded-full hover:bg-background flex items-center justify-center text-muted transition-colors">✕</button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[400] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6">
+            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className="bg-surface rounded-2xl border border-border shadow-2xl p-6 max-w-md w-full max-h-[80vh] flex flex-col">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-amber-500 fill-amber-500/20" />
+                    Believers
+                  </h2>
+                  <p className="text-xs text-muted">People backing @{username}'s craft</p>
+                </div>
+                <button onClick={() => setShowAdmirersModal(false)} className="w-8 h-8 rounded-full hover:bg-background flex items-center justify-center text-muted hover:text-foreground transition-colors">✕</button>
               </div>
-              <div className="flex-1 overflow-y-auto space-y-2">
+              <div className="flex-1 overflow-y-auto space-y-2 mt-2">
                 {isLoadingAdmirers ? (
                   <div className="flex flex-col items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-gray-300 mb-3" />
-                    <p className="text-sm text-gray-400">Loading...</p>
+                    <Loader2 className="w-6 h-6 animate-spin text-muted mb-3" />
+                    <p className="text-sm text-muted">Loading believers...</p>
                   </div>
                 ) : admirerList.length > 0 ? (
                   admirerList.map((admirer, idx) => (
-                    <div key={idx} className="flex items-center gap-3 p-3 rounded-lg hover:bg-background">
+                    <div key={idx} className="flex items-center gap-3 p-3 rounded-xl hover:bg-background border border-transparent hover:border-border transition-all">
                       <div className="w-10 h-10 rounded-full overflow-hidden border border-border">
                         <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${admirer.username || admirer.email}`} alt="avatar" className="w-full h-full object-cover" />
                       </div>
-                      <span className="flex-1 text-sm font-medium truncate">{admirer.username || 'Anonymous'}</span>
+                      <span className="flex-1 text-sm font-semibold text-foreground truncate">{admirer.username || 'Anonymous Believer'}</span>
                       {admirer.username && (
-                        <button onClick={() => window.location.href = `/${admirer.username}`} className="text-gray-400 hover:text-black transition-colors">
+                        <button onClick={() => window.location.href = `/${admirer.username}`} className="text-muted hover:text-foreground transition-colors p-1 rounded-lg">
                           <ArrowRight className="w-4 h-4" />
                         </button>
                       )}
                     </div>
                   ))
                 ) : (
-                  <p className="text-center py-12 text-sm text-gray-400">No admirers yet</p>
+                  <div className="text-center py-12">
+                    <p className="text-sm text-muted">No believers yet.</p>
+                    <p className="text-xs text-muted/70 mt-1">Be the first to back @{username}!</p>
+                  </div>
                 )}
               </div>
             </motion.div>
@@ -1709,6 +1865,27 @@ export default function CreatorClient({
         </div>
       </footer>
       {AlertDialog}
+
+      {/* In-House Profile QR Modal */}
+      <ProfileQRModal
+        isOpen={showQRModal}
+        onClose={() => setShowQRModal(false)}
+        username={username}
+        profileImage={profileImage}
+        bio={bio}
+      />
+
+      {/* Artist Links Drawer (Sliding from down) */}
+      <CreatorLinksSheet
+        isOpen={isLinksSheetOpen}
+        onClose={() => setIsLinksSheetOpen(false)}
+        username={username}
+        profileImage={profileImage}
+        isVerified={isVerified}
+        socials={socials}
+        bio={bio}
+        onStartCall={handleStartCall}
+      />
     </div>
   );
 }

@@ -42,6 +42,7 @@ import {
 import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
 const BroadcastHost = dynamic(() => import('../components/Broadcast/BroadcastHost'), { ssr: false });
+const RouletteStage = dynamic(() => import('../components/Roulette/RouletteStage'), { ssr: false });
 import { checkAvailability, completeOnboarding, getAllCreators } from '../actions';
 import { useClerk } from "@clerk/nextjs";
 import WalletManager from '../components/WalletManager';
@@ -1115,21 +1116,30 @@ export default function StudioClient({ username, session, initialSettings }: { u
       )}
 
       {activeRoomConfig && (
-        <ActiveRoomView
-          config={activeRoomConfig}
-          creatorName={effectiveUsername || 'Host'}
-          onEndRoom={() => {
-            setRoomEndedSummary({
-              title: activeRoomConfig.mode === '1v1' ? '1 : 1' : activeRoomConfig.mode === 'circle' ? 'Circle Room' : 'Stage Room',
-              duration: `${activeRoomConfig.duration} min`,
-              guest: 'Priya S.',
-            });
-            setActiveRoomConfig(null);
-            setIsLive(false);
-          }}
-          onOpenMenu={() => setShowInRoomMenu(true)}
-          onOpenWaitlist={() => setShowWaitlist(true)}
-        />
+        activeRoomConfig.mode === 'roulette' ? (
+          <RouletteStage
+            onClose={() => {
+              setActiveRoomConfig(null);
+              setIsLive(false);
+            }}
+          />
+        ) : (
+          <ActiveRoomView
+            config={activeRoomConfig}
+            creatorName={effectiveUsername || 'Host'}
+            onEndRoom={() => {
+              setRoomEndedSummary({
+                title: activeRoomConfig.mode === '1v1' ? '1 : 1' : activeRoomConfig.mode === 'circle' ? 'Circle Room' : 'Stage Room',
+                duration: `${activeRoomConfig.duration} min`,
+                guest: 'Priya S.',
+              });
+              setActiveRoomConfig(null);
+              setIsLive(false);
+            }}
+            onOpenMenu={() => setShowInRoomMenu(true)}
+            onOpenWaitlist={() => setShowWaitlist(true)}
+          />
+        )
       )}
 
       <InRoomMenuDrawer

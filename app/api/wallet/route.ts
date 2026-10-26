@@ -4,7 +4,8 @@ import { currentUser, auth } from "@clerk/nextjs/server";
 import {
   getDetailedWallet,
   processSplitPayment,
-  recordWithdrawalRequest
+  recordWithdrawalRequest,
+  assertPositiveAmount
 } from '@/app/lib/economics';
 
 // Fallback memory store for dev without KV keys
@@ -33,7 +34,6 @@ async function setBalance(email: string, value: number) {
 
 export async function GET(req: NextRequest) {
   const { sessionClaims } = await auth();
-  console.log('[Wallet API] 🔑 Session Claims received from Clerk JWT:', JSON.stringify(sessionClaims, null, 2));
 
   let email = (sessionClaims as any)?.email;
   
@@ -106,21 +106,26 @@ export async function POST(req: NextRequest) {
 
   // Handle Transfer / Deduct
   if (action === 'deduct') {
-    if (typeof amount !== 'number') return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    let safeAmount: number;
+    try {
+      safeAmount = assertPositiveAmount(amount);
+    } catch {
+      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    }
 
     let senderBalance = await getBalance(senderEmail);
-    if (senderBalance < amount) {
+    if (senderBalance < safeAmount) {
       return NextResponse.json({ error: 'Insufficient funds' }, { status: 402 });
     }
 
-    senderBalance -= amount;
+    senderBalance -= safeAmount;
     await setBalance(senderEmail, senderBalance);
 
     // If recipientEmail provided, credit them (Real-time Transfer)
     if (recipientEmail) {
       const recipient = recipientEmail.toLowerCase();
       let recipientBalance = await getBalance(recipient);
-      recipientBalance += amount;
+      recipientBalance += safeAmount;
       await setBalance(recipient, recipientBalance);
     }
 
@@ -137,15 +142,16 @@ export async function POST(req: NextRequest) {
       const result = await processSplitPayment(senderEmail, recipientEmail, amount);
       return NextResponse.json(result);
     } catch (e: any) {
-      return NextResponse.json({ error: e.message }, { status: 402 });
+      const status = e.message === 'Invalid amount' ? 400 : 402;
+      return NextResponse.json({ error: e.message }, { status });
     }
   }
 
   // NEW: Withdrawal Flow
   if (action === 'withdraw') {
     const { upiId, amount: withdrawAmount } = body;
-    if (!upiId || !withdrawAmount || typeof withdrawAmount !== 'number') {
-      return NextResponse.json({ error: 'UPI ID and Amount required' }, { status: 400 });
+    if (!upiId || typeof withdrawAmount !== 'number' || !Number.isSafeInteger(withdrawAmount) || withdrawAmount <= 0) {
+      return NextResponse.json({ error: 'UPI ID and a positive whole-number amount are required' }, { status: 400 });
     }
 
     const UPI_REGEX = /^[\w.\-]{2,256}@[a-zA-Z]{2,64}$/;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
+import { getIdentity, matchesIdentity } from '@/app/lib/identity';
 
 // Fallback for local dev without Vercel KV keys
 declare global {
@@ -13,7 +14,17 @@ const hasKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
 
 export async function POST(req: NextRequest) {
   try {
+    const identity = await getIdentity();
+    if (!identity) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { action, from, fromName, to, type } = await req.json();
+
+    // Only a participant of the call may act on its signal.
+    const isParticipant = matchesIdentity(from, identity) || matchesIdentity(to, identity);
+    const isInitiator = matchesIdentity(from, identity);
+    if (action === 'call' ? !isInitiator : !isParticipant) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     if (action === 'call') {
       // Generate unique channel name
@@ -140,6 +151,11 @@ export async function GET(req: NextRequest) {
     if (!username) return NextResponse.json({ error: 'Missing username' }, { status: 400 });
 
     try {
+      const identity = await getIdentity();
+      if (!identity || !matchesIdentity(username, identity)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+
       let signal: any;
 
       if (hasKV) {

@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@supertime/shared": [
+        "./packages/shared/src/index.ts"
       ]
     }
   },
@@ -37,6 +40,7 @@
     "**/*.mts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "mobile"
   ]
 }

@@ -1,0 +1,10 @@
+node_modules/
+.gradle/
+mobile/android/
+mobile/ios/
+android/
+ios/
+.expo/
+dist/
+web-build/
+.next/

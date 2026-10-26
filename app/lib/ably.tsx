@@ -37,6 +37,9 @@ export function AblyProvider({ children, clientId }: AblyProviderProps) {
     const ablyClient = new Ably.Realtime({
       authUrl: `/api/ably/token?clientId=${encodeURIComponent(normalizedClientId)}`,
       authMethod: 'GET',
+      authHeaders: {
+        'ngrok-skip-browser-warning': 'true',
+      },
     });
 
     ablyClient.connection.on('connected', () => {
