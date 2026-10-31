@@ -253,6 +253,15 @@ scaling autonomy (that migration is itself a checklist item in month 2).
 
 ## Part 6 — Revision notes (what changed in review)
 
+- **Wallet shipped (2026-10-31):** `C:\Users\journ\superwallet` was upgraded from a
+  UI-only prototype to a real receive-only wallet: BIP39 mnemonic → EIP-55 Ethereum
+  address (m/44'/60'/0'/0/0) + native SegWit Bitcoin address (m/84'/0'/0'/0/0), verified
+  against canonical test vectors; live balances/activity from public RPCs,
+  mempool.space and CoinGecko; simulated deposits and simulated send removed; signing
+  stays disabled until key storage is hardened. This is the address source for the
+  agent treasury (Rail 2). Next for the wallet: encrypted-at-rest phrase (passphrase),
+  Solana address for USDC-SPL, then signing/spending with caps.
+
 - **Track B rewritten:** the existing `/fundraise` engine is artist-facing product
   infrastructure — the agent does NOT raise through Razorpay. Agent capital is crypto-rail
   only (see §3.5, two-rails design). This also resolves the founder's question "why mix

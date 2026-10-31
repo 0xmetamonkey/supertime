@@ -4,14 +4,14 @@ import React, { useState, useRef } from 'react';
 import FeedbackWidget from './FeedbackWidget';
 import { useLanguage, Language } from './LanguageContext';
 
-export default function Footer() {
+export default function Footer({ className = "mt-24 py-8" }: { className?: string } = {}) {
   const [clicks, setClicks] = useState(0);
   const [showDao, setShowDao] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { language, setLanguage, t } = useLanguage();
 
   return (
-    <footer className="border-t border-border py-8 bg-surface text-foreground transition-colors duration-300 mt-24">
+    <footer className={`border-t border-border bg-surface text-foreground transition-colors duration-300 ${className}`}>
       <div className="w-full px-6 sm:px-8 md:px-12 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-medium text-muted">
         <div className="flex items-center gap-4">
           <span>© 2026 Supertime</span>

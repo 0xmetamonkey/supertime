@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Zap,
   Globe,
@@ -21,6 +21,7 @@ import {
   Youtube,
   Link as LinkIcon,
   QrCode,
+  X,
 } from 'lucide-react';
 import ProfileQRModal from './ProfileQRModal';
 import CreatorLinksSheet from './CreatorLinksSheet';
@@ -100,6 +101,8 @@ export default function ProfileView({
   const [profileTab, setProfileTab] = useState<'store' | 'courses' | 'about'>('store');
   const [showQRModal, setShowQRModal] = useState(false);
   const [showLinksSheet, setShowLinksSheet] = useState(false);
+  const [showTipModal, setShowTipModal] = useState(false);
+  const [previewTipAmount, setPreviewTipAmount] = useState('99');
 
   const tabClass = (tab: 'store' | 'courses' | 'about') => 
     profileTab === tab 
@@ -141,24 +144,6 @@ export default function ProfileView({
             )}
           </div>
           <div className="flex items-center gap-2 md:gap-3">
-            {socials?.instagram && (
-              <a href={socials.instagram.startsWith('http') ? socials.instagram : `https://instagram.com/${socials.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full border border-[#E8E8E8] bg-white flex items-center justify-center text-[#6B6B6B] hover:text-[#111111] hover:border-[#111111] transition-all shadow-sm">
-                <Instagram className="w-4 h-4" />
-              </a>
-            )}
-            {socials?.youtube && (
-              <a href={socials.youtube.startsWith('http') ? socials.youtube : `https://youtube.com/${socials.youtube.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full border border-[#E8E8E8] bg-white flex items-center justify-center text-[#6B6B6B] hover:text-[#111111] hover:border-[#111111] transition-all shadow-sm">
-                <Youtube className="w-4 h-4" />
-              </a>
-            )}
-            {socials?.x && (
-              <a href={socials.x.startsWith('http') ? socials.x : `https://x.com/${socials.x.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full border border-[#E8E8E8] bg-white flex items-center justify-center text-[#6B6B6B] hover:text-[#111111] hover:border-[#111111] transition-all shadow-sm font-semibold text-xs">𝕏</a>
-            )}
-            {socials?.website && (
-              <a href={socials.website.startsWith('http') ? socials.website : `https://${socials.website}`} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full border border-[#E8E8E8] bg-white flex items-center justify-center text-[#6B6B6B] hover:text-[#111111] hover:border-[#111111] transition-all shadow-sm">
-                <Globe className="w-4 h-4" />
-              </a>
-            )}
             <span
               onClick={() => setShowQRModal(true)}
               className="w-8 h-8 rounded-full border border-[#E8E8E8] bg-white flex items-center justify-center text-[#6B6B6B] hover:text-[#111111] hover:border-[#111111] transition-all shadow-sm cursor-pointer"
@@ -206,9 +191,20 @@ export default function ProfileView({
               <span className="sr-only">All artist links</span>
             </button>
           </h1>
-          <div className="flex items-center justify-center gap-2 mb-4 md:mb-6">
-            <button className={`flex items-center gap-1.5 border border-[#E8E8E8] rounded-full px-3.5 py-1 text-xs font-semibold shadow-sm transition-all duration-300 hover:border-[#111111] ${isAdmiring ? 'bg-[#111111] text-white border-[#111111]' : 'bg-white text-[#111111]'}`}>
-              <Sparkles className={`w-3.5 h-3.5 ${isAdmiring ? 'fill-white text-white' : 'text-[#6B6B6B]'}`} /> {admirerCount} {admirerCount === 1 ? 'Believer' : 'Believers'}
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <button className={`flex items-center gap-1.5 border rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-2xs transition-all duration-200 ${isAdmiring ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-white border-[#E8E8E8] text-[#111111] hover:border-[#111111]'}`}>
+              <Heart className={`w-3.5 h-3.5 ${isAdmiring ? 'fill-rose-500 text-rose-500' : 'text-[#6B6B6B]'}`} /> {isAdmiring ? 'Believing' : 'Believe'}
+            </button>
+            <span className="text-xs text-[#6B6B6B] px-2 py-1">
+              <strong className="text-[#111111]">{admirerCount}</strong> {admirerCount === 1 ? 'believer' : 'believers'}
+            </span>
+          </div>
+          <div className="flex justify-center mb-4 md:mb-6">
+            <button
+              onClick={() => setShowTipModal(true)}
+              className="flex items-center gap-1.5 border border-[#E8E8E8] rounded-full px-3.5 py-1.5 text-xs font-medium bg-white text-[#111111] hover:border-[#111111] shadow-2xs transition-all cursor-pointer"
+            >
+              <Coffee className="w-3.5 h-3.5 text-amber-500" /> Tip
             </button>
           </div>
           <p className={`max-w-xl text-[#6B6B6B] leading-relaxed ${isPreview ? 'text-[10px]' : 'text-sm font-medium'}`}>
@@ -298,23 +294,6 @@ export default function ProfileView({
                   )}
                 </div>
 
-                {/* Tip Jar */}
-                {!isPreview && (
-                  <div className="bg-[#F8F8F6]/50 p-6 md:p-8 border border-[#E8E8E8] rounded-2xl shadow-sm">
-                    <div className="flex items-center gap-3 mb-4">
-                      <Coffee className="w-5 h-5 text-[#111111]" />
-                      <h4 className="text-lg font-semibold text-[#111111]">Support {username}</h4>
-                    </div>
-                    <p className="text-xs text-[#6B6B6B] mb-6">
-                      Show your appreciation with a tip — 100% goes directly to the creator
-                    </p>
-                    <div className="flex flex-wrap gap-3">
-                      {[49, 99, 199, 499].map(amt => (
-                        <div key={amt} className="flex-1 min-w-[70px] py-2.5 border border-[#E8E8E8] rounded-xl font-semibold text-sm bg-white text-[#111111] hover:border-[#111111] hover:shadow-sm text-center transition-all cursor-pointer">₹{amt}</div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -371,6 +350,114 @@ export default function ProfileView({
         socials={socials}
         bio={bio}
       />
+
+      {/* Tip Modal Preview */}
+      <AnimatePresence>
+        {showTipModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[400] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowTipModal(false);
+            }}
+          >
+            <motion.div
+              initial={{ y: '100%', opacity: 0.8 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="bg-white border border-[#E8E8E8] rounded-t-3xl sm:rounded-2xl shadow-2xl p-6 w-full sm:max-w-md max-h-[90vh] overflow-y-auto"
+            >
+              <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4 sm:hidden" />
+
+              <div className="flex justify-between items-start mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full overflow-hidden border border-[#E8E8E8] bg-[#F8F8F6] shrink-0">
+                    {profileImage ? (
+                      <img src={profileImage} alt={username} className="w-full h-full object-cover" />
+                    ) : (
+                      <img
+                        src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`}
+                        alt={username}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-[#111111] flex items-center gap-1.5">
+                      <span>Tip @{username}</span>
+                      <Coffee className="w-4 h-4 text-amber-500" />
+                    </h3>
+                    <p className="text-xs text-[#6B6B6B]">Support their craft · 100% goes to the artist</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowTipModal(false)}
+                  className="w-8 h-8 rounded-full hover:bg-black/5 flex items-center justify-center text-[#6B6B6B] hover:text-[#111111] transition-colors cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Preset Amounts */}
+              <div className="mb-4">
+                <label className="text-[11px] font-semibold text-[#6B6B6B] uppercase tracking-wider block mb-2">
+                  Select an amount
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[49, 99, 199, 499].map(amt => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setPreviewTipAmount(String(amt))}
+                      className={`py-2.5 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${
+                        previewTipAmount === String(amt)
+                          ? 'bg-[#111111] text-white border-[#111111] shadow-xs'
+                          : 'bg-[#F8F8F6] border-[#E8E8E8] hover:border-[#111111] text-[#111111]'
+                      }`}
+                    >
+                      ₹{amt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Amount Input */}
+              <div className="mb-5">
+                <label className="text-[11px] font-semibold text-[#6B6B6B] uppercase tracking-wider block mb-2">
+                  Or enter custom amount
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-[#6B6B6B]">
+                    ₹
+                  </span>
+                  <input
+                    type="number"
+                    value={previewTipAmount}
+                    onChange={e => setPreviewTipAmount(e.target.value)}
+                    placeholder="Enter amount"
+                    min="1"
+                    className="w-full bg-[#F8F8F6] text-[#111111] border border-[#E8E8E8] rounded-xl pl-8 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:border-[#111111] transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <button
+                type="button"
+                onClick={() => setShowTipModal(false)}
+                className="w-full bg-[#111111] text-white font-semibold py-3 rounded-xl text-sm hover:bg-zinc-800 flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <Heart className="w-4 h-4 fill-current" />
+                <span>Send ₹{previewTipAmount || '99'} Tip</span>
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

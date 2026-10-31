@@ -321,6 +321,13 @@ io.on('connection', (socket) => {
     }
   });
 
+  // 1b. Leave matchmaking queue
+  socket.on('leave_queue', () => {
+    removeFromQueue(socket.id);
+    console.log(`[Roulette Server] User ${socket.id} left queue.`);
+    broadcastOnlineStats();
+  });
+
   // 2. WebRTC Signal Relay (SDP offer, SDP answer, ICE candidate)
   socket.on('signal', (payload = {}) => {
     const { roomId, type, data } = payload;
@@ -352,24 +359,32 @@ io.on('connection', (socket) => {
   // 4. Request time extension (artist discretion)
   socket.on('request_time_extension', (data = {}) => {
     const roomId = data.roomId || socketToRoom.get(socket.id);
+    console.log(`[Roulette Server] request_time_extension received from ${socket.id} in room ${roomId}:`, data);
     if (!roomId) return;
 
     const match = activeMatches.get(roomId);
-    if (!match) return;
+    if (!match) {
+      console.warn(`[Roulette Server] No active match for room ${roomId}`);
+      return;
+    }
 
     const cost = data.cost || 0;
-    const seconds = data.amountSeconds || 30;
+    const seconds = data.amountSeconds || data.seconds || 30;
 
     match.extensions[socket.id] = { requested: true, cost, seconds };
 
-    // Notify partner of extension request and pricing
+    const partnerId = match.peerA.socketId === socket.id ? match.peerB.socketId : match.peerA.socketId;
+    const partnerSocket = io.sockets.sockets.get(partnerId);
+
+    console.log(`[Roulette Server] Relaying peer_requested_time to partner ${partnerId}`);
+    if (partnerSocket) {
+      partnerSocket.emit('peer_requested_time', { cost, seconds, fromSocketId: socket.id });
+    }
     socket.to(roomId).emit('peer_requested_time', { cost, seconds, fromSocketId: socket.id });
 
     // If both users requested or mutual free
-    const partnerId = match.peerA.socketId === socket.id ? match.peerB.socketId : match.peerA.socketId;
     const partnerExt = match.extensions[partnerId];
     if (partnerExt && partnerExt.requested) {
-      // Both agreed!
       match.extensions[match.peerA.socketId] = false;
       match.extensions[match.peerB.socketId] = false;
 
@@ -381,19 +396,20 @@ io.on('connection', (socket) => {
   // 4b. Artist explicitly accepts time extension
   socket.on('accept_time_extension', (data = {}) => {
     const roomId = data.roomId || socketToRoom.get(socket.id);
+    console.log(`[Roulette Server] accept_time_extension received from ${socket.id} in room ${roomId}:`, data);
     if (!roomId) return;
 
     const match = activeMatches.get(roomId);
     if (!match) return;
 
-    const seconds = data.amountSeconds || 30;
+    const seconds = data.amountSeconds || data.seconds || 30;
     const cost = data.cost || 0;
 
     match.extensions[match.peerA.socketId] = false;
     match.extensions[match.peerB.socketId] = false;
 
     io.to(roomId).emit('time_extended', { addedSeconds: seconds, cost });
-    console.log(`[Roulette Server] Artist accepted extension in room ${roomId}! (+${seconds}s, cost: ${cost})`);
+    console.log(`[Roulette Server] Extension accepted and broadcast to room ${roomId}! (+${seconds}s)`);
   });
 
   // 5. Send Emoji reaction

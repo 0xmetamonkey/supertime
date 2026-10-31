@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @next/next/no-img-element */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Globe,
@@ -48,6 +48,19 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
 
+  // Keep state in sync if initialSettings updates
+  useEffect(() => {
+    if (initialSettings.coverImage !== undefined) {
+      setCoverImage(initialSettings.coverImage || '');
+    }
+  }, [initialSettings.coverImage]);
+
+  useEffect(() => {
+    if (initialSettings.profileImage !== undefined) {
+      setProfileImage(initialSettings.profileImage || '');
+    }
+  }, [initialSettings.profileImage]);
+
   const [editingFaqId, setEditingFaqId] = useState<string | null>(null);
   const [newFaqQuestion, setNewFaqQuestion] = useState('');
   const [newFaqAnswer, setNewFaqAnswer] = useState('');
@@ -70,6 +83,13 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
       const newBlob = await response.json();
       if (!newBlob.url) throw new Error("Upload response is missing url");
       setProfileImage(newBlob.url);
+      // Auto-persist profile photo change
+      await fetch('/api/studio/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profileImage: newBlob.url })
+      });
+      router.refresh();
     } catch (e) {
       console.error("Profile photo upload failed:", e);
       customAlert({
@@ -79,6 +99,20 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
       });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleRemoveProfilePhoto = async () => {
+    setProfileImage('');
+    try {
+      await fetch('/api/studio/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profileImage: '' })
+      });
+      router.refresh();
+    } catch (e) {
+      console.error("Profile photo remove failed:", e);
     }
   };
 
@@ -101,6 +135,13 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
       const newBlob = await response.json();
       if (!newBlob.url) throw new Error("Upload response is missing url");
       setCoverImage(newBlob.url);
+      // Auto-persist cover image change
+      await fetch('/api/studio/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coverImage: newBlob.url })
+      });
+      router.refresh();
     } catch (e) {
       console.error("Cover photo upload failed:", e);
       customAlert({
@@ -110,6 +151,20 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
       });
     } finally {
       setIsUploadingCover(false);
+    }
+  };
+
+  const handleRemoveCover = async () => {
+    setCoverImage('');
+    try {
+      await fetch('/api/studio/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coverImage: '' })
+      });
+      router.refresh();
+    } catch (e) {
+      console.error("Cover photo remove failed:", e);
     }
   };
 
@@ -168,14 +223,25 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
               ) : (
                 <span className="text-sm text-gray-400 font-medium">No cover photo</span>
               )}
-              <div className="absolute bottom-3 right-3">
+              <div className="absolute bottom-3 right-3 flex items-center gap-2">
                 {isUploadingCover ? (
                   <span className="bg-white/80 dark:bg-black/80 backdrop-blur-sm text-xs font-medium text-blue-500 px-3 py-1.5 rounded-lg animate-pulse">Uploading...</span>
                 ) : (
-                  <label className="bg-white/90 dark:bg-black/80 backdrop-blur-md text-gray-900 dark:text-white text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer shadow-sm hover:opacity-90 transition-opacity">
-                    Change Cover
-                    <input type="file" accept="image/png, image/jpeg, image/webp" onChange={handleCoverUpload} className="hidden" />
-                  </label>
+                  <>
+                    {coverImage && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveCover}
+                        className="bg-white/90 dark:bg-black/80 backdrop-blur-md text-red-600 dark:text-red-400 text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer shadow-sm hover:opacity-90 transition-opacity"
+                      >
+                        Remove
+                      </button>
+                    )}
+                    <label className="bg-white/90 dark:bg-black/80 backdrop-blur-md text-gray-900 dark:text-white text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer shadow-sm hover:opacity-90 transition-opacity">
+                      {coverImage ? 'Change Cover' : 'Upload Cover'}
+                      <input type="file" accept="image/png, image/jpeg, image/webp" onChange={handleCoverUpload} className="hidden" />
+                    </label>
+                  </>
                 )}
               </div>
             </div>
@@ -202,10 +268,21 @@ export default function ProfileEditor({ username, initialSettings }: ProfileEdit
               {isUploading ? (
                 <span className="text-xs font-medium text-blue-500 animate-pulse">Uploading...</span>
               ) : (
-                <label className="bg-gray-900 dark:bg-foreground text-white dark:text-background text-xs font-medium px-4 py-2 rounded-lg cursor-pointer inline-block hover:opacity-90 transition-opacity">
-                  Change Photo
-                  <input type="file" accept="image/*" onChange={handleUpload} className="hidden" />
-                </label>
+                <div className="flex items-center gap-2">
+                  <label className="bg-gray-900 dark:bg-foreground text-white dark:text-background text-xs font-medium px-4 py-2 rounded-lg cursor-pointer inline-block hover:opacity-90 transition-opacity">
+                    Change Photo
+                    <input type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+                  </label>
+                  {profileImage && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveProfilePhoto}
+                      className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline px-2 py-1 cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
               )}
               <p className="text-xs text-gray-500">Max 5MB · JPG, PNG, WebP</p>
             </div>

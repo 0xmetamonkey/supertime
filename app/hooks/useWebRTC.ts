@@ -17,17 +17,8 @@ const DEFAULT_ICE_SERVERS: RTCConfiguration = {
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
-    { urls: 'stun:stun.services.mozilla.com' },
     { urls: 'stun:stun.cloudflare.com:3478' },
-    {
-      urls: [
-        'turn:staticauth.openrelay.metered.ca:80',
-        'turn:staticauth.openrelay.metered.ca:443',
-        'turns:staticauth.openrelay.metered.ca:443?transport=tcp',
-      ],
-      username: 'openrelayproject',
-      credential: 'openrelayprojectsecret',
-    },
+    { urls: 'stun:stun.relay.metered.ca:80' },
   ],
   iceCandidatePoolSize: 10,
 };
@@ -208,10 +199,21 @@ export function useWebRTC(options?: UseWebRTCOptions) {
     setConnectionState('closed');
   }, []);
 
-  // Create a new RTCPeerConnection instance (reuses active connection if not closed)
-  const createPeerConnection = useCallback(() => {
-    if (pcRef.current && pcRef.current.signalingState !== 'closed') {
+  // Create a new RTCPeerConnection instance (forceNew wipes any stale session)
+  const createPeerConnection = useCallback((forceNew = false) => {
+    if (!forceNew && pcRef.current && pcRef.current.signalingState !== 'closed') {
       return pcRef.current;
+    }
+
+    if (pcRef.current) {
+      try {
+        pcRef.current.onicecandidate = null;
+        pcRef.current.ontrack = null;
+        pcRef.current.onconnectionstatechange = null;
+        pcRef.current.oniceconnectionstatechange = null;
+        pcRef.current.close();
+      } catch {}
+      pcRef.current = null;
     }
 
     const config = optionsRef.current?.iceServers || DEFAULT_ICE_SERVERS;
@@ -230,18 +232,22 @@ export function useWebRTC(options?: UseWebRTCOptions) {
       console.log('[WebRTC] Received remote track:', event.track.kind, event.track.id, 'enabled:', event.track.enabled);
       event.track.enabled = true;
 
-      if (!remoteStreamRef.current) {
-        remoteStreamRef.current = new MediaStream();
+      // Prefer native synchronized MediaStream if provided by browser
+      let streamToUse: MediaStream;
+      if (event.streams && event.streams[0]) {
+        streamToUse = event.streams[0];
+        remoteStreamRef.current = streamToUse;
+      } else {
+        if (!remoteStreamRef.current) {
+          remoteStreamRef.current = new MediaStream();
+        }
+        if (!remoteStreamRef.current.getTracks().some((t) => t.id === event.track.id)) {
+          remoteStreamRef.current.addTrack(event.track);
+        }
+        streamToUse = remoteStreamRef.current;
       }
 
-      // Add track to container if not present
-      if (!remoteStreamRef.current.getTracks().some((t) => t.id === event.track.id)) {
-        remoteStreamRef.current.addTrack(event.track);
-      }
-
-      // Always instantiate a new MediaStream reference so React state detects the update and notifies listeners
-      const freshStream = new MediaStream(remoteStreamRef.current.getTracks());
-      setRemoteStream(freshStream);
+      setRemoteStream(streamToUse);
       setConnectionState('connected');
     };
 
@@ -279,7 +285,7 @@ export function useWebRTC(options?: UseWebRTCOptions) {
   // Create an SDP offer (Initiator role)
   const createOffer = useCallback(async (): Promise<RTCSessionDescriptionInit | null> => {
     try {
-      const pc = pcRef.current || createPeerConnection();
+      const pc = createPeerConnection(true);
 
       // Ensure local tracks are attached before creating offer
       if (localStreamRef.current) {
@@ -311,7 +317,7 @@ export function useWebRTC(options?: UseWebRTCOptions) {
   // Handle incoming SDP offer and return SDP answer (Receiver role)
   const handleOffer = useCallback(async (offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit | null> => {
     try {
-      const pc = pcRef.current || createPeerConnection();
+      const pc = createPeerConnection(true);
 
       // Ensure local tracks are attached before creating answer
       if (localStreamRef.current) {
@@ -332,7 +338,7 @@ export function useWebRTC(options?: UseWebRTCOptions) {
         const candidate = pendingCandidatesRef.current.shift();
         if (candidate && candidate.candidate) {
           try {
-            await pc.addIceCandidate(candidate);
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
           } catch (e) {
             console.warn('[WebRTC] Queued ICE candidate addition warning:', e);
           }
@@ -368,7 +374,7 @@ export function useWebRTC(options?: UseWebRTCOptions) {
         const candidate = pendingCandidatesRef.current.shift();
         if (candidate && candidate.candidate) {
           try {
-            await pc.addIceCandidate(candidate);
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
           } catch (e) {
             console.warn('[WebRTC] Queued ICE candidate addition warning:', e);
           }
@@ -387,7 +393,7 @@ export function useWebRTC(options?: UseWebRTCOptions) {
       if (!candidate || !candidate.candidate) return;
       const pc = pcRef.current;
       if (pc && pc.remoteDescription && pc.remoteDescription.type) {
-        await pc.addIceCandidate(candidate);
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
       } else {
         // Remote description not ready yet, queue candidate
         pendingCandidatesRef.current.push(candidate);

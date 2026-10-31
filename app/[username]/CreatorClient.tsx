@@ -209,12 +209,26 @@ export default function CreatorClient({
   const [buyingId, setBuyingId] = useState<string | null>(null);
   const [tipping, setTipping] = useState(false);
   const [tipSuccess, setTipSuccess] = useState(false);
+  const [isTipModalOpen, setIsTipModalOpen] = useState(false);
 
   useEffect(() => {
     fetch(`/api/user/products?username=${username}`)
       .then(res => res.json())
       .then(data => setProducts(data.products || []));
   }, [username]);
+
+  // Handle ESC key to dismiss tip modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isTipModalOpen) {
+        setIsTipModalOpen(false);
+      }
+    };
+    if (isTipModalOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTipModalOpen]);
 
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
@@ -431,7 +445,10 @@ export default function CreatorClient({
           setTipSuccess(true);
           setTipAmount('');
           setTipping(false);
-          setTimeout(() => setTipSuccess(false), 3000);
+          setTimeout(() => {
+            setTipSuccess(false);
+            setIsTipModalOpen(false);
+          }, 2500);
         },
         modal: { ondismiss: () => setTipping(false) },
         theme: { color: '#000000' },
@@ -1044,14 +1061,6 @@ export default function CreatorClient({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsLinksSheetOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-foreground/80 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border border-border/80 dark:border-white/10 px-3 py-1.5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.03)] active:scale-95 transition-all cursor-pointer"
-              title="All Links"
-            >
-              <LinkIcon className="w-3.5 h-3.5 text-muted" />
-              <span>Links</span>
-            </button>
-            <button
               onClick={() => setShowQRModal(true)}
               className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-foreground/80 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border border-border/80 dark:border-white/10 px-3 py-1.5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.03)] active:scale-95 transition-all cursor-pointer"
               title="Scan QR Code / Share Profile"
@@ -1112,86 +1121,50 @@ export default function CreatorClient({
             </p>
           )}
 
-          {/* Believers & Belief Pill Chips (Material Tonal + Apple Tactile) */}
-          <div className="flex items-center gap-2 mb-4">
-            <button
-              onClick={handleFetchAdmirers}
-              className="flex items-center gap-1.5 bg-surface dark:bg-surface border border-border/80 dark:border-white/10 px-3.5 py-1.5 rounded-full text-xs font-semibold text-foreground hover:border-foreground/30 active:scale-95 transition-all shadow-2xs group cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20 group-hover:scale-110 transition-transform" />
-              <span>{admirerCount} {admirerCount === 1 ? 'Believer' : 'Believers'}</span>
-            </button>
-
+          {/* Believe (Like-style) Button & Simple Believer Count */}
+          <div className="flex items-center justify-center gap-2 mb-2.5">
             {!isOwner && (
-              <button
+              <motion.button
+                whileTap={{ scale: 0.92 }}
                 onClick={toggleAdmire}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95 shadow-2xs cursor-pointer ${
+                className={`group flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs ${
                   isAdmiring
-                    ? 'bg-foreground text-background border border-foreground'
-                    : 'bg-surface dark:bg-surface text-foreground border border-border/80 dark:border-white/10 hover:border-foreground/30'
+                    ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.12)]'
+                    : 'bg-surface dark:bg-surface text-foreground border border-border/80 dark:border-white/10 hover:border-foreground/30 hover:bg-foreground/5'
                 }`}
+                title={isAdmiring ? 'Believing' : 'Believe in artist'}
               >
-                <Heart className={`w-3.5 h-3.5 transition-transform ${isAdmiring ? 'fill-current scale-110' : 'text-muted'}`} />
+                <Heart
+                  className={`w-3.5 h-3.5 transition-all duration-200 ${
+                    isAdmiring
+                      ? 'fill-rose-500 text-rose-500 scale-110'
+                      : 'text-muted group-hover:text-foreground'
+                  }`}
+                />
                 <span>{isAdmiring ? 'Believing' : 'Believe'}</span>
-              </button>
+              </motion.button>
             )}
 
             <button
-              onClick={() => setIsLinksSheetOpen(true)}
-              className="flex items-center gap-1.5 bg-surface dark:bg-surface border border-border/80 dark:border-white/10 px-3.5 py-1.5 rounded-full text-xs font-semibold text-foreground hover:border-foreground/30 active:scale-95 transition-all shadow-2xs cursor-pointer"
-              title="Open all links"
+              onClick={handleFetchAdmirers}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium text-muted hover:text-foreground hover:bg-foreground/5 transition-all cursor-pointer"
+              title="View all believers"
             >
-              <LinkIcon className="w-3.5 h-3.5 text-muted" />
-              <span>Links</span>
+              <span className="font-semibold text-foreground">{admirerCount}</span>
+              <span>{admirerCount === 1 ? 'believer' : 'believers'}</span>
             </button>
           </div>
 
-          {/* Connected Networks Quick Row */}
-          <div className="flex items-center gap-2 mb-2">
-            {socials?.instagram && (
-              <a
-                href={socials.instagram.startsWith('http') ? socials.instagram : `https://instagram.com/${socials.instagram.replace('@', '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-8 h-8 rounded-full border border-border/80 dark:border-white/10 bg-surface dark:bg-surface flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/30 active:scale-90 transition-all shadow-2xs"
-                title="Instagram"
-              >
-                <Instagram className="w-4 h-4" />
-              </a>
-            )}
-            {socials?.youtube && (
-              <a
-                href={socials.youtube.startsWith('http') ? socials.youtube : `https://youtube.com/${socials.youtube.replace('@', '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-8 h-8 rounded-full border border-border/80 dark:border-white/10 bg-surface dark:bg-surface flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/30 active:scale-90 transition-all shadow-2xs"
-                title="YouTube"
-              >
-                <Youtube className="w-4 h-4" />
-              </a>
-            )}
-            {socials?.x && (
-              <a
-                href={socials.x.startsWith('http') ? socials.x : `https://x.com/${socials.x.replace('@', '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-8 h-8 rounded-full border border-border/80 dark:border-white/10 bg-surface dark:bg-surface flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/30 active:scale-90 transition-all shadow-2xs font-serif text-sm font-bold"
-                title="X"
-              >
-                <span className="leading-none">𝕏</span>
-              </a>
-            )}
-            {socials?.website && (
-              <a
-                href={socials.website.startsWith('http') ? socials.website : `https://${socials.website}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-8 h-8 rounded-full border border-border/80 dark:border-white/10 bg-surface dark:bg-surface flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/30 active:scale-90 transition-all shadow-2xs"
-                title="Website"
-              >
-                <Globe className="w-4 h-4" />
-              </a>
-            )}
+          {/* Tip Button under the buttons */}
+          <div className="flex items-center justify-center mb-6">
+            <button
+              onClick={() => setIsTipModalOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium bg-surface dark:bg-surface border border-border/80 dark:border-white/10 hover:border-foreground/30 hover:bg-foreground/5 text-foreground transition-all duration-150 active:scale-95 shadow-2xs cursor-pointer group"
+              title={`Tip @${username}`}
+            >
+              <Coffee className="w-3.5 h-3.5 text-amber-500 transition-transform group-hover:scale-110" />
+              <span>Tip</span>
+            </button>
           </div>
         </div>
 
@@ -1459,53 +1432,6 @@ export default function CreatorClient({
                   </div>
                 );
                 })()}
-              </div>
-
-              {/* Tip Jar integrated into Products Tab as per design */}
-              <div className="bg-surface border border-border rounded-2xl p-6 mt-8">
-                <div className="flex items-center gap-2 mb-1">
-                  <Coffee className="w-4 h-4 text-muted" />
-                  <h4 className="font-semibold text-sm text-foreground">Support {username}</h4>
-                </div>
-                <p className="text-[11px] text-muted mb-4">Love what I do? Support & help me create more.</p>
-                <div className="flex gap-2 mb-3">
-                  {[49, 99, 199, 499].map(amt => (
-                    <button
-                      key={amt}
-                      onClick={() => setTipAmount(String(amt))}
-                      className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border transition-colors ${
-                        tipAmount === String(amt)
-                          ? 'bg-foreground text-background border-foreground'
-                          : 'bg-background border-border hover:bg-surface text-foreground'
-                      }`}
-                    >
-                      ₹{amt}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    value={tipAmount}
-                    onChange={e => setTipAmount(e.target.value)}
-                    placeholder="Custom amount"
-                    min="1"
-                    className="flex-1 bg-background text-foreground border border-border rounded-lg px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-foreground"
-                  />
-                  <button
-                    onClick={handleTip}
-                    disabled={tipping || !tipAmount || parseInt(tipAmount) < 1}
-                    className="bg-neo-pink text-white font-semibold px-6 py-2.5 rounded-lg text-sm disabled:opacity-50 hover:opacity-90 flex items-center gap-2 shrink-0 transition-opacity"
-                  >
-                    {tipping ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> Sending</>
-                    ) : tipSuccess ? (
-                      <><Check className="w-4 h-4" /> Sent!</>
-                    ) : (
-                      <><Heart className="w-4 h-4" /> Send Tip</>
-                    )}
-                  </button>
-                </div>
               </div>
 
             </div>
@@ -1853,6 +1779,132 @@ export default function CreatorClient({
               ) : (
                 <p className="text-xs text-gray-400 text-center">The creator will share the deliverable with you soon.</p>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Tip Bottom Sheet / Modal */}
+      <AnimatePresence>
+        {isTipModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[400] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setIsTipModalOpen(false);
+            }}
+          >
+            <motion.div
+              initial={{ y: '100%', opacity: 0.8 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="bg-surface dark:bg-surface border border-border/80 dark:border-white/10 rounded-t-3xl sm:rounded-2xl shadow-2xl p-6 w-full sm:max-w-md max-h-[90vh] overflow-y-auto"
+            >
+              {/* Drag handle for mobile */}
+              <div className="w-10 h-1 bg-border rounded-full mx-auto mb-4 sm:hidden" />
+
+              <div className="flex justify-between items-start mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full overflow-hidden border border-border bg-surface shrink-0">
+                    {profileImage ? (
+                      <img src={profileImage} alt={username} className="w-full h-full object-cover" />
+                    ) : (
+                      <img
+                        src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`}
+                        alt={username}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground flex items-center gap-1.5">
+                      <span>Tip @{username}</span>
+                      <Coffee className="w-4 h-4 text-amber-500" />
+                    </h3>
+                    <p className="text-xs text-muted">Support their craft · 100% goes to the artist</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsTipModalOpen(false)}
+                  className="w-8 h-8 rounded-full hover:bg-foreground/5 flex items-center justify-center text-muted hover:text-foreground transition-colors cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Preset Amounts */}
+              <div className="mb-4">
+                <label className="text-[11px] font-semibold text-muted uppercase tracking-wider block mb-2">
+                  Select an amount
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[49, 99, 199, 499].map(amt => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setTipAmount(String(amt))}
+                      className={`py-2.5 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${
+                        tipAmount === String(amt)
+                          ? 'bg-foreground text-background border-foreground shadow-xs'
+                          : 'bg-background border-border hover:border-foreground/30 text-foreground'
+                      }`}
+                    >
+                      ₹{amt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Amount Input */}
+              <div className="mb-5">
+                <label className="text-[11px] font-semibold text-muted uppercase tracking-wider block mb-2">
+                  Or enter custom amount
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted">
+                    ₹
+                  </span>
+                  <input
+                    type="number"
+                    value={tipAmount}
+                    onChange={e => setTipAmount(e.target.value)}
+                    placeholder="Enter amount"
+                    min="1"
+                    className="w-full bg-background text-foreground border border-border rounded-xl pl-8 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:border-foreground transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Submit CTA */}
+              <button
+                type="button"
+                onClick={handleTip}
+                disabled={tipping || !tipAmount || parseInt(tipAmount) < 1}
+                className="w-full bg-foreground text-background font-semibold py-3 rounded-xl text-sm disabled:opacity-50 hover:opacity-90 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.99]"
+              >
+                {tipping ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Processing...</span>
+                  </>
+                ) : tipSuccess ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>Tip Sent! Thank you ❤️</span>
+                  </>
+                ) : (
+                  <>
+                    <Heart className="w-4 h-4 fill-current" />
+                    <span>
+                      {tipAmount && parseInt(tipAmount) > 0 ? `Send ₹${tipAmount} Tip` : 'Send Tip'}
+                    </span>
+                  </>
+                )}
+              </button>
             </motion.div>
           </motion.div>
         )}

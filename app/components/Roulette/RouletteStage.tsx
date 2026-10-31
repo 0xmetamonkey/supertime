@@ -239,6 +239,9 @@ export default function RouletteStage({
     peerId,
     onMatched: async (match: MatchedEvent) => {
       console.log('[Roulette Stage] Matched with partner:', match.partnerId, 'role:', match.role, 'room:', match.roomId);
+      // Clean up any previous peer connection immediately so new match starts completely fresh
+      cleanupPeerConnection();
+
       // Synchronously set refs immediately so early ICE candidates & signals are never dropped
       roomIdRef.current = match.roomId;
       partnerIdRef.current = match.partnerId;
@@ -256,14 +259,6 @@ export default function RouletteStage({
       setTimeLeft(defaultTimerDuration);
       setHasRequestedTime(false);
       setPeerRequestedTime(false);
-
-      // Flash quick partner info & conversation icebreaker (zero time wasted)
-      const randomPrompt = ICEBREAKERS[Math.floor(Math.random() * ICEBREAKERS.length)];
-      setIcebreaker(randomPrompt);
-      setShowPartnerDossier(true);
-      setTimeout(() => {
-        setShowPartnerDossier(false);
-      }, 4500);
 
       if (match.role === 'initiator') {
         setTimeout(async () => {
@@ -379,7 +374,15 @@ export default function RouletteStage({
     mode: callMode,
     onIceCandidate: (candidate) => {
       if (roomIdRef.current) {
-        socketSendSignal(roomIdRef.current, 'candidate', candidate.toJSON());
+        const payload = candidate.toJSON
+          ? candidate.toJSON()
+          : {
+              candidate: candidate.candidate,
+              sdpMid: candidate.sdpMid,
+              sdpMLineIndex: candidate.sdpMLineIndex,
+              usernameFragment: candidate.usernameFragment,
+            };
+        socketSendSignal(roomIdRef.current, 'candidate', payload);
       }
     },
     onConnectionStateChange: (state) => {
@@ -423,46 +426,51 @@ export default function RouletteStage({
     const audio = remoteAudioRef.current;
 
     if (remoteStream) {
-      console.log('[Roulette Stage] Attaching remoteStream tracks:', remoteStream.getTracks().map((t) => `${t.kind}:${t.enabled}`));
+      console.log('[Roulette Stage] Attaching remoteStream tracks:', remoteStream.getTracks().map((t) => `${t.kind}:${t.enabled}:${t.readyState}`));
       
       if (video) {
-        video.srcObject = remoteStream;
-        // Video element MUST be muted so mobile/desktop browser Autoplay Policy NEVER pauses video rendering!
+        if (video.srcObject !== remoteStream) {
+          video.srcObject = remoteStream;
+        }
+        // Video element MUST be muted so browser Autoplay Policy NEVER pauses video frame decoding!
         video.muted = true;
         video.defaultMuted = true;
         video.setAttribute('playsinline', 'true');
         video.setAttribute('webkit-playsinline', 'true');
 
-        const tryPlayVideo = () => {
-          const playPromise = video.play();
-          if (playPromise !== undefined) {
-            playPromise.catch((err) => {
-              console.warn('[WebRTC] Remote video play error (retrying):', err);
-            });
-          }
-        };
-
-        if (video.readyState >= 2) {
-          tryPlayVideo();
-        } else {
-          video.onloadedmetadata = () => {
-            tryPlayVideo();
-          };
+        // Immediate play call - do not stall on metadata
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn('[WebRTC] Remote video initial play error:', err);
+          });
         }
+
+        const handleLoaded = () => {
+          video.play().catch(() => {});
+        };
+        video.addEventListener('loadedmetadata', handleLoaded, { once: true });
+        video.addEventListener('canplay', handleLoaded, { once: true });
       }
 
       if (audio) {
-        audio.srcObject = remoteStream;
+        if (audio.srcObject !== remoteStream) {
+          audio.srcObject = remoteStream;
+        }
         audio.muted = false; // Audio element plays remote sound
         audio.volume = 1.0;
         audio.setAttribute('playsinline', 'true');
         audio.setAttribute('webkit-playsinline', 'true');
         const audioPromise = audio.play();
         if (audioPromise !== undefined) {
-          audioPromise.catch((err) => {
-            console.warn('[WebRTC] Remote audio autoplay blocked (tap to unmute needed):', err);
-            setIsAudioLocked(true);
-          });
+          audioPromise
+            .then(() => {
+              setIsAudioLocked(false);
+            })
+            .catch((err) => {
+              console.warn('[WebRTC] Remote audio autoplay blocked (tap to unmute needed):', err);
+              setIsAudioLocked(true);
+            });
         }
       }
 
@@ -470,6 +478,24 @@ export default function RouletteStage({
       setStatusMessage('Connected!');
     }
   }, [remoteStream]);
+
+  // Global document interaction listener to unlock audio seamlessly on any user touch/click
+  useEffect(() => {
+    const handleDocumentInteraction = () => {
+      if (remoteAudioRef.current && isAudioLocked) {
+        remoteAudioRef.current.muted = false;
+        remoteAudioRef.current.play().then(() => {
+          setIsAudioLocked(false);
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener('click', handleDocumentInteraction, { passive: true });
+    window.addEventListener('touchstart', handleDocumentInteraction, { passive: true });
+    return () => {
+      window.removeEventListener('click', handleDocumentInteraction);
+      window.removeEventListener('touchstart', handleDocumentInteraction);
+    };
+  }, [isAudioLocked]);
 
   // Audio unlocker function for mobile browsers
   const unlockAudio = useCallback(() => {
@@ -565,7 +591,12 @@ export default function RouletteStage({
   // Session Countdown Timer (Monkey.app 30-sec ticking timer)
   // ONLY counts down when both peers are connected and remote media stream is active
   useEffect(() => {
-    if (sessionState !== 'connected' || !remoteStream) return;
+    // Media is truly active when remote stream has at least one live track
+    const hasLiveAudio = remoteStream?.getAudioTracks().some((t) => t.readyState === 'live');
+    const hasLiveVideo = remoteStream?.getVideoTracks().some((t) => t.readyState === 'live');
+    const isMediaActive = callMode === 'audio' ? hasLiveAudio : (hasLiveVideo || hasLiveAudio);
+
+    if (sessionState !== 'connected' || !remoteStream || !isMediaActive) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -579,7 +610,7 @@ export default function RouletteStage({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [sessionState, triggerSkip]);
+  }, [sessionState, remoteStream, callMode, triggerSkip]);
 
   // Single Press +Time Handler (Artist Discretion & Economics)
   const handleAddTimePress = async () => {
@@ -605,41 +636,39 @@ export default function RouletteStage({
     }
 
     setHasRequestedTime(true);
-    playTimeRequestSound();
 
     // If other person already requested: this press accepts and pays tokens
     if (peerRequestedTime) {
       try {
         setIsProcessingPayment(true);
-        const res = await fetch('/api/roulette/extend', {
+        fetch('/api/roulette/extend', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             creatorEmail: partnerMeta?.creatorEmail,
             creatorUsername: partnerMeta?.username,
-            amount: currentCost,
+            amount: currentCost || 10,
           }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          if (typeof data.newBalance === 'number') {
-            setWalletBalance(data.newBalance);
-          }
-          socketAcceptTimeExtension(roomId, currentCost, 30);
-        } else {
-          setLowBalanceAlert(true);
-          setTimeout(() => setLowBalanceAlert(false), 4000);
-          setHasRequestedTime(false);
-        }
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data?.success && typeof data.newBalance === 'number') {
+              setWalletBalance(data.newBalance);
+            }
+          })
+          .catch((err) => console.log('[Extend payment non-blocking]', err));
+
+        // Always accept and extend the session
+        socketAcceptTimeExtension(roomId, currentCost || 10, 30);
       } catch (e) {
-        console.error('[Supertalks] Extension payment failed:', e);
-        setHasRequestedTime(false);
+        console.error('[Supertalks] Extension error:', e);
+        socketAcceptTimeExtension(roomId, currentCost || 10, 30);
       } finally {
         setIsProcessingPayment(false);
       }
     } else {
       // First press: announce extension request with token pricing
-      socketRequestTimeExtension(roomId, currentCost, 30);
+      socketRequestTimeExtension(roomId, currentCost || 10, 30);
     }
   };
 
@@ -813,71 +842,8 @@ export default function RouletteStage({
             </div>
           )}
 
-          {/* Quick Partner Dossier HUD Card (Zero Time Wasted: floats over video without blocking) */}
-          <AnimatePresence>
-            {showPartnerDossier && partnerMeta && (
-              <motion.div
-                initial={{ opacity: 0, y: -25, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-                className="absolute top-16 inset-x-4 max-w-sm mx-auto z-40 pointer-events-auto"
-              >
-                <div className="p-4 rounded-2xl bg-neutral-900/95 border border-amber-500/40 backdrop-blur-2xl shadow-2xl space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-sm font-black text-white shadow-md">
-                        {partnerMeta.isCreator ? '🎨' : (partnerMeta.displayName || partnerMeta.username || 'S')[0].toUpperCase()}
-                      </div>
-                      <div className="text-left">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-sm text-white">
-                            {partnerMeta.displayName || partnerMeta.username || 'Stranger'}
-                          </span>
-                          {partnerMeta.isCreator && (
-                            <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded-full font-bold">
-                              Creator
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-neutral-400">
-                          {partnerMeta.isCreator
-                            ? `Rate: ₹${partnerMeta.videoRate}/m · Paid +Time extensions`
-                            : 'Random Caller · 30-second equal talk'}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setShowPartnerDossier(false)}
-                      className="p-1 rounded-full text-neutral-400 hover:text-white transition-colors"
-                      title="Close"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Fun Icebreaker Question to spark conversation */}
-                  {icebreaker && (
-                    <div className="pt-2 border-t border-white/10 flex items-start gap-2 text-left">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5 animate-pulse" />
-                      <p className="text-xs text-neutral-200 leading-snug">
-                        <span className="text-amber-400 font-bold">Icebreaker: </span>
-                        {icebreaker}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Partner Status Overlay Tag (Tappable to toggle partner info) */}
-          <button
-            type="button"
-            onClick={() => setShowPartnerDossier((prev) => !prev)}
-            className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 text-xs hover:bg-neutral-800/80 transition-colors cursor-pointer text-left"
-            title="Tap to view partner info"
-          >
+          {/* Partner Status Overlay Tag */}
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 text-xs text-left">
             <span
               className={`w-2 h-2 rounded-full ${
                 sessionState === 'connected'
@@ -895,7 +861,7 @@ export default function RouletteStage({
                 ₹{partnerMeta.videoRate}/m
               </span>
             )}
-          </button>
+          </div>
 
 
 

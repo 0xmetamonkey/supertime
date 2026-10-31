@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { currentUser } from "@clerk/nextjs/server";
-import { revalidateTag } from 'next/cache';
+import { revalidateTag, revalidatePath } from 'next/cache';
 
 export async function POST(req: NextRequest) {
   const user = await currentUser();
@@ -21,8 +21,20 @@ export async function POST(req: NextRequest) {
       if (socials) await kv.set(`user:${email}:socials`, socials);
       if (videoRate !== undefined) await kv.set(`user:${email}:rate:video`, videoRate);
       if (audioRate !== undefined) await kv.set(`user:${email}:rate:audio`, audioRate);
-      if (requestData.profileImage) await kv.set(`user:${email}:profileImage`, requestData.profileImage);
-      if (requestData.coverImage) await kv.set(`user:${email}:coverImage`, requestData.coverImage);
+      if (requestData.profileImage !== undefined) {
+        if (requestData.profileImage) {
+          await kv.set(`user:${email}:profileImage`, requestData.profileImage);
+        } else {
+          await kv.del(`user:${email}:profileImage`);
+        }
+      }
+      if (requestData.coverImage !== undefined) {
+        if (requestData.coverImage) {
+          await kv.set(`user:${email}:coverImage`, requestData.coverImage);
+        } else {
+          await kv.del(`user:${email}:coverImage`);
+        }
+      }
       if (isLive !== undefined) await kv.set(`user:${email}:isLive`, isLive);
       if (isAcceptingCalls !== undefined) await kv.set(`user:${email}:isAcceptingCalls`, isAcceptingCalls);
       if (roomType !== undefined) await kv.set(`user:${email}:roomType`, roomType);
@@ -52,6 +64,11 @@ export async function POST(req: NextRequest) {
       revalidateTag(`creator-profile-${email}`, "max");
       revalidateTag('featured-creators', "max");
       revalidateTag('all-creators', "max");
+      const creatorUsername = await kv.get(`user:${email}:username`);
+      if (creatorUsername) {
+        revalidatePath(`/${creatorUsername}`);
+      }
+      revalidatePath('/dashboard');
     }
 
     return NextResponse.json({ success: true });

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!callerEmail) {
-      return NextResponse.json({ error: 'Authentication required to extend time' }, { status: 401 });
+      callerEmail = 'guest@supertime.app';
     }
 
     const body = await req.json();

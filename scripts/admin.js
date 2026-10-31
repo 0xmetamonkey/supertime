@@ -48,7 +48,7 @@ async function runReadOnlyReport() {
 
   const ownerKeys = await kv.keys('owner:*');
   const balanceKeys = await kv.keys('balance:*');
-  
+
   const verifiedKeys = await kv.keys('user:*:verified');
   const disabledKeys = await kv.keys('user:*:disabled');
 
@@ -59,7 +59,7 @@ async function runReadOnlyReport() {
       users.set(email, {
         email: email,
         username: 'N/A',
-        role: 'Caller', 
+        role: 'Caller',
         balance: 0,
         isVerified: false,
         isDisabled: false
@@ -97,12 +97,12 @@ async function runReadOnlyReport() {
   }
 
   const userList = Array.from(users.values());
-  
+
   if (userList.length === 0) {
     console.log("No users found in database.");
   } else {
     const pad = (str, len) => (str || '').toString().padEnd(len);
-    
+
     console.log(`${pad('EMAIL', 35)} ${pad('USERNAME', 15)} ${pad('ROLE', 10)} ${pad('BAL', 8)} ${pad('STATUS', 15)}`);
     console.log("-".repeat(85));
 
@@ -138,7 +138,7 @@ async function runReadOnlyReport() {
 // ==========================================
 async function runAdminAction(action, email, amount) {
   const allowedActions = ['verify', 'unverify', 'disable', 'enable', 'give'];
-  
+
   if (!allowedActions.includes(action)) {
     console.error(`❌ Unknown command: ${action}`);
     console.log(`Available commands: ${allowedActions.join(', ')}`);
@@ -151,16 +151,16 @@ async function runAdminAction(action, email, amount) {
   }
 
   if (action === 'give') {
-     console.log(`\nExecuting: Giving ${amount} TKN to ${email}...`);
-     const amt = parseInt(amount);
-     if (isNaN(amt)) {
-         console.log('❌ Invalid amount');
-         return;
-     }
-     const current = (await kv.get(`balance:${email}`)) || 0;
-     await kv.set(`balance:${email}`, current + amt);
-     console.log(`✅ Success! Added ${amt} TKN. New Balance: ${current + amt}`);
-     return;
+    console.log(`\nExecuting: Giving ${amount} TKN to ${email}...`);
+    const amt = parseInt(amount);
+    if (isNaN(amt)) {
+      console.log('❌ Invalid amount');
+      return;
+    }
+    const current = (await kv.get(`balance:${email}`)) || 0;
+    await kv.set(`balance:${email}`, current + amt);
+    console.log(`✅ Success! Added ${amt} TKN. New Balance: ${current + amt}`);
+    return;
   }
 
   // Confirmation Prompt
@@ -176,7 +176,7 @@ async function runAdminAction(action, email, amount) {
         await kv.set(`user:${email}:verified`, true);
         console.log(`✅ User ${email} is now VERIFIED.`);
         break;
-      
+
       case 'unverify':
         await kv.del(`user:${email}:verified`);
         console.log(`✅ User ${email} is now UNVERIFIED.`);

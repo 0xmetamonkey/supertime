@@ -519,6 +519,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
                   <div className="mb-12">
                     <ProfileEditor username={username || ''} initialSettings={{
                       profileImage: initialSettings?.profileImage || '',
+                      coverImage: initialSettings?.coverImage || '',
                       socials: initialSettings?.socials ?? { instagram: '', x: '', youtube: '', website: '' },
                       faqs: initialSettings?.faqs || [],
                       templates: initialSettings?.templates || [],
