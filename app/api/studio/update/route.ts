@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
 
   const email = emailAddr.toLowerCase();
   const requestData = await req.json();
-  const { socials, videoRate, audioRate, isLive, isAcceptingCalls, templates, availability, artifact, roomType, isRoomFree, mode, faqs, upiId, displayName, videoProvider, bio, subscriptionPrice, subscriptionBenefits } = requestData;
+  const { socials, videoRate, audioRate, hourlyRate, dailyRate, weeklyRate, monthlyRate, menuCategories, isLive, isAcceptingCalls, templates, availability, artifact, roomType, isRoomFree, mode, faqs, upiId, displayName, videoProvider, bio, subscriptionPrice, subscriptionBenefits } = requestData;
 
   try {
     if (process.env.KV_URL) {
@@ -21,6 +21,18 @@ export async function POST(req: NextRequest) {
       if (socials) await kv.set(`user:${email}:socials`, socials);
       if (videoRate !== undefined) await kv.set(`user:${email}:rate:video`, videoRate);
       if (audioRate !== undefined) await kv.set(`user:${email}:rate:audio`, audioRate);
+      if (hourlyRate !== undefined) await kv.set(`user:${email}:rate:hourly`, hourlyRate);
+      if (dailyRate !== undefined) await kv.set(`user:${email}:rate:daily`, dailyRate);
+      if (weeklyRate !== undefined) await kv.set(`user:${email}:rate:weekly`, weeklyRate);
+      if (monthlyRate !== undefined) await kv.set(`user:${email}:rate:monthly`, monthlyRate);
+      if (menuCategories !== undefined) {
+        await kv.set(`user:${email}:menuCategories`, menuCategories);
+        const { resolveUsername } = await import('@/app/actions');
+        const resolvedName = await resolveUsername(email);
+        if (resolvedName) {
+          await kv.set(`user_menu:${resolvedName.toLowerCase()}`, menuCategories);
+        }
+      }
       if (requestData.profileImage) await kv.set(`user:${email}:profileImage`, requestData.profileImage);
       if (requestData.coverImage) await kv.set(`user:${email}:coverImage`, requestData.coverImage);
       if (isLive !== undefined) await kv.set(`user:${email}:isLive`, isLive);

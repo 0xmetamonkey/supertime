@@ -33,6 +33,7 @@ import {
   X,
   Lock,
   FileText,
+  QrCode,
 } from 'lucide-react';
 import WalletManager from '../components/WalletManager';
 import dynamic from 'next/dynamic';
@@ -40,6 +41,7 @@ const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false 
 const BroadcastViewer = dynamic(() => import('../components/Broadcast/BroadcastViewer'), { ssr: false });
 import { useUser, useClerk } from "@clerk/nextjs";
 import { useAlertDialog } from '../components/AlertDialog';
+import CreatorQRCodeModal from '../components/CreatorQRCodeModal';
 
 interface CreatorClientProps {
   username: string,
@@ -157,6 +159,7 @@ export default function CreatorClient({
   const [creditsSpent, setCreditsSpent] = useState(0);
   const [isCreatorOnline, setIsCreatorOnline] = useState(isLive);
   const [activeChannelName, setActiveChannelName] = useState<string | null>(null);
+  const [showQrModal, setShowQrModal] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
@@ -1025,6 +1028,19 @@ export default function CreatorClient({
           </div>
         )}
 
+        {isOwner && (
+          <div className="absolute top-0 right-5 flex items-center gap-2">
+            <button
+              onClick={() => setShowQrModal(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-foreground transition-colors bg-surface border border-border px-3 py-1.5 rounded-lg shadow-sm cursor-pointer"
+              title="Creator QR Code & ID"
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">QR Code</span>
+            </button>
+          </div>
+        )}
+
         {/* ── Profile Header ── */}
         <div className="flex flex-col items-center text-center mb-10">
           <div className="w-28 h-28 rounded-full overflow-hidden mb-5 shadow-sm border-4 border-background bg-background relative">
@@ -1708,6 +1724,15 @@ export default function CreatorClient({
           <p className="text-xs text-gray-300">Supertime</p>
         </div>
       </footer>
+      {isOwner && (
+        <CreatorQRCodeModal
+          isOpen={showQrModal}
+          onClose={() => setShowQrModal(false)}
+          username={username}
+          displayName={initialUser?.displayName || username}
+          profileImage={profileImage}
+        />
+      )}
       {AlertDialog}
     </div>
   );

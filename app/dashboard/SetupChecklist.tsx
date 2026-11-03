@@ -16,6 +16,7 @@ import {
   Sparkles,
   Copy,
   CheckCircle,
+  QrCode,
 } from 'lucide-react';
 
 interface ChecklistItem {
@@ -34,9 +35,10 @@ interface SetupChecklistProps {
   username: string;
   initialSettings: any;
   onNavigateTab: (tab: string) => void;
+  onOpenQrModal?: () => void;
 }
 
-export default function SetupChecklist({ username, initialSettings, onNavigateTab }: SetupChecklistProps) {
+export default function SetupChecklist({ username, initialSettings, onNavigateTab, onOpenQrModal }: SetupChecklistProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   React.useEffect(() => {
@@ -131,12 +133,14 @@ export default function SetupChecklist({ username, initialSettings, onNavigateTa
     },
     {
       id: 'share',
-      label: 'Share your profile',
-      description: `Copy your link and share it on socials — you're ready to earn!`,
-      icon: Share2,
+      label: 'Share your profile & QR code',
+      description: `Copy your link or open your QR code pass to share on socials — you're ready to earn!`,
+      icon: QrCode,
       isComplete: false, // This one is always actionable
       action: () => {
-        if (username) {
+        if (onOpenQrModal) {
+          onOpenQrModal();
+        } else if (username) {
           const url = `https://supertime.wtf/${username}`;
           if (isMobile && navigator.share) {
             navigator.share({
@@ -150,7 +154,7 @@ export default function SetupChecklist({ username, initialSettings, onNavigateTa
           }
         }
       },
-      actionLabel: isMobile ? 'Share' : (copiedLink ? 'Copied!' : 'Copy Link'),
+      actionLabel: onOpenQrModal ? 'QR Pass & Link' : (isMobile ? 'Share' : (copiedLink ? 'Copied!' : 'Copy Link')),
       color: 'neo-blue',
     },
   ];

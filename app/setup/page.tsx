@@ -1,6 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { OnboardingFlow } from "../components/OnboardingFlow";
+import { kv } from "@vercel/kv";
 import { resolveUsername } from "../actions";
 
 export const dynamic = 'force-dynamic';
@@ -25,12 +25,16 @@ export default async function SetupPage() {
 
   const username = await resolveUsername(email);
   if (username) {
+    let role: string | null = null;
+    if (process.env.KV_URL) {
+      role = await kv.get<string>(`user:${email}:role`);
+    }
+    if (role === 'fan') {
+      redirect("/");
+    }
     redirect("/dashboard");
   }
 
-  return (
-    <div className="bg-black min-h-screen">
-      <OnboardingFlow initialEmail={email} />
-    </div>
-  );
+  // Redirect to dashboard onboarding gate where user chooses between Creator and Fan
+  redirect("/dashboard");
 }

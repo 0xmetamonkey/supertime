@@ -63,3 +63,4 @@ SUPERTIME_FEATURES.md
 # local test uploads
 public/uploads/*.webm
 dump.rdb
+.kv-data.json

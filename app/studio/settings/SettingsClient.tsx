@@ -24,6 +24,10 @@ interface SettingsClientProps {
   initialSettings: {
     videoRate: number;
     audioRate: number;
+    hourlyRate?: number;
+    dailyRate?: number;
+    weeklyRate?: number;
+    monthlyRate?: number;
     roomType: 'audio' | 'video';
     isRoomFree: boolean;
     videoProvider?: string;
@@ -38,6 +42,11 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
 
   const [pendingVideoRate, setPendingVideoRate] = useState(initialSettings.videoRate);
   const [pendingAudioRate, setPendingAudioRate] = useState(initialSettings.audioRate);
+  const [hourlyRate, setHourlyRate] = useState<number>(initialSettings.hourlyRate || Math.round(initialSettings.videoRate * 60 * 0.85));
+  const [dailyRate, setDailyRate] = useState<number>(initialSettings.dailyRate || Math.round((initialSettings.hourlyRate || initialSettings.videoRate * 60 * 0.85) * 6 * 0.8));
+  const [weeklyRate, setWeeklyRate] = useState<number>(initialSettings.weeklyRate || Math.round((initialSettings.dailyRate || 25000) * 5 * 0.75));
+  const [monthlyRate, setMonthlyRate] = useState<number>(initialSettings.monthlyRate || Math.round((initialSettings.weeklyRate || 90000) * 4 * 0.7));
+
   const [roomType, setRoomType] = useState<'audio' | 'video'>(initialSettings.roomType || 'audio');
   const [isRoomFree, setIsRoomFree] = useState<boolean>(initialSettings.isRoomFree ?? true);
 
@@ -48,6 +57,17 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const autoCalculateTiers = () => {
+    const hr = Math.round(pendingVideoRate * 60 * 0.85);
+    const day = Math.round(hr * 6 * 0.80);
+    const wk = Math.round(day * 5 * 0.75);
+    const mo = Math.round(wk * 4 * 0.70);
+    setHourlyRate(hr);
+    setDailyRate(day);
+    setWeeklyRate(wk);
+    setMonthlyRate(mo);
+  };
 
   const saveSettings = async () => {
     setIsSaving(true);
@@ -61,6 +81,10 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
         body: JSON.stringify({
           videoRate: pendingVideoRate,
           audioRate: pendingAudioRate,
+          hourlyRate,
+          dailyRate,
+          weeklyRate,
+          monthlyRate,
           roomType,
           isRoomFree,
           videoProvider,
@@ -146,44 +170,117 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
             </div>
           </div>
 
-          {/* CALL RATES */}
-          {!isRoomFree && (
-            <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
-              <SectionHeader id="rates" title="Call Rates" icon={<PhoneCall className="w-5 h-5 text-gray-400" />} />
-              <div className="grid grid-cols-2 gap-6">
+          {/* CALL & BOOKING RATES */}
+          <div className="bg-white dark:bg-surface border border-gray-100 dark:border-border p-6 rounded-2xl shadow-sm transition-colors">
+            <SectionHeader id="rates" title="Call & Booking Rates" icon={<PhoneCall className="w-5 h-5 text-gray-400" />}>
+              <button
+                type="button"
+                onClick={autoCalculateTiers}
+                className="text-xs text-muted hover:text-foreground font-medium underline cursor-pointer"
+                title="Calculate recommended discounts for hours, days, weeks and months"
+              >
+                Auto-calculate Tiers
+              </button>
+            </SectionHeader>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2 flex items-center gap-2">
-                    <Mic className="w-4 h-4 text-blue-500" /> Audio Rate / min
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1.5 flex items-center gap-1.5">
+                    <Mic className="w-3.5 h-3.5 text-blue-500" /> Audio / min (₹)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">₹</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-xs">₹</span>
                     <input
                       type="number"
                       min="0"
                       value={pendingAudioRate}
                       onChange={(e) => setPendingAudioRate(Number(e.target.value))}
-                      className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-lg pl-8 pr-3 py-2.5 text-sm font-medium text-gray-900 dark:text-foreground outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                      className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-lg pl-7 pr-3 py-2 text-sm font-medium text-gray-900 dark:text-foreground outline-none focus:ring-1 focus:ring-blue-500 transition-all"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2 flex items-center gap-2">
-                    <Video className="w-4 h-4 text-pink-500" /> Video Rate / min
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1.5 flex items-center gap-1.5">
+                    <Video className="w-3.5 h-3.5 text-pink-500" /> Video / min (₹)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">₹</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-xs">₹</span>
                     <input
                       type="number"
                       min="0"
                       value={pendingVideoRate}
                       onChange={(e) => setPendingVideoRate(Number(e.target.value))}
-                      className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-lg pl-8 pr-3 py-2.5 text-sm font-medium text-gray-900 dark:text-foreground outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                      className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-lg pl-7 pr-3 py-2 text-sm font-medium text-gray-900 dark:text-foreground outline-none focus:ring-1 focus:ring-blue-500 transition-all"
                     />
                   </div>
                 </div>
               </div>
+
+              <div className="pt-2 border-t border-gray-100 dark:border-border/60">
+                <span className="text-[11px] font-semibold text-muted uppercase tracking-wider block mb-2.5">
+                  Multi-Duration Booking Slider Tiers
+                </span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] text-muted block mb-1">Hourly Rate (₹/hr)</label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={hourlyRate}
+                        onChange={(e) => setHourlyRate(Number(e.target.value))}
+                        className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-mono font-medium text-gray-900 dark:text-foreground outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-muted block mb-1">Daily Rate (₹/day)</label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={dailyRate}
+                        onChange={(e) => setDailyRate(Number(e.target.value))}
+                        className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-mono font-medium text-gray-900 dark:text-foreground outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-muted block mb-1">Weekly Rate (₹/week)</label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={weeklyRate}
+                        onChange={(e) => setWeeklyRate(Number(e.target.value))}
+                        className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-mono font-medium text-gray-900 dark:text-foreground outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-muted block mb-1">Monthly Retainer (₹/mo)</label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={monthlyRate}
+                        onChange={(e) => setMonthlyRate(Number(e.target.value))}
+                        className="w-full bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-mono font-medium text-gray-900 dark:text-foreground outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
         </div>
 
         {/* RIGHT COLUMN */}

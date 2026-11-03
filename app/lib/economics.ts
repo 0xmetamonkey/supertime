@@ -17,6 +17,9 @@ export interface WithdrawalRequest {
  * Audit Tool: Get detailed state of a user's economics
  */
 export async function getDetailedWallet(email: string) {
+  if (!process.env.KV_REST_API_URL && !process.env.KV_URL) {
+    return { balance: 0, withdrawable: 0 };
+  }
   const balance = (await kv.get<number>(`balance:${email.toLowerCase()}`)) ?? 0;
   const withdrawable = (await kv.get<number>(`withdrawable:${email.toLowerCase()}`)) ?? 0;
   return {

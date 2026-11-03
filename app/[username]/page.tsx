@@ -133,6 +133,11 @@ export default async function CreatorPage({ params }: Props) {
   const socials = { ...(staticProfile.socials || {}) };
   const videoRate = staticProfile.videoRate ?? 100;
   const audioRate = staticProfile.audioRate ?? 50;
+  const hourlyRate = staticProfile.hourlyRate ?? Math.round(videoRate * 60 * 0.85);
+  const dailyRate = staticProfile.dailyRate ?? Math.round(hourlyRate * 6 * 0.8);
+  const weeklyRate = staticProfile.weeklyRate ?? Math.round(dailyRate * 5 * 0.75);
+  const monthlyRate = staticProfile.monthlyRate ?? Math.round(weeklyRate * 4 * 0.7);
+  const menuCategories = staticProfile.menuCategories ?? [];
   const profileImage = staticProfile.profileImage ?? "";
   const coverImage = staticProfile.coverImage ?? "";
   const templates = staticProfile.templates ?? [];
@@ -159,6 +164,11 @@ export default async function CreatorPage({ params }: Props) {
       socials={socials}
       videoRate={videoRate}
       audioRate={audioRate}
+      hourlyRate={hourlyRate}
+      dailyRate={dailyRate}
+      weeklyRate={weeklyRate}
+      monthlyRate={monthlyRate}
+      menuCategories={menuCategories}
       profileImage={profileImage}
       coverImage={coverImage}
       fundraiser={fundraiser}

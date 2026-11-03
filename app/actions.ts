@@ -211,6 +211,11 @@ export async function getCreatorProfileData(ownerEmail: string) {
     socials,
     vRate,
     aRate,
+    hRate,
+    dRate,
+    wRate,
+    mRate,
+    menuCats,
     pImage,
     cImage,
     roomType,
@@ -228,6 +233,11 @@ export async function getCreatorProfileData(ownerEmail: string) {
     kv.get<Record<string, string>>(`user:${ownerEmail}:socials`),
     kv.get<number>(`user:${ownerEmail}:rate:video`),
     kv.get<number>(`user:${ownerEmail}:rate:audio`),
+    kv.get<number>(`user:${ownerEmail}:rate:hourly`),
+    kv.get<number>(`user:${ownerEmail}:rate:daily`),
+    kv.get<number>(`user:${ownerEmail}:rate:weekly`),
+    kv.get<number>(`user:${ownerEmail}:rate:monthly`),
+    kv.get<any[]>(`user:${ownerEmail}:menuCategories`),
     kv.get<string>(`user:${ownerEmail}:profileImage`),
     kv.get<string>(`user:${ownerEmail}:coverImage`),
     kv.get<string>(`user:${ownerEmail}:roomType`),
@@ -242,11 +252,23 @@ export async function getCreatorProfileData(ownerEmail: string) {
     kv.get<string>(`user:${ownerEmail}:displayName`)
   ]);
 
+  const videoRate = vRate !== null ? Number(vRate) : 100;
+  const audioRate = aRate !== null ? Number(aRate) : 50;
+  const hourlyRate = hRate !== null ? Number(hRate) : Math.round(videoRate * 60 * 0.85);
+  const dailyRate = dRate !== null ? Number(dRate) : Math.round(hourlyRate * 6 * 0.8);
+  const weeklyRate = wRate !== null ? Number(wRate) : Math.round(dailyRate * 5 * 0.75);
+  const monthlyRate = mRate !== null ? Number(mRate) : Math.round(weeklyRate * 4 * 0.7);
+
   return {
     isVerified: !!isVerified,
     socials: socials || {},
-    videoRate: vRate !== null ? Number(vRate) : 100,
-    audioRate: aRate !== null ? Number(aRate) : 50,
+    videoRate,
+    audioRate,
+    hourlyRate,
+    dailyRate,
+    weeklyRate,
+    monthlyRate,
+    menuCategories: menuCats || [],
     profileImage: pImage ? String(pImage) : "",
     coverImage: cImage ? String(cImage) : "",
     roomType: roomType || 'audio',

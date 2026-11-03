@@ -15,6 +15,11 @@ interface CreatorWrapperProps {
   socials?: any;
   videoRate?: number;
   audioRate?: number;
+  hourlyRate?: number;
+  dailyRate?: number;
+  weeklyRate?: number;
+  monthlyRate?: number;
+  menuCategories?: any[];
   profileImage?: string;
   coverImage?: string;
   fundraiser?: any;

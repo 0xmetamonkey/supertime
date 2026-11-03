@@ -21,6 +21,7 @@ import {
   Moon,
   Heart,
   Zap,
+  QrCode,
 } from 'lucide-react';
 import { useClerk, UserButton } from "@clerk/nextjs";
 
@@ -30,6 +31,7 @@ import WalletTab from './WalletTab';
 import StorefrontTab from './StorefrontTab';
 import FeastTab from './FeastTab';
 import ProfileEditor from './ProfileEditor';
+import MenuCatalogEditor from './MenuCatalogEditor';
 import SettingsClient from '../studio/settings/SettingsClient';
 import GlobalStudioRecorder from './GlobalStudioRecorder';
 import InboxTab from './InboxTab';
@@ -37,6 +39,7 @@ import { useTheme } from '../components/ThemeProvider';
 import FundraiserManager from './FundraiserManager';
 import MessagesPanel from '../components/chat/upgrade/MessagesPanel';
 import ActiveChatWindow from '../components/chat/upgrade/ActiveChatWindow';
+import CreatorQRCodeModal from '../components/CreatorQRCodeModal';
 
 interface UIProps {
   session: any;
@@ -70,6 +73,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
   const [balance, setBalance] = useState(initialBalance);
   const [withdrawable, setWithdrawable] = useState(initialWithdrawable);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
   const [activeChatUser, setActiveChatUser] = useState<string | null>(null);
   const [unreadFrom, setUnreadFrom] = useState<Set<string>>(new Set());
   const [chatListRefreshKey, setChatListRefreshKey] = useState(0);
@@ -172,8 +176,12 @@ export default function DashboardClient({ session, username: initialUsername, ro
       if (res.success) {
         setUsername(res.username);
         setRole(res.role);
-        // Force a hard refresh to ensure server components (like the Global Chat Listener) pick up the new KV data
-        window.location.href = '/dashboard';
+        // If user created account as a fan, redirect to home page; creators go to dashboard
+        if (selectedRole === 'fan' || res.role === 'fan') {
+          window.location.href = '/';
+        } else {
+          window.location.href = '/dashboard';
+        }
       }
     } catch (e: any) {
       setClaimError(e.message || 'Failed to claim username.');
@@ -279,7 +287,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
   }
 
   // --- THE DASHBOARD ---
-  const isCreator = role === 'creator';
+  const isCreator = role?.toLowerCase() === 'creator' || role?.toLowerCase() === 'artist';
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -496,6 +504,13 @@ export default function DashboardClient({ session, username: initialUsername, ro
                     supertime.wtf/{username}
                   </a>
                   <button
+                    onClick={() => setQrModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-sm font-medium text-foreground hover:bg-surface transition-colors cursor-pointer"
+                    title="Generate QR Code & Pass"
+                  >
+                    <QrCode className="w-4 h-4" /> QR Code
+                  </button>
+                  <button
                     onClick={async () => {
                       const url = `https://supertime.wtf/${username}`;
                       if (navigator.share) {
@@ -540,6 +555,7 @@ export default function DashboardClient({ session, username: initialUsername, ro
                   balance={balance}
                   withdrawable={withdrawable}
                   setActiveTab={(tab: string) => handleTabChange(tab as Tab)}
+                  onOpenQrModal={() => setQrModalOpen(true)}
                 />
               )}
 
@@ -589,9 +605,23 @@ export default function DashboardClient({ session, username: initialUsername, ro
                     }} />
                   </div>
                   <div className="w-full h-px bg-border my-8" />
+                  
+                  {/* Menu Catalog: Add anything to sell as categories & items */}
+                  <div className="mb-12">
+                    <MenuCatalogEditor
+                      username={username || ''}
+                      initialCategories={initialSettings?.menuCategories || []}
+                    />
+                  </div>
+                  <div className="w-full h-px bg-border my-8" />
+
                   <SettingsClient initialSettings={{
                     videoRate: initialSettings?.videoRate ?? 100,
                     audioRate: initialSettings?.audioRate ?? 50,
+                    hourlyRate: initialSettings?.hourlyRate,
+                    dailyRate: initialSettings?.dailyRate,
+                    weeklyRate: initialSettings?.weeklyRate,
+                    monthlyRate: initialSettings?.monthlyRate,
                     roomType: initialSettings?.roomType || 'audio',
                     isRoomFree: initialSettings?.isRoomFree ?? true,
                     videoProvider: initialSettings?.videoProvider || 'supercalls',
@@ -607,6 +637,18 @@ export default function DashboardClient({ session, username: initialUsername, ro
 
       {/* Floating Studio Recorder */}
       {username && <GlobalStudioRecorder username={username} />}
+
+      {/* Creator QR Code Modal */}
+      {username && (
+        <CreatorQRCodeModal
+          isOpen={qrModalOpen}
+          onClose={() => setQrModalOpen(false)}
+          username={username}
+          displayName={initialSettings?.displayName}
+          profileImage={initialSettings?.profileImage}
+          creatorId={session?.user?.id || undefined}
+        />
+      )}
     </div>
   );
 }

@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@vercel/kv": [
+        "./app/lib/mock-kv.ts"
       ]
     }
   },

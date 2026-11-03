@@ -45,6 +45,11 @@ export default async function DashboardPage() {
   interface DashboardSettings {
     videoRate: number;
     audioRate: number;
+    hourlyRate?: number;
+    dailyRate?: number;
+    weeklyRate?: number;
+    monthlyRate?: number;
+    menuCategories?: any[];
     socials: { instagram: string; x: string; youtube: string; website: string; twitter?: string };
     profileImage: string;
     coverImage: string;
@@ -66,6 +71,11 @@ export default async function DashboardPage() {
   const initialSettings: DashboardSettings = {
     videoRate: 100,
     audioRate: 50,
+    hourlyRate: 5000,
+    dailyRate: 25000,
+    weeklyRate: 90000,
+    monthlyRate: 250000,
+    menuCategories: [],
     socials: { instagram: '', x: '', youtube: '', website: '' },
     profileImage: '',
     coverImage: '',
@@ -85,6 +95,11 @@ export default async function DashboardPage() {
   if (process.env.KV_URL) {
     const vRate = await kv.get(`user:${email}:rate:video`);
     const aRate = await kv.get(`user:${email}:rate:audio`);
+    const hRate = await kv.get(`user:${email}:rate:hourly`);
+    const dRate = await kv.get(`user:${email}:rate:daily`);
+    const wRate = await kv.get(`user:${email}:rate:weekly`);
+    const mRate = await kv.get(`user:${email}:rate:monthly`);
+    const menuCats = await kv.get(`user:${email}:menuCategories`) as any[] | null;
     const socials = await kv.get(`user:${email}:socials`) as Record<string, string> | null;
     const profileImage = await kv.get(`user:${email}:profileImage`);
     const coverImage = await kv.get(`user:${email}:coverImage`);
@@ -103,6 +118,11 @@ export default async function DashboardPage() {
 
     if (vRate !== null) initialSettings.videoRate = Number(vRate);
     if (aRate !== null) initialSettings.audioRate = Number(aRate);
+    initialSettings.hourlyRate = hRate !== null ? Number(hRate) : Math.round(initialSettings.videoRate * 60 * 0.85);
+    initialSettings.dailyRate = dRate !== null ? Number(dRate) : Math.round(initialSettings.hourlyRate * 6 * 0.8);
+    initialSettings.weeklyRate = wRate !== null ? Number(wRate) : Math.round(initialSettings.dailyRate * 5 * 0.75);
+    initialSettings.monthlyRate = mRate !== null ? Number(mRate) : Math.round(initialSettings.weeklyRate * 4 * 0.7);
+    if (menuCats) initialSettings.menuCategories = menuCats;
     if (videoProvider) initialSettings.videoProvider = videoProvider;
     initialSettings.isGoogleConnected = !!googleTokens;
     initialSettings.isZoomConnected = !!zoomTokens;
