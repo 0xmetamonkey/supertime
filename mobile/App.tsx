@@ -34,7 +34,7 @@ import { NativeWebRTCStream, NativeWebRTCStreamRef } from './src/components/Nati
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Direct local PC signaling URL for instant testing
-const SIGNALING_URL = 'http://192.168.0.102:3001';
+const SIGNALING_URL = 'http://192.168.0.103:3001';
 
 type ScreenState = 'home' | 'searching' | 'matched';
 
