@@ -35,6 +35,8 @@ import {
   FileText,
 } from 'lucide-react';
 import WalletManager from '../components/WalletManager';
+import BookingSlider from '../components/BookingSlider';
+import type { BookingRates } from '@/types/offerings';
 import dynamic from 'next/dynamic';
 const SuperCall = dynamic(() => import('../components/SuperCall'), { ssr: false });
 const BroadcastViewer = dynamic(() => import('../components/Broadcast/BroadcastViewer'), { ssr: false });
@@ -50,6 +52,7 @@ interface CreatorClientProps {
   socials?: any,
   videoRate?: number;
   audioRate?: number;
+  bookingRates?: BookingRates;
   profileImage?: string;
   coverImage?: string;
   fundraiser?: any;
@@ -118,6 +121,7 @@ export default function CreatorClient({
   socials,
   videoRate = 100,
   audioRate = 50,
+  bookingRates,
   profileImage = "",
   coverImage = "",
   fundraiser = null,
@@ -1219,6 +1223,18 @@ export default function CreatorClient({
                 <button className="px-4 py-1.5 rounded-full border border-border text-foreground hover:bg-background text-sm font-medium whitespace-nowrap">Video</button>
                 <button className="px-4 py-1.5 rounded-full border border-border text-foreground hover:bg-background text-sm font-medium whitespace-nowrap">Mentorship</button>
               </div>
+
+              {/* ── Booking Slider — multi-duration pricing ── */}
+              {bookingRates && (
+                <BookingSlider
+                  rates={bookingRates}
+                  onBook={(req) => {
+                    if (req.unit === 'minutes') {
+                      handleStartCall('video');
+                    }
+                  }}
+                />
+              )}
 
               <div className="space-y-3">
                 {(() => {

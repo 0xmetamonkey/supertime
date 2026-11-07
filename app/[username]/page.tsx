@@ -5,6 +5,7 @@ import { Metadata } from 'next';
 import { trackEvent } from "../lib/analytics";
 import { resolveUsername, getCachedCreatorProfileData } from "../actions";
 import { revalidateTag } from "next/cache";
+import type { BookingRates } from '@/types/offerings';
 
 type Props = {
   params: Promise<{ username: string }>
@@ -145,6 +146,15 @@ export default async function CreatorPage({ params }: Props) {
   const isRoomFree = staticProfile.isRoomFree ?? true;
   const studioMode = staticProfile.studioMode ?? 'solitude';
 
+  // Build booking rates for the multi-duration BookingSlider
+  const bookingRates: BookingRates = {
+    minuteRate: videoRate,
+    hourlyRate: staticProfile.hourlyRate ?? Math.round(videoRate * 60 * 0.85),
+    dailyRate: staticProfile.dailyRate ?? Math.round(videoRate * 60 * 0.85 * 6 * 0.80),
+    weeklyRate: staticProfile.weeklyRate ?? Math.round(videoRate * 60 * 0.85 * 6 * 0.80 * 5 * 0.75),
+    monthlyRate: staticProfile.monthlyRate ?? Math.round(videoRate * 60 * 0.85 * 6 * 0.80 * 5 * 0.75 * 4 * 0.70),
+  };
+
   (socials as any).roomType = roomType;
   (socials as any).isRoomFree = isRoomFree;
   (socials as any).studioMode = studioMode;
@@ -159,6 +169,7 @@ export default async function CreatorPage({ params }: Props) {
       socials={socials}
       videoRate={videoRate}
       audioRate={audioRate}
+      bookingRates={bookingRates}
       profileImage={profileImage}
       coverImage={coverImage}
       fundraiser={fundraiser}

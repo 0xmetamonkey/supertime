@@ -31,6 +31,7 @@ import StorefrontTab from './StorefrontTab';
 import FeastTab from './FeastTab';
 import ProfileEditor from './ProfileEditor';
 import SettingsClient from '../studio/settings/SettingsClient';
+import MenuManager from '../components/MenuManager';
 import GlobalStudioRecorder from './GlobalStudioRecorder';
 import InboxTab from './InboxTab';
 import { useTheme } from '../components/ThemeProvider';
@@ -588,6 +589,18 @@ export default function DashboardClient({ session, username: initialUsername, ro
                       bio: initialSettings?.bio || '',
                     }} />
                   </div>
+                  <div className="w-full h-px bg-border my-8" />
+                  <MenuManager
+                    initialCategories={initialSettings?.menuCategories || []}
+                    onChange={(cats) => {
+                      // Persist to API when categories change
+                      fetch('/api/user/menu', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ categories: cats }),
+                      });
+                    }}
+                  />
                   <div className="w-full h-px bg-border my-8" />
                   <SettingsClient initialSettings={{
                     videoRate: initialSettings?.videoRate ?? 100,

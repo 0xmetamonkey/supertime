@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { AblyProvider, useCallSignaling } from '@/app/lib/ably';
 import CreatorClient from './CreatorClient';
 import { IncomingCallRing } from '@/app/components/IncomingCallRing';
+import type { BookingRates } from '@/types/offerings';
 
 interface CreatorWrapperProps {
   username: string;
@@ -15,6 +16,7 @@ interface CreatorWrapperProps {
   socials?: any;
   videoRate?: number;
   audioRate?: number;
+  bookingRates?: BookingRates;
   profileImage?: string;
   coverImage?: string;
   fundraiser?: any;
