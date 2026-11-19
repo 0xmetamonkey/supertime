@@ -84,6 +84,21 @@ export async function completeOnboarding(usernameRaw: string, role: 'creator' | 
   await kv.set(`user:${email}:username`, username);
   await kv.set(`user:${email}:role`, role);
   
+  // 4. Provision or update ST ID Protocol identity
+  try {
+    const { createOrGetSTIdentity, claimSTName } = await import('@/app/lib/protocol');
+    const stId = await createOrGetSTIdentity({
+      email,
+      desiredUsername: username,
+      displayName: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : undefined,
+    });
+    if (stId && stId.currentUsername !== `${username}.st`) {
+      await claimSTName(stId.uid, username);
+    }
+  } catch (stErr) {
+    console.warn('[ST Protocol] Onboarding hook error:', stErr);
+  }
+  
   // Set default settings for creators
   if (role === 'creator') {
     const hasRate = await kv.get(`user:${email}:rate:video`);

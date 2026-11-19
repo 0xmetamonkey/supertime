@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CreditCard, Wallet, TrendingUp } from 'lucide-react';
 import { useAlertDialog } from '../components/AlertDialog';
+import STWalletManager from '../components/protocol/STWalletManager';
 
 interface WalletTabProps {
   withdrawable: number;
@@ -196,6 +197,11 @@ export default function WalletTab({ withdrawable, balance }: WalletTabProps) {
             Top Up Credits
           </button>
         </div>
+      </div>
+
+      {/* ST ID PROTOCOL SELF-CUSTODY WALLETS */}
+      <div className="pt-2">
+        <STWalletManager />
       </div>
 
       {/* WITHDRAWAL MODAL */}

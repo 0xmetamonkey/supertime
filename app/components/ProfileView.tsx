@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import ProfileQRModal from './ProfileQRModal';
 import CreatorLinksSheet from './CreatorLinksSheet';
+import STIdentityModal from './protocol/STIdentityModal';
 
 // FAQ Accordion — purely presentational
 function FAQSection({ faqs }: { faqs: { id: string; question: string; answer: string }[] }) {
@@ -102,6 +103,7 @@ export default function ProfileView({
   const [showQRModal, setShowQRModal] = useState(false);
   const [showLinksSheet, setShowLinksSheet] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
+  const [showSTModal, setShowSTModal] = useState(false);
   const [previewTipAmount, setPreviewTipAmount] = useState('99');
 
   const tabClass = (tab: 'store' | 'courses' | 'about') => 
@@ -178,8 +180,15 @@ export default function ProfileView({
               )}
             </div>
           </div>
-          <h1 className={`font-semibold tracking-tight text-[#111111] leading-none mb-3 md:mb-4 flex items-center justify-center gap-2 ${isPreview ? 'text-2xl' : 'text-3xl md:text-5xl'}`}>
+          <h1 className={`font-semibold tracking-tight text-[#111111] leading-none mb-3 md:mb-4 flex flex-wrap items-center justify-center gap-2 ${isPreview ? 'text-2xl' : 'text-3xl md:text-5xl'}`}>
             <span>{username}</span>
+            <button
+              onClick={() => setShowSTModal(true)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20 text-xs font-mono font-bold tracking-tight hover:bg-amber-500/20 active:scale-95 transition-all cursor-pointer shadow-2xs"
+              title="Universal ST Identity & Wallets"
+            >
+              <span>{username.endsWith('.st') ? username : `${username}.st`}</span>
+            </button>
             {isVerified && <Zap className={`text-[#111111] fill-[#111111] shrink-0 ${isPreview ? 'w-4 h-4' : 'w-6 h-6 md:w-7 md:h-7'}`} />}
             <button
               onClick={() => setShowLinksSheet(true)}
@@ -458,6 +467,13 @@ export default function ProfileView({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ST IDENTITY RESOLUTION MODAL */}
+      <STIdentityModal
+        isOpen={showSTModal}
+        onClose={() => setShowSTModal(false)}
+        username={username}
+      />
     </div>
   );
 }
