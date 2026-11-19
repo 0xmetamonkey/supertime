@@ -111,7 +111,7 @@ A Believer is a patron of human potential.
 
 They recognize an artist’s accumulated Time Ledger before the rest of the world catches on, and they allocate capital directly to fuel that masterpiece.
 
-Don't buy products. Invest in conviction.
+Don't buy products. Back conviction.
 
 ---
 
@@ -175,8 +175,8 @@ Because that is what it costs to permanently capitalize the time of 10,000 indep
 
 With a ₹1,000 Crore sovereign liquidity pool:
 - Artists never have to take corporate sponsorships.
-- Believers earn yields on human potential.
-- Time becomes an investable, sovereign asset class backed by cryptographic reserves.
+- Believers watch human potential compound.
+- Time becomes a sovereign asset class backed by cryptographic reserves.
 
 We aren't building a SaaS tool. We are building the central bank of human time.
 

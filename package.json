@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "roulette:server": "node server/roulette-server.js",
+    "treasury:update": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/treasury-monitor.mts",
     "mobile:start": "npm run --prefix mobile start",
     "mobile:ios": "npm run --prefix mobile ios",
     "mobile:android": "npm run --prefix mobile android"

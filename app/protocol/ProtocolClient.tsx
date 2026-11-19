@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { 
@@ -24,6 +24,59 @@ const BTC_ADDRESS = process.env.NEXT_PUBLIC_MONKEY_BTC_ADDRESS || '12brgdhERnsUN
 const EVM_ADDRESS = process.env.NEXT_PUBLIC_MONKEY_EVM_ADDRESS || '0x741cd4dabfc802db4167b4fc272e12b0a0181f12';
 const SOL_ADDRESS = process.env.NEXT_PUBLIC_MONKEY_SOL_ADDRESS || 'Cqijh8ZoTmZ7FFMH6AgjMpnvnnFeMSDKPunXpBzLitW7';
 
+// ₹1,000 Crores at roughly ₹83/USD.
+const GOAL_USD = 120_000_000;
+
+interface TreasurySnapshot {
+  updatedAt: string;
+  totalUsd: number;
+  priced: boolean;
+  burn: { monthlyUsd: number; targetMonthlyUsd: number };
+  runway: {
+    daysAtCurrentBurn: number | null;
+    daysAtTargetBurn: number | null;
+  };
+  assets: Array<{
+    id: string;
+    symbol: string;
+    chain: string;
+    amount: number | null;
+    usd: number | null;
+  }>;
+  inflows: Array<{
+    chain: string;
+    asset: string;
+    amount: number;
+    at?: string;
+  }>;
+  milestones: Array<{ amount: number; label: string; reached: boolean }>;
+  nextMilestone: { amount: number; label: string } | null;
+}
+
+const FALLBACK_MILESTONES = [
+  { amount: 1, label: 'Deploy the Belief contract', reached: false },
+  { amount: 300, label: "One month of today's infrastructure", reached: false },
+  { amount: 1000, label: 'Storage and backup hardware', reached: false },
+  { amount: 3000, label: 'A working machine for the operator', reached: false },
+  { amount: 10000, label: 'One month at the target budget', reached: false },
+];
+
+function formatUsd(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return '—';
+  return value.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: value < 100 ? 2 : 0,
+  });
+}
+
+function formatAmount(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return '—';
+  return value.toLocaleString('en-US', {
+    maximumFractionDigits: value < 1 ? 6 : 4,
+  });
+}
+
 export default function ProtocolClient() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
@@ -32,6 +85,34 @@ export default function ProtocolClient() {
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
   };
+
+  const [treasury, setTreasury] = useState<TreasurySnapshot | null>(null);
+  const [treasuryFailed, setTreasuryFailed] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+
+    fetch('/api/treasury')
+      .then((response) => {
+        if (!response.ok) throw new Error(`treasury ${response.status}`);
+        return response.json() as Promise<TreasurySnapshot>;
+      })
+      .then((snapshot) => {
+        if (alive) setTreasury(snapshot);
+      })
+      .catch(() => {
+        if (alive) setTreasuryFailed(true);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const totalUsd = treasury?.totalUsd ?? 0;
+  const progress = Math.min(100, Math.max(0.4, (totalUsd / GOAL_USD) * 100));
+  const milestones = treasury?.milestones ?? FALLBACK_MILESTONES;
+  const latestInflow = treasury?.inflows[0];
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white font-sans selection:bg-amber-500 selection:text-black antialiased relative overflow-hidden">
@@ -80,34 +161,111 @@ export default function ProtocolClient() {
 
         {/* The Live Goal HUD */}
         <section className="p-6 md:p-8 rounded-3xl bg-neutral-900/60 border border-neutral-800/80 backdrop-blur-md space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div>
-              <div className="text-xs uppercase tracking-widest text-neutral-500 font-mono">Belief Treasury Goal</div>
+              <div className="text-xs uppercase tracking-widest text-neutral-500 font-mono">Belief Treasury</div>
               <div className="text-3xl md:text-4xl font-black text-white mt-1">
-                ₹0 <span className="text-neutral-500 text-xl font-normal">/ ₹1,000 Crores</span>
+                {treasury ? formatUsd(totalUsd) : treasuryFailed ? 'Unavailable' : 'Reading chain…'}
+                <span className="text-neutral-500 text-xl font-normal"> / ₹1,000 Crores</span>
+              </div>
+              <div className="text-xs text-neutral-400 font-mono mt-2 leading-relaxed">
+                {treasury
+                  ? `${treasury.runway.daysAtCurrentBurn ?? '—'} days at ${formatUsd(treasury.burn.monthlyUsd)}/mo · ${treasury.runway.daysAtTargetBurn ?? '—'} days at ${formatUsd(treasury.burn.targetMonthlyUsd)}/mo`
+                  : treasuryFailed
+                    ? 'Live read unavailable. The addresses below are still valid.'
+                    : 'Reading balances from Bitcoin, Base, Ethereum and Solana.'}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col items-stretch sm:items-end gap-2 shrink-0">
               <a
                 href="https://x.com/0xmetamonkey"
                 target="_blank"
                 rel="noreferrer"
-                className="px-4 py-2.5 rounded-xl bg-white text-black font-black text-xs flex items-center gap-2 hover:bg-neutral-200 transition-all active:scale-95 shadow-md shadow-white/10"
+                className="px-4 py-2.5 rounded-xl bg-white text-black font-black text-xs flex items-center justify-center gap-2 hover:bg-neutral-200 transition-all active:scale-95 shadow-md shadow-white/10"
               >
                 <span>Read Thread on X</span>
                 <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+              <a
+                href="https://app.superfluid.finance/"
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 rounded-xl bg-neutral-800/80 text-neutral-200 border border-neutral-700 font-medium text-[11px] flex items-center justify-center gap-2 hover:bg-neutral-700 transition-all active:scale-95"
+              >
+                <span>Stream monthly</span>
+                <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           </div>
 
           {/* Progress Bar */}
           <div className="w-full bg-neutral-950 rounded-full h-3 overflow-hidden border border-neutral-800 p-0.5">
-            <div className="bg-gradient-to-r from-amber-500 to-rose-500 h-full rounded-full w-[0.5%]" />
+            <div
+              className="bg-gradient-to-r from-amber-500 to-rose-500 h-full rounded-full transition-all duration-700"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {(treasury?.assets ?? []).map((asset) => (
+              <div
+                key={asset.id}
+                className="rounded-xl bg-neutral-950/70 border border-neutral-800 px-3 py-2"
+              >
+                <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-neutral-500">
+                  <span>{asset.symbol}</span>
+                  <span>{asset.chain}</span>
+                </div>
+                <div className="text-sm font-bold text-white mt-1 font-mono">
+                  {formatAmount(asset.amount)}
+                </div>
+                <div className="text-[10px] text-neutral-500 font-mono">
+                  {formatUsd(asset.usd)}
+                </div>
+              </div>
+            ))}
+            {!treasury && !treasuryFailed && (
+              <div className="col-span-2 sm:col-span-3 rounded-xl bg-neutral-950/70 border border-neutral-800 px-3 py-4 text-center text-xs font-mono text-neutral-500">
+                Loading live balances…
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3 text-[10px] uppercase tracking-widest text-neutral-500 font-mono">
+              <span>Milestones</span>
+              {latestInflow && (
+                <span className="normal-case tracking-normal text-neutral-400 text-right">
+                  Latest: {formatAmount(latestInflow.amount)} {latestInflow.asset} on {latestInflow.chain}
+                </span>
+              )}
+            </div>
+            <ul className="grid sm:grid-cols-2 gap-2">
+              {milestones.map((milestone) => (
+                <li
+                  key={milestone.amount}
+                  className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs ${
+                    milestone.reached
+                      ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-300'
+                      : 'border-neutral-800 bg-neutral-950/60 text-neutral-400'
+                  }`}
+                >
+                  <span className="font-mono shrink-0">{formatUsd(milestone.amount)}</span>
+                  <span className="text-right leading-snug">{milestone.label}</span>
+                  {milestone.reached ? (
+                    <Check className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                  ) : (
+                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-700 shrink-0" />
+                  )}
+                </li>
+              ))}
+            </ul>
           </div>
 
           <p className="text-xs text-neutral-400 font-mono leading-relaxed">
-            &gt; Current on-chain balance: $0.00. The protocol begins at ground zero. 
-            First milestone: $1 to fund the deployment of the on-chain Belief Contract.
+            &gt; Read live from public chains. No returns are promised, and every inflow is logged.
+            {" "}Funds pay for compute, storage, and hardware. Recurring support: stream USDC on
+            Base to the address below from any Superfluid-compatible app.
           </p>
         </section>
 

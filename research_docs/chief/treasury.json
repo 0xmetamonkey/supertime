@@ -1,0 +1,102 @@
+{
+  "updatedAt": "2026-11-19T23:08:36.718Z",
+  "addresses": {
+    "btc": "12brgdhERnsUNqa17o1KW4tWC1rmLdYSvn",
+    "evm": "0x741cd4dabfc802db4167b4fc272e12b0a0181f12",
+    "sol": "Cqijh8ZoTmZ7FFMH6AgjMpnvnnFeMSDKPunXpBzLitW7"
+  },
+  "assets": [
+    {
+      "id": "btc",
+      "symbol": "BTC",
+      "chain": "Bitcoin",
+      "amount": 0,
+      "usd": 0
+    },
+    {
+      "id": "eth-base",
+      "symbol": "ETH",
+      "chain": "Base",
+      "amount": 0,
+      "usd": 0
+    },
+    {
+      "id": "eth-ethereum",
+      "symbol": "ETH",
+      "chain": "Ethereum",
+      "amount": 0,
+      "usd": 0
+    },
+    {
+      "id": "usdc-base",
+      "symbol": "USDC",
+      "chain": "Base",
+      "amount": 0,
+      "usd": 0
+    },
+    {
+      "id": "usdc-solana",
+      "symbol": "USDC",
+      "chain": "Solana",
+      "amount": 0,
+      "usd": 0
+    },
+    {
+      "id": "sol",
+      "symbol": "SOL",
+      "chain": "Solana",
+      "amount": 0,
+      "usd": 0
+    }
+  ],
+  "totalUsd": 0,
+  "priced": true,
+  "prices": {
+    "bitcoin": 62036,
+    "ethereum": 1755.04,
+    "solana": 73.08,
+    "usd-coin": 0.999619
+  },
+  "burn": {
+    "monthlyUsd": 300,
+    "targetMonthlyUsd": 10000
+  },
+  "runway": {
+    "daysAtCurrentBurn": 0,
+    "daysAtTargetBurn": 0
+  },
+  "nextMilestone": {
+    "amount": 1,
+    "label": "Deploy the Belief contract",
+    "reached": false
+  },
+  "milestones": [
+    {
+      "amount": 1,
+      "label": "Deploy the Belief contract",
+      "reached": false
+    },
+    {
+      "amount": 300,
+      "label": "One month of today's infrastructure",
+      "reached": false
+    },
+    {
+      "amount": 1000,
+      "label": "Storage and backup hardware",
+      "reached": false
+    },
+    {
+      "amount": 3000,
+      "label": "A working machine for the operator",
+      "reached": false
+    },
+    {
+      "amount": 10000,
+      "label": "One month at the target budget",
+      "reached": false
+    }
+  ],
+  "inflows": [],
+  "warnings": []
+}
